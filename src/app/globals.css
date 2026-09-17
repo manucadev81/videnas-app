@@ -1,26 +1,208 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-family-sans);
+  --font-display: var(--font-family-display);
+  --font-mono: var(--font-family-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --color-brand-50: #ebf1ff;
+  --color-brand-100: #d1dfff;
+  --color-brand-200: #a8c2ff;
+  --color-brand-300: #739cfc;
+  --color-brand-400: #477bf5;
+  --color-brand-500: #386cf0;
+  --color-brand-600: #2d63eb;
+  --color-brand-700: #2457e8;
+  --color-brand-800: #1a3fbe;
+  --color-brand-900: #163392;
+  --color-brand-950: #0f1e57;
+
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #374151;
+  --color-neutral-700: #1f2937;
+  --color-neutral-800: #111827;
+
+  --color-status-neutral-bg: #f3f4f6;
+  --color-status-neutral-border: #d1d5db;
+  --color-status-neutral-text: #6b7280;
+
+  --color-status-info-bg: #ebf1ff;
+  --color-status-info-border: #a8c2ff;
+  --color-status-info-text: #2d63eb;
+
+  --color-status-success-bg: #ecfdf5;
+  --color-status-success-border: #a7f3d0;
+  --color-status-success-text: #047857;
+
+  --color-status-warning-bg: #fffbeb;
+  --color-status-warning-border: #fcd34d;
+  --color-status-warning-text: #b45309;
+
+  --color-status-error-bg: #fef2f2;
+  --color-status-error-border: #fecaca;
+  --color-status-error-text: #dc2626;
+
+  --color-status-candidate-bg: #f3e8ff;
+  --color-status-candidate-border: #ddd6fe;
+  --color-status-candidate-text: #6d28d9;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-full: 9999px;
+
+  --shadow-elevado-1: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-elevado-2: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-elevado-3: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(210 16% 21%);
+
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(210 16% 21%);
+
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(210 16% 21%);
+
+  --primary: hsl(224 81% 53%);
+  --primary-foreground: hsl(0 0% 100%);
+
+  --secondary: hsl(210 14% 96%);
+  --secondary-foreground: hsl(210 16% 21%);
+
+  --muted: hsl(210 14% 96%);
+  --muted-foreground: hsl(210 8% 48%);
+
+  --accent: hsl(222 97% 58%);
+  --accent-foreground: hsl(0 0% 100%);
+
+  --destructive: hsl(0 84% 60%);
+  --destructive-foreground: hsl(0 0% 100%);
+
+  --border: hsl(210 14% 91%);
+  --input: hsl(210 14% 91%);
+  --ring: hsl(224 81% 53%);
+  --radius: 0.5rem;
+
+  --chart-1: hsl(222 97% 58%);
+  --chart-2: hsl(160 84% 39%);
+  --chart-3: hsl(44 97% 50%);
+  --chart-4: hsl(0 84% 60%);
+  --chart-5: hsl(265 100% 68%);
+
+  --sidebar: hsl(210 14% 96%);
+  --sidebar-foreground: hsl(210 16% 21%);
+  --sidebar-primary: hsl(224 81% 53%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(210 14% 96%);
+  --sidebar-accent-foreground: hsl(224 81% 53%);
+  --sidebar-border: hsl(210 14% 91%);
+  --sidebar-ring: hsl(224 81% 53%);
+}
+
+* {
+  @apply border-border;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-background text-foreground font-sans;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  @apply font-display;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-700);
+  outline-offset: 2px;
+}
+
+@media (prefers-contrast: more) {
+  input,
+  textarea,
+  select {
+    border-width: 2px;
+  }
+  button {
+    border: 2px solid currentColor;
+  }
+}
+
+@layer components {
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium;
+  }
+
+  .status-badge-neutral {
+    @apply bg-status-neutral-bg text-status-neutral-text border border-status-neutral-border;
+  }
+
+  .status-badge-info {
+    @apply bg-status-info-bg text-status-info-text border border-status-info-border;
+  }
+
+  .status-badge-success {
+    @apply bg-status-success-bg text-status-success-text border border-status-success-border;
+  }
+
+  .status-badge-warning {
+    @apply bg-status-warning-bg text-status-warning-text border border-status-warning-border;
+  }
+
+  .status-badge-error {
+    @apply bg-status-error-bg text-status-error-text border border-status-error-border;
+  }
+
+  .status-badge-candidate {
+    @apply bg-status-candidate-bg text-status-candidate-text border border-status-candidate-border;
+  }
 }
