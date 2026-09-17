@@ -87,7 +87,13 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-full flex-1">
       <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-linear-to-br from-brand-700 to-brand-800 p-10 text-white md:flex">
-        <LogoVidenas className="h-10 w-auto self-start text-white" />
+        <Link
+          href="/"
+          aria-label="Ir para a página inicial"
+          className="self-start rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+        >
+          <LogoVidenas className="h-10 w-auto text-white" />
+        </Link>
         <div className="max-w-md">
           <p className="font-display text-3xl font-bold text-balance">
             Do dado bruto ao arquivo pronto para o Banco Central, com trilha de auditoria em cada etapa.
@@ -113,7 +119,13 @@ export default function LoginPage() {
           </Link>
 
           <div className="mb-6 md:hidden">
-            <LogoVidenas className="h-8 w-auto text-brand-700" />
+            <Link
+              href="/"
+              aria-label="Ir para a página inicial"
+              className="inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-700"
+            >
+              <LogoVidenas className="h-8 w-auto text-brand-700" />
+            </Link>
           </div>
 
           <h1 className="font-display text-2xl font-bold text-neutral-700">Entrar</h1>

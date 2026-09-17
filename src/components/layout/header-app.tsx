@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { LogOut } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,8 +10,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SeletorPerfil } from "@/components/dominio/seletor-perfil";
 import { SeletorInstituicao } from "@/components/dominio/seletor-instituicao";
+import { useLogout } from "@/lib/hooks/use-logout";
 
 const ROTULOS_SEGMENTO: Record<string, string> = {
   app: "Painel",
@@ -29,6 +33,7 @@ function rotuloSegmento(segmento: string): string {
 
 export function HeaderApp() {
   const pathname = usePathname();
+  const aoSair = useLogout();
   const segmentos = pathname.split("/").filter(Boolean);
 
   return (
@@ -60,6 +65,24 @@ export function HeaderApp() {
         <div data-tour="seletor-perfil">
           <SeletorPerfil className="w-56" />
         </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={aoSair}
+                  aria-label="Sair da conta"
+                />
+              }
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sair</span>
+            </TooltipTrigger>
+            <TooltipContent>Sair da conta</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </header>
   );

@@ -128,7 +128,9 @@ export function SidebarApp() {
           <SheetContent side="left" className="w-72 p-0">
             <SheetTitle className="sr-only">Navegação</SheetTitle>
             <div className="border-b border-neutral-200 p-4">
-              <LogoVidenas className="h-8 w-auto text-brand-700" />
+              <Link href="/app" aria-label="Ir para o dashboard">
+                <LogoVidenas className="h-8 w-auto text-brand-700" />
+              </Link>
             </div>
             {hidratado ? (
               <ConteudoNavegacao pathname={pathname} itens={itensVisiveis} />
