@@ -1,4 +1,4 @@
-# Design System — Sentinellus
+# Design System — Videnas
 
 Referência curta do design system usado no mockup. Todos os tokens vivem em `src/app/globals.css` (bloco `@theme inline` + `:root`); os componentes de UI ficam em `src/components/ui/` (shadcn) e os componentes de domínio em `src/components/dominio/`. Modo claro apenas — não existe `.dark` nem `prefers-color-scheme` neste projeto.
 
@@ -76,4 +76,4 @@ Interface densa, adequada a dados regulatórios: gutter horizontal padrão de 16
 - **`src/app/globals.css`** — única fonte de verdade dos tokens (`@theme inline` para cores/raios/sombras Tailwind 4, `:root` para variáveis shadcn como `--primary`, `--border`, `--ring`). Não editado por este agente (é fundação).
 - **`src/components/ui/`** — primitivos shadcn/ui (Button, Card, Dialog, Select, Table etc.), construídos sobre `@base-ui/react` com `class-variance-authority`.
 - **`src/components/dominio/`** — componentes que já embutem regra de negócio visual (badge de estado, stepper de etapas, banner de posicionamento, selo Candidato).
-- **`src/components/marca/`** — `LogoSentinellus` (SVG, `currentColor`, use em fundo claro) e `SimboloSentinellus`. O JPEG `public/logowhite.jpeg` (logo branco) só é usado sobre fundo azul (`brand-700`/`brand-800`).
+- **`src/components/marca/`** — `LogoVidenas` e `SimboloVidenas`, ambos SVG com `fill="currentColor"`, servindo qualquer fundo via classe de cor: `text-brand-700` em fundo claro e `text-white` sobre fundo azul (`brand-700`/`brand-800`).

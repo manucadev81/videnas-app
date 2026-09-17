@@ -162,7 +162,7 @@ export default function ConfiguracoesUsuariosPage() {
     { id: "nome", cabecalho: "Nome", renderizar: (u) => <span className="font-medium text-neutral-700">{u.nome}</span> },
     { id: "email", cabecalho: "E-mail", renderizar: (u) => u.email },
     { id: "perfil", cabecalho: "Perfil", renderizar: (u) => buscarPerfil(u.perfilId).rotulo },
-    { id: "lado", cabecalho: "Lado", renderizar: (u) => (u.lado === "sentinellus" ? "Sentinellus" : "Cliente") },
+    { id: "lado", cabecalho: "Lado", renderizar: (u) => (u.lado === "videnas" ? "Videnas" : "Cliente") },
     { id: "modulos", cabecalho: "Módulos", renderizar: (u) => u.moduloIds.map((m) => m.toUpperCase()).join(", ") },
     { id: "ultimoAcesso", cabecalho: "Último acesso", renderizar: (u) => formatarDataHora(u.ultimoAcesso) },
     {
@@ -309,10 +309,10 @@ export default function ConfiguracoesUsuariosPage() {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                    perfil.lado === "sentinellus" ? "bg-status-candidate-bg text-status-candidate-text" : "bg-status-info-bg text-status-info-text"
+                    perfil.lado === "videnas" ? "bg-status-candidate-bg text-status-candidate-text" : "bg-status-info-bg text-status-info-text"
                   )}
                 >
-                  {perfil.lado === "sentinellus" ? "Sentinellus" : "Cliente"}
+                  {perfil.lado === "videnas" ? "Videnas" : "Cliente"}
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -327,7 +327,7 @@ export default function ConfiguracoesUsuariosPage() {
         </div>
 
         <p className="mt-4 rounded-md bg-status-warning-bg px-4 py-2.5 text-xs text-status-warning-text">
-          Executor e Validador são papéis da Sentinellus e não podem ser atribuídos a usuários da instituição.
+          Executor e Validador são papéis da Videnas e não podem ser atribuídos a usuários da instituição.
         </p>
       </section>
     </div>

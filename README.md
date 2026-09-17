@@ -1,6 +1,6 @@
-# Sentinellus — Mockup Front-end
+# Videnas — Mockup Front-end
 
-Mockup de front-end (Next.js 16 + React 19) da Sentinellus, uma RegTech de conformidade regulatória para instituições brasileiras que operam com criptoativos (SPSAVs, exchanges, custodiantes, mesas de OTC). Cobre os módulos **ACAM212**, **Cadoc 5711/5710** e **Fiscal (NFS-e/DPS, candidato)**.
+Mockup de front-end (Next.js 16 + React 19) da Videnas, uma RegTech de conformidade regulatória para instituições brasileiras que operam com criptoativos (SPSAVs, exchanges, custodiantes, mesas de OTC). Cobre os módulos **ACAM212**, **Cadoc 5711/5710** e **Fiscal (NFS-e/DPS, candidato)**.
 
 **Este projeto é 100% mockado**: não há backend, API routes, autenticação real, `fetch` de rede ou banco de dados. Todo o estado (sessão, perfil ativo, períodos regulatórios, arquivos, validações, exceções, trilha de auditoria) vive em memória, em stores Zustand, e é reiniciado a cada reload da página.
 
@@ -46,14 +46,14 @@ pnpm lint     # eslint
 Não existe autenticação real: qualquer e-mail e senha entram no ambiente de demonstração.
 
 1. Em `/login`, use um dos 5 atalhos de demonstração (ou digite qualquer e-mail — cai automaticamente no perfil Operacional/Backoffice da Meridian Digital Assets, com um toast avisando que o e-mail não foi reconhecido).
-2. Em `/selecionar-instituicao`, é possível **simular qualquer um dos 5 perfis** (Diretor/Compliance, Operacional/Backoffice, Contador/Fiscal — lado cliente; Executor e Validador — lado Sentinellus) e escolher a instituição de trabalho entre as 3 do mock: Meridian Digital Assets (exchange), Cofre Atlântico (custodiante) e Pampulha Capital (mesa OTC, com onboarding incompleto).
+2. Em `/selecionar-instituicao`, é possível **simular qualquer um dos 5 perfis** (Diretor/Compliance, Operacional/Backoffice, Contador/Fiscal — lado cliente; Executor e Validador — lado Videnas) e escolher a instituição de trabalho entre as 3 do mock: Meridian Digital Assets (exchange), Cofre Atlântico (custodiante) e Pampulha Capital (mesa OTC, com onboarding incompleto).
 3. Depois de entrar em `/app`, o **header** sempre expõe os dois seletores (instituição e perfil) para trocar de contexto sem precisar sair da aplicação. Perfis do lado cliente veem só a própria instituição; Executor e Validador podem alternar entre as 3 ou escolher "Todas as instituições" (que leva à fila de operação em `/app/operacao`).
 
 Trocar de perfil **não recarrega dados** — apenas reavalia permissões e re-renderiza as ações disponíveis em cada tela, o que é a base para demonstrar a segregação de funções abaixo.
 
 ## Como o cliente envia os documentos
 
-Quem sobe os dados de origem, do lado do cliente, é o perfil **Operacional/Backoffice** (`operacional`). É o único perfil "cliente" com a ação `subir_dados` liberada (ver `src/lib/permissoes.ts`): Diretor/Compliance só aprova e responde perante o BCB, e Contador/Fiscal só confirma enquadramento tributário — nenhum dos dois tem `subir_dados` em `acoesPermitidas`. Do lado Sentinellus, o Executor também carrega `subir_dados` na sua lista de ações (para poder operar em nome do cliente quando necessário), mas o fluxo abaixo descreve o caminho normal, pelo cliente.
+Quem sobe os dados de origem, do lado do cliente, é o perfil **Operacional/Backoffice** (`operacional`). É o único perfil "cliente" com a ação `subir_dados` liberada (ver `src/lib/permissoes.ts`): Diretor/Compliance só aprova e responde perante o BCB, e Contador/Fiscal só confirma enquadramento tributário — nenhum dos dois tem `subir_dados` em `acoesPermitidas`. Do lado Videnas, o Executor também carrega `subir_dados` na sua lista de ações (para poder operar em nome do cliente quando necessário), mas o fluxo abaixo descreve o caminho normal, pelo cliente.
 
 O upload fica na primeira aba do detalhe do período — etapa **"Ingestão"** (`ingestao`), a primeira do stepper em todos os módulos —, renderizada pelo componente `RecepcaoDocumentos` (`src/components/dominio/modulo-recepcao-documentos.tsx`) dentro de `DetalhePeriodo`. As rotas são `/app/acam212/[periodoId]`, `/app/cadoc/[periodoId]` e `/app/fiscal/[periodoId]`. Para testar com um período parado em "aguardando dados", use por exemplo:
 
@@ -78,11 +78,11 @@ A pré-validação (`prevalidarArquivo`, no mesmo componente) é **determinísti
 
 Quando o arquivo é aceito, o número de linhas reconhecidas é derivado do tamanho do arquivo (bytes ÷ 180, arredondado) e a quantidade de linhas "com pendência" é derivada da soma dos códigos de caractere do nome do arquivo (`% 7`) — ou seja, o mesmo arquivo (mesmo nome e tamanho) sempre produz o mesmo resultado.
 
-A Sentinellus recebe e estrutura esses dados para o módulo regulatório correspondente, mas a transmissão ao órgão (BCB, prefeitura/Receita) e a responsabilidade pela obrigação continuam sendo da instituição cliente — ver [Posicionamento](#posicionamento).
+A Videnas recebe e estrutura esses dados para o módulo regulatório correspondente, mas a transmissão ao órgão (BCB, prefeitura/Receita) e a responsabilidade pela obrigação continuam sendo da instituição cliente — ver [Posicionamento](#posicionamento).
 
 ## Como testar o fluxo de 4 olhos (segregação de funções)
 
-A regra fixa da Sentinellus é: **quem executa nunca é quem valida**. Para ver isso na prática, use um período em `com_excecoes`, `em_validacao` ou `validado` (por exemplo `per-meridian-acam212-202608`) e alterne perfil no header:
+A regra fixa da Videnas é: **quem executa nunca é quem valida**. Para ver isso na prática, use um período em `com_excecoes`, `em_validacao` ou `validado` (por exemplo `per-meridian-acam212-202608`) e alterne perfil no header:
 
 1. **Executor** (ex.: Tomoe Nakamura) — vê e executa `Enviar dados do período`, `Gerar arquivo`, `Enviar para validação`. Nunca vê `Liberar` nem `Aprovar`.
 2. **Validador** (ex.: Clarice Veloso) — vê `Executar validação de schema` e, se o resultado não tiver erro bloqueante, `Liberar para o cliente`. Se o usuário ativo for o mesmo que gerou o arquivo, o botão `Liberar` fica **desabilitado** com o tooltip "Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória." — é a forma de demonstrar a trava mesmo dentro do mock.
@@ -94,7 +94,7 @@ Toda ação fica registrada na trilha de auditoria (`/app/auditoria` e na etapa 
 
 ## Posicionamento
 
-> A Sentinellus é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado. A responsabilidade pela obrigação regulatória perante o Banco Central do Brasil, o município e a Receita Federal é da instituição cliente.
+> A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado. A responsabilidade pela obrigação regulatória perante o Banco Central do Brasil, o município e a Receita Federal é da instituição cliente.
 
 Esse disclaimer aparece no rodapé de todas as telas autenticadas e da landing, em versão longa na landing e em banners de contexto nos módulos Fiscal e de entrega.
 
@@ -114,9 +114,9 @@ Roteiros cobertos:
 |---|---|
 | **Operacional/Backoffice** (9 passos) | Onde ver pendências no dashboard → navegar ao módulo → abrir período `aguardando_dados` → entender o stepper de 5 etapas → baixar o modelo CSV → área de upload e pré-validação → tabela de arquivos recebidos → confirmar o envio dos dados |
 | **Diretor/Compliance** (8 passos) | Prazos e pendências no dashboard → abrir o detalhe de uma competência com exceções → conferir o arquivo gerado (hash SHA-256, schema) → segregação de funções na auditoria → aprovar e assumir responsabilidade → registrar o protocolo do BCB na entrega → calendário regulatório |
-| **Contador/Fiscal** (6 passos) | Por que só o Fiscal aparece para esse perfil → selo "Candidato" e o limite de que a Sentinellus não emite NFS-e → DPS aguardando validação → conferir alíquota, retenção e enquadramento → confirmar ou devolver |
-| **Executor (Sentinellus)** (7 passos) | Fila multi-tenant em `/app/operacao` → troca de instituição sem sair da tela → rodar a ingestão e gerar o arquivo → hash e log de geração → enviar para validação → por que o botão "Liberar" nunca aparece para esse perfil |
-| **Validador (Sentinellus)** (7 passos) | Fila multi-tenant → executar a validação de schema → ler erros/avisos com código → liberar para o cliente → a trava de segregação de funções (quem gerou não libera) → por que "Gerar" nunca aparece para esse perfil |
+| **Contador/Fiscal** (6 passos) | Por que só o Fiscal aparece para esse perfil → selo "Candidato" e o limite de que a Videnas não emite NFS-e → DPS aguardando validação → conferir alíquota, retenção e enquadramento → confirmar ou devolver |
+| **Executor (Videnas)** (7 passos) | Fila multi-tenant em `/app/operacao` → troca de instituição sem sair da tela → rodar a ingestão e gerar o arquivo → hash e log de geração → enviar para validação → por que o botão "Liberar" nunca aparece para esse perfil |
+| **Validador (Videnas)** (7 passos) | Fila multi-tenant → executar a validação de schema → ler erros/avisos com código → liberar para o cliente → a trava de segregação de funções (quem gerou não libera) → por que "Gerar" nunca aparece para esse perfil |
 
 ## Design system
 

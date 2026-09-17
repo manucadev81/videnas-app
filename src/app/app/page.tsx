@@ -8,6 +8,8 @@ import { CardPrazo } from "@/components/dominio/card-prazo";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { construirEtapasStepper } from "@/components/dominio/modulo-etapas";
+import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
+import { chaveAjudaModulo } from "@/lib/ajuda/textos";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao, instituicoes } from "@/lib/mock/instituicoes";
@@ -146,7 +148,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl font-bold text-neutral-700">
-          {instituicao ? `${instituicao.nomeFantasia} · ${formatarCNPJ(instituicao.cnpj)}` : "Painel Sentinellus"}
+          {instituicao ? `${instituicao.nomeFantasia} · ${formatarCNPJ(instituicao.cnpj)}` : "Painel Videnas"}
         </h1>
         <p className="text-sm text-neutral-500">
           Competência {formatarCompetencia(competenciaCorrente)} · Data de referência: {formatarData(HOJE_ISO)}
@@ -190,8 +192,10 @@ export default function DashboardPage() {
             <div key={periodo.id} className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-display text-lg font-bold text-neutral-700">
-                    {modulo.nome} <span className="text-sm font-normal text-neutral-400">{modulo.sigla}</span>
+                  <h3 className="flex flex-wrap items-center gap-x-1.5 font-display text-lg font-bold text-neutral-700">
+                    {modulo.nome}
+                    <span className="text-sm font-normal text-neutral-400">{modulo.sigla}</span>
+                    <BadgeAjuda chave={chaveAjudaModulo(periodo.moduloId)} tamanho="xs" />
                   </h3>
                   <p className="text-xs text-neutral-500">Competência {periodo.competenciaRotulo}</p>
                 </div>
@@ -218,7 +222,10 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div data-tour="dashboard-prazos" className="rounded-lg border border-neutral-200 bg-white p-5">
-          <h2 className="mb-3 font-display text-base font-bold text-neutral-700">Próximos prazos regulatórios</h2>
+          <h2 className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700">
+            Próximos prazos regulatórios
+            <BadgeAjuda chave="painel.prazos" tamanho="sm" />
+          </h2>
           {proximosPrazos.length === 0 ? (
             <p className="text-sm text-neutral-500">Nenhum prazo em aberto.</p>
           ) : (
@@ -241,7 +248,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
-          <h2 className="mb-3 font-display text-base font-bold text-neutral-700">Pendências e exceções</h2>
+          <h2 className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700">
+            Pendências e exceções
+            <BadgeAjuda chave="painel.excecoes" tamanho="sm" align="end" />
+          </h2>
           {excecoesEscopo.length === 0 ? (
             <p className="text-sm text-neutral-500">Nenhuma pendência aberta. Todas as exceções foram tratadas.</p>
           ) : (

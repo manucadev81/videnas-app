@@ -25,6 +25,7 @@ import { eventosAuditoria as eventosMock } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
+import { gerarRegistrosIngestao, type RegistrosPeriodo } from "@/lib/mock/previsualizacao";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
 import { formatarTamanhoArquivo } from "@/lib/formatadores";
 import {
@@ -58,6 +59,7 @@ function estadoInicial() {
     protocolos: paraRecord(protocolosMock, (protocolo) => protocolo.id),
     excecoes: paraRecord(excecoesMock, (excecao) => excecao.id),
     eventos: [...eventosMock],
+    registros: {} as Record<string, RegistrosPeriodo>,
   };
 }
 
@@ -83,7 +85,7 @@ function construirEvento(
   payload: Record<string, unknown>
 ): EventoAuditoria {
   const usuario = buscarUsuario(autor.usuarioId);
-  const lado = usuario?.lado ?? "sentinellus";
+  const lado = usuario?.lado ?? "videnas";
   return {
     id: novoEventoId(),
     ocorridoEm: new Date().toISOString(),
@@ -99,8 +101,8 @@ function construirEvento(
     lado,
     referencia,
     payload,
-    ip: lado === "sentinellus" ? "10.20.4.18" : "201.17.88.203",
-    userAgent: lado === "sentinellus" ? "Chrome 141 · Ubuntu 24.04" : "Chrome 141 · macOS 26",
+    ip: lado === "videnas" ? "10.20.4.18" : "201.17.88.203",
+    userAgent: lado === "videnas" ? "Chrome 141 · Ubuntu 24.04" : "Chrome 141 · macOS 26",
   };
 }
 
@@ -111,6 +113,7 @@ export interface EstadoPeriodosStore {
   protocolos: Record<string, ProtocoloBCB>;
   excecoes: Record<string, Excecao>;
   eventos: EventoAuditoria[];
+  registros: Record<string, RegistrosPeriodo>;
 
   ingerirDados: (
     periodoId: string,
@@ -210,10 +213,17 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
       situacao: "processado" as const,
     };
 
-    const periodoAtualizado: PeriodoObrigacao = {
+    const periodoComLote: PeriodoObrigacao = {
       ...periodo,
       estado: periodo.estado === "aguardando_dados" ? "dados_ingeridos" : periodo.estado,
       lotes: [...periodo.lotes, novoLote],
+    };
+
+    const simulacao = gerarRegistrosIngestao(periodoComLote);
+
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodoComLote,
+      totaisResumo: simulacao.totaisResumo,
     };
 
     const evento = construirEvento(
@@ -233,6 +243,9 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      registros: simulacao.registros
+        ? { ...estado.registros, [periodoId]: simulacao.registros }
+        : estado.registros,
       eventos: [...estado.eventos, evento],
     }));
 
@@ -552,7 +565,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
     if (periodo.estado !== "liberado") {
-      return { sucesso: false, motivo: "Disponível após a liberação pelo Validador Sentinellus." };
+      return { sucesso: false, motivo: "Disponível após a liberação pelo Validador Videnas." };
     }
 
     const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];

@@ -1,6 +1,6 @@
 export type PerfilId = "diretor" | "operacional" | "contador" | "executor" | "validador";
 
-export type LadoId = "cliente" | "sentinellus";
+export type LadoId = "cliente" | "videnas";
 
 export type ModuloId = "acam212" | "cadoc5711" | "cadoc5710" | "fiscal";
 

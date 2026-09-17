@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -13,7 +12,7 @@ import {
   Wallet,
   Workflow,
 } from "lucide-react";
-import { LogoSentinellus } from "@/components/marca/logo-sentinellus";
+import { LogoVidenas } from "@/components/marca/logo-videnas";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import {
@@ -26,7 +25,7 @@ import { buscarModulo } from "@/lib/mock/modulos";
 import type { EtapaId } from "@/lib/tipos";
 
 export const metadata: Metadata = {
-  title: "Sentinellus — Conformidade regulatória de ativos virtuais",
+  title: "Videnas — Conformidade regulatória de ativos virtuais",
   description:
     "RegTech que estrutura, valida e audita os arquivos ACAM212, Cadoc 5710/5711 e a estrutura fiscal DPS para exchanges, custodiantes e mesas de OTC brasileiras, do dado bruto ao arquivo pronto para o Banco Central.",
 };
@@ -56,7 +55,7 @@ const JORNADA = [
   },
   {
     titulo: "Geração",
-    descricao: "O time Sentinellus monta o arquivo ou a estrutura de cada módulo aplicável, com hash calculado.",
+    descricao: "O time Videnas monta o arquivo ou a estrutura de cada módulo aplicável, com hash calculado.",
   },
   {
     titulo: "Validação",
@@ -72,7 +71,7 @@ const JORNADA = [
   },
   {
     titulo: "Acompanhamento",
-    descricao: "A instituição consulta status e histórico e trata pendências, com o time Sentinellus apoiando a operação.",
+    descricao: "A instituição consulta status e histórico e trata pendências, com o time Videnas apoiando a operação.",
   },
 ];
 
@@ -97,24 +96,24 @@ const MODULOS_CARD = [
 
 const FAQ = [
   {
-    pergunta: "A Sentinellus envia o arquivo ao Banco Central por mim?",
+    pergunta: "A Videnas envia o arquivo ao Banco Central por mim?",
     resposta:
-      "Não. A Sentinellus entrega o arquivo pronto, íntegro e com hash calculado. A transmissão ao Banco Central é feita pela própria instituição, fora da plataforma.",
+      "Não. A Videnas entrega o arquivo pronto, íntegro e com hash calculado. A transmissão ao Banco Central é feita pela própria instituição, fora da plataforma.",
   },
   {
-    pergunta: "A Sentinellus emite a NFS-e?",
+    pergunta: "A Videnas emite a NFS-e?",
     resposta:
-      "Não. No módulo Fiscal (candidato) a Sentinellus estrutura a DPS a partir dos dados enviados. A emissão da nota em si ocorre fora da Sentinellus, pelo emissor que a instituição definir.",
+      "Não. No módulo Fiscal (candidato) a Videnas estrutura a DPS a partir dos dados enviados. A emissão da nota em si ocorre fora da Videnas, pelo emissor que a instituição definir.",
   },
   {
-    pergunta: "A Sentinellus substitui meu contador?",
+    pergunta: "A Videnas substitui meu contador?",
     resposta:
       "Não. A definição de alíquota, retenção e enquadramento tributário é sempre do contador responsável pela instituição — a validação dele é obrigatória antes da liberação no módulo Fiscal.",
   },
   {
-    pergunta: "A Sentinellus é custodiante dos meus ativos?",
+    pergunta: "A Videnas é custodiante dos meus ativos?",
     resposta:
-      "Não. A Sentinellus não custodia ativos virtuais de ninguém. Ela recebe os dados de posição que a instituição já mantém e os estrutura no formato exigido pelo regulador.",
+      "Não. A Videnas não custodia ativos virtuais de ninguém. Ela recebe os dados de posição que a instituição já mantém e os estrutura no formato exigido pelo regulador.",
   },
   {
     pergunta: "Quem responde perante o regulador?",
@@ -128,8 +127,8 @@ export default function LandingPage() {
     <div className="flex min-h-full flex-1 flex-col bg-white">
       <header className="border-b border-neutral-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-          <Link href="/" aria-label="Página inicial da Sentinellus">
-            <LogoSentinellus className="h-7 w-auto text-brand-700" />
+          <Link href="/" aria-label="Página inicial da Videnas">
+            <LogoVidenas className="h-7 w-auto text-brand-700" />
           </Link>
           <Link
             href="/login"
@@ -147,20 +146,12 @@ export default function LandingPage() {
           aria-labelledby="hero-titulo"
         >
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-8 px-4 py-16 text-center md:px-6 md:py-24">
-            <Image
-              src="/logowhite-cropped.png"
-              alt="Sentinellus"
-              width={255}
-              height={48}
-              priority
-              unoptimized
-              className="h-12 w-auto"
-            />
+            <LogoVidenas className="h-12 w-auto text-white" />
             <h1 id="hero-titulo" className="max-w-3xl text-3xl font-bold text-balance md:text-5xl">
               Conformidade regulatória de ativos virtuais, do dado bruto ao arquivo pronto para o Banco Central.
             </h1>
             <p className="max-w-2xl text-base text-brand-100 md:text-lg">
-              A Sentinellus estrutura, valida e audita os arquivos ACAM212, Cadoc 5710/5711 e a estrutura fiscal
+              A Videnas estrutura, valida e audita os arquivos ACAM212, Cadoc 5710/5711 e a estrutura fiscal
               DPS para exchanges, custodiantes e mesas de OTC brasileiras que operam com criptoativos.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -172,7 +163,7 @@ export default function LandingPage() {
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
               <a
-                href="mailto:contato@sentinellus.com.br"
+                href="mailto:contato@videnas.com.br"
                 className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/40 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
               >
                 Falar com o time
@@ -184,7 +175,7 @@ export default function LandingPage() {
         <section className="mx-auto max-w-6xl px-4 py-12 md:px-6" aria-labelledby="modulos-titulo">
           <div className="mx-auto max-w-2xl text-center">
             <h2 id="modulos-titulo" className="font-display text-2xl font-bold text-neutral-700 md:text-3xl">
-              O que a Sentinellus faz
+              O que a Videnas faz
             </h2>
             <p className="mt-3 text-sm text-neutral-500 md:text-base">
               Três módulos, cinco etapas comuns por competência: Ingestão, Geração, Validação, Auditoria e Entrega.
@@ -228,7 +219,7 @@ export default function LandingPage() {
 
                 {modulo.candidato ? (
                   <p className="rounded-md bg-status-candidate-bg px-3 py-2 text-xs text-status-candidate-text">
-                    A emissão da NFS-e ocorre fora do Sentinellus.
+                    A emissão da NFS-e ocorre fora da Videnas.
                   </p>
                 ) : null}
               </div>
@@ -279,7 +270,7 @@ export default function LandingPage() {
               <Workflow className="mx-auto size-8 text-brand-700" aria-hidden="true" />
               <p className="mt-3 font-display text-base font-bold text-neutral-700">Executor gera</p>
               <p className="mt-1 text-sm text-neutral-500">
-                O time Sentinellus roda a ingestão e monta o arquivo. Nunca libera o que gerou.
+                O time Videnas roda a ingestão e monta o arquivo. Nunca libera o que gerou.
               </p>
             </div>
             <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center">
@@ -310,17 +301,17 @@ export default function LandingPage() {
               <span className="text-xs font-bold tracking-wide uppercase">Posicionamento — leia com atenção</span>
             </div>
             <h2 id="posicionamento-titulo" className="mt-3 font-display text-2xl font-bold md:text-3xl">
-              O que a Sentinellus é — e o que ela não é
+              O que a Videnas é — e o que ela não é
             </h2>
             <div className="mt-5 space-y-4 text-sm leading-relaxed text-brand-100 md:text-base">
               <p>
-                A Sentinellus é uma <strong className="text-white">prestadora de serviços tecnológicos: uma RegTech</strong>.
+                A Videnas é uma <strong className="text-white">prestadora de serviços tecnológicos: uma RegTech</strong>.
                 Recebemos os dados que a sua instituição nos envia, organizamos, estruturamos os arquivos no formato
                 exigido pelo regulador, validamos contra o schema oficial e registramos a trilha de auditoria de
                 cada etapa.
               </p>
               <p>
-                A Sentinellus <strong className="text-white">não</strong> é instituição financeira,{" "}
+                A Videnas <strong className="text-white">não</strong> é instituição financeira,{" "}
                 <strong className="text-white">não</strong> é prestadora de serviços de ativos virtuais (PSAV ou
                 SPSAV), <strong className="text-white">não</strong> custodia ativos virtuais de ninguém,{" "}
                 <strong className="text-white">não</strong> transmite o arquivo ao Banco Central em nome da
@@ -331,7 +322,7 @@ export default function LandingPage() {
               <p>
                 A <strong className="text-white">instituição cliente</strong> é quem está registrada perante o
                 Banco Central, o município e a Receita Federal. É ela quem responde pela obrigação, quem aprova o
-                conteúdo do arquivo e quem faz a transmissão. A Sentinellus entrega o arquivo pronto, íntegro e
+                conteúdo do arquivo e quem faz a transmissão. A Videnas entrega o arquivo pronto, íntegro e
                 auditável — a decisão e a responsabilidade continuam sendo de quem é regulado.
               </p>
             </div>
@@ -408,22 +399,22 @@ export default function LandingPage() {
       <footer className="border-t border-neutral-200 bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 md:flex-row md:items-start md:justify-between md:px-6">
           <div className="max-w-xl">
-            <LogoSentinellus className="h-6 w-auto text-brand-700" />
+            <LogoVidenas className="h-6 w-auto text-brand-700" />
             <p className="mt-3 text-xs leading-relaxed text-neutral-500">
-              A Sentinellus é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
+              A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
               SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado.
               A responsabilidade pela obrigação regulatória perante o Banco Central do Brasil, o município e a
               Receita Federal é da instituição cliente.
             </p>
             <p className="mt-3 text-xs text-neutral-400">
-              Sentinellus Tecnologia Regulatória Ltda (fictícia, ambiente de demonstração) · CNPJ 09.876.543/0001-21
+              Videnas Tecnologia Regulatória Ltda (fictícia, ambiente de demonstração) · CNPJ 09.876.543/0001-21
             </p>
           </div>
           <nav aria-label="Links institucionais" className="flex gap-4 text-xs text-neutral-500">
             <Link href="/login" className="hover:text-brand-700">
               Entrar
             </Link>
-            <a href="mailto:contato@sentinellus.com.br" className="hover:text-brand-700">
+            <a href="mailto:contato@videnas.com.br" className="hover:text-brand-700">
               Contato
             </a>
           </nav>

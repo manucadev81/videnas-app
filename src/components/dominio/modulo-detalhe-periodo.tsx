@@ -25,7 +25,7 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
 import { operacoesPorPeriodo } from "@/lib/mock/operacoes";
-import { datasBaseCobertas, posicoesDiariasPorPeriodo, posicoesMensaisPorPeriodo } from "@/lib/mock/custodia";
+import { posicoesDiariasPorPeriodo, posicoesMensaisPorPeriodo } from "@/lib/mock/custodia";
 import { servicosPorPeriodo } from "@/lib/mock/fiscal";
 import {
   formatarBRL,
@@ -43,6 +43,10 @@ import type {
   ServicoPrestadoDPS,
 } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
+
+function useRegistrosPeriodo(periodoId: string) {
+  return usePeriodosStore((estado) => estado.registros[periodoId]);
+}
 
 function rotuloTotal(chave: string): string {
   const dicionario: Record<string, string> = {
@@ -75,7 +79,9 @@ function formatarValorTotal(chave: string, valor: number | string): string {
 }
 
 function TabelaAcam212({ periodoId }: { periodoId: string }) {
-  const dados = operacoesPorPeriodo(periodoId).slice(0, 20);
+  const registros = useRegistrosPeriodo(periodoId);
+  const fonte = registros && registros.operacoes.length > 0 ? registros.operacoes : operacoesPorPeriodo(periodoId);
+  const dados = fonte.slice(0, 20);
   const colunas: ColunaTabela<OperacaoCambio>[] = [
     { id: "numero", cabecalho: "Nº de controle", renderizar: (op) => <span className="font-mono text-xs">{op.numeroControle}</span> },
     { id: "data", cabecalho: "Data", renderizar: (op) => formatarData(op.dataOperacao) },
@@ -119,7 +125,10 @@ function TabelaAcam212({ periodoId }: { periodoId: string }) {
 }
 
 function TabelaCadoc5711({ periodoId }: { periodoId: string }) {
-  const dados = posicoesDiariasPorPeriodo(periodoId).slice(0, 20);
+  const registros = useRegistrosPeriodo(periodoId);
+  const fonte =
+    registros && registros.posicoesDiarias.length > 0 ? registros.posicoesDiarias : posicoesDiariasPorPeriodo(periodoId);
+  const dados = fonte.slice(0, 20);
   const colunas: ColunaTabela<PosicaoCustodiaDiaria>[] = [
     { id: "data", cabecalho: "Data-base", renderizar: (pos) => formatarData(pos.dataBase) },
     { id: "documento", cabecalho: "CPF/CNPJ do cliente", renderizar: (pos) => <span className="font-mono text-xs">{pos.clienteDocumento}</span> },
@@ -131,7 +140,7 @@ function TabelaCadoc5711({ periodoId }: { periodoId: string }) {
     { id: "tipo", cabecalho: "Tipo de custódia", renderizar: (pos) => (pos.tipoCustodia === "propria" ? "Própria" : "Terceirizada") },
   ];
 
-  const datasBase = datasBaseCobertas(periodoId);
+  const datasBase = Array.from(new Set(fonte.map((posicao) => posicao.dataBase))).sort();
 
   return (
     <div className="space-y-4">
@@ -165,7 +174,9 @@ function TabelaCadoc5711({ periodoId }: { periodoId: string }) {
 }
 
 function TabelaCadoc5710({ periodoId }: { periodoId: string }) {
-  const dados = posicoesMensaisPorPeriodo(periodoId);
+  const registros = useRegistrosPeriodo(periodoId);
+  const dados =
+    registros && registros.posicoesMensais.length > 0 ? registros.posicoesMensais : posicoesMensaisPorPeriodo(periodoId);
   const colunas: ColunaTabela<PosicaoCustodiaMensal>[] = [
     { id: "data", cabecalho: "Data-base", renderizar: (pos) => formatarData(pos.dataBase) },
     {
@@ -209,7 +220,9 @@ function TabelaCadoc5710({ periodoId }: { periodoId: string }) {
 }
 
 function TabelaFiscal({ periodoId }: { periodoId: string }) {
-  const dados = servicosPorPeriodo(periodoId).slice(0, 20);
+  const registros = useRegistrosPeriodo(periodoId);
+  const fonte = registros && registros.servicos.length > 0 ? registros.servicos : servicosPorPeriodo(periodoId);
+  const dados = fonte.slice(0, 20);
   const colunas: ColunaTabela<ServicoPrestadoDPS>[] = [
     { id: "numero", cabecalho: "Nº do documento", renderizar: (dps) => <span className="font-mono text-xs">{dps.numeroDocumentoInterno}</span> },
     { id: "data", cabecalho: "Data da prestação", renderizar: (dps) => formatarData(dps.dataPrestacao) },
@@ -255,6 +268,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
   const protocolos = usePeriodosStore((estado) => estado.protocolos);
   const eventos = usePeriodosStore((estado) => estado.eventos);
   const excecoesStore = usePeriodosStore((estado) => estado.excecoes);
+  const registrosPeriodo = useRegistrosPeriodo(periodoId);
 
   const [etapaSelecionada, setEtapaSelecionada] = useState<EtapaId | null>(null);
   const [estadoAnterior, setEstadoAnterior] = useState<string | undefined>(periodo?.estado);
@@ -329,6 +343,10 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
 
   const ehFiscal = periodo.moduloId === "fiscal";
   const rotaLista = modulo.rota;
+  const posicoesMensaisDoPeriodo =
+    registrosPeriodo && registrosPeriodo.posicoesMensais.length > 0
+      ? registrosPeriodo.posicoesMensais
+      : posicoesMensaisPorPeriodo(periodoId);
 
   function reverificarHash(arquivoId: string) {
     setVerificandoHashId(arquivoId);
@@ -358,7 +376,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
             {ehFiscal ? <SeloCandidato tamanho="sm" /> : null}
           </h1>
           <div data-tour="periodo-cabecalho" className="mt-2 flex flex-wrap items-center gap-2">
-            <BadgeStatus estado={periodo.estado} />
+            <BadgeStatus estado={periodo.estado} comAjuda />
             <BadgeAtrasado dias={derivado.diasDeAtraso} />
             <span className="text-sm text-neutral-500">Prazo: {formatarData(periodo.prazoEntrega)}</span>
             <span className="text-sm text-neutral-500">
@@ -373,6 +391,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         etapas={etapas}
         aoSelecionar={(etapaId) => setEtapaSelecionada(etapaId)}
         etapaSelecionadaId={etapaAtivaId}
+        comAjuda
         className="rounded-lg border"
       />
 
@@ -444,7 +463,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
                           renderizar: (pos) => formatarBRL(pos.staking?.valorEmStakingReais ?? 0),
                         },
                       ]}
-                      dados={posicoesMensaisPorPeriodo(periodoId).filter((pos) => pos.possuiStaking)}
+                      dados={posicoesMensaisDoPeriodo.filter((pos) => pos.possuiStaking)}
                       chave={(pos) => pos.id}
                       tituloVazio="Sem saldo em staking"
                       mensagemVazia="Nenhuma carteira desta competência possui saldo em staking."
@@ -492,7 +511,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
           ) : (
             <EstadoVazio
               titulo="O arquivo ainda não foi gerado para esta competência"
-              mensagem="A geração é executada pelo time Sentinellus depois que os dados são recebidos."
+              mensagem="A geração é executada pelo time Videnas depois que os dados são recebidos."
             />
           )}
         </TabsContent>
@@ -520,7 +539,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
                 </p>
               )}
               <p className="mt-3 text-xs text-neutral-500">
-                A Sentinellus calcula a partir dos dicionários configurados. A definição de alíquota, retenção e
+                A Videnas calcula a partir dos dicionários configurados. A definição de alíquota, retenção e
                 enquadramento é do contador responsável.
               </p>
             </div>
@@ -692,7 +711,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
               {arquivoCorrente ? <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={periodo.competenciaRotulo} /> : null}
               <BannerPosicionamento variante="info" titulo="Transmissão ao Banco Central">
                 O arquivo está pronto e íntegro. A transmissão ao Banco Central é feita pela instituição, fora do
-                Sentinellus. Depois de enviar, registre aqui o protocolo recebido para manter a trilha de
+                Videnas. Depois de enviar, registre aqui o protocolo recebido para manter a trilha de
                 auditoria completa.
               </BannerPosicionamento>
               {protocoloCorrente ? (
@@ -742,7 +761,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
               ) : (
                 <EstadoVazio
                   titulo="A entrega será liberada após a aprovação do Diretor/Compliance"
-                  mensagem="A emissão da NFS-e ocorre fora do Sentinellus, pelo emissor definido pela instituição."
+                  mensagem="A emissão da NFS-e ocorre fora da Videnas, pelo emissor definido pela instituição."
                 />
               )}
             </>

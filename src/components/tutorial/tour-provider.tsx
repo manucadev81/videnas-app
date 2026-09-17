@@ -17,11 +17,14 @@ import { buscarPerfil } from "@/lib/permissoes";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { ROTEIROS, type PassoTour } from "@/components/tutorial/roteiros";
 
-const CHAVE_STORAGE_TOUR = "sentinellus-tutorial-visto";
+export const CHAVE_STORAGE_TOUR = "videnas-tutorial-visto";
 
 function lerPerfisVistos(): Partial<Record<PerfilId, boolean>> {
+  if (typeof window === "undefined") {
+    return {};
+  }
   try {
-    const bruto = sessionStorage.getItem(CHAVE_STORAGE_TOUR);
+    const bruto = window.localStorage.getItem(CHAVE_STORAGE_TOUR);
     return bruto ? (JSON.parse(bruto) as Partial<Record<PerfilId, boolean>>) : {};
   } catch {
     return {};
@@ -29,10 +32,13 @@ function lerPerfisVistos(): Partial<Record<PerfilId, boolean>> {
 }
 
 function marcarPerfilVisto(perfilId: PerfilId) {
+  if (typeof window === "undefined") {
+    return;
+  }
   try {
     const atual = lerPerfisVistos();
     atual[perfilId] = true;
-    sessionStorage.setItem(CHAVE_STORAGE_TOUR, JSON.stringify(atual));
+    window.localStorage.setItem(CHAVE_STORAGE_TOUR, JSON.stringify(atual));
   } catch {
   }
 }

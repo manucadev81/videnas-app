@@ -539,7 +539,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                 <DialogHeader>
                   <DialogTitle>Devolver para correção?</DialogTitle>
                   <DialogDescription>
-                    Descreva o que precisa ser ajustado. O time Sentinellus será acionado.
+                    Descreva o que precisa ser ajustado. O time Videnas será acionado.
                   </DialogDescription>
                 </DialogHeader>
                 <Textarea
@@ -614,7 +614,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   <DialogTitle>Registrar protocolo do BCB</DialogTitle>
                   <DialogDescription>
                     Registre o protocolo recebido após a transmissão feita pela instituição, fora do
-                    Sentinellus.
+                    Videnas.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
@@ -667,7 +667,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                 <DialogHeader>
                   <DialogTitle>Confirmar o encaminhamento?</DialogTitle>
                   <DialogDescription>
-                    A emissão da NFS-e é feita pelo emissor escolhido, fora do Sentinellus.
+                    A emissão da NFS-e é feita pelo emissor escolhido, fora da Videnas.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">

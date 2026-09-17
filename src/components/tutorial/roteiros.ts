@@ -48,7 +48,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-periodo-aguardando",
     titulo: "Competência aguardando dados",
     descricao:
-      "Setembro/2026 do ACAM212 ainda está em branco — nenhum lote foi recebido. É aqui que o time Operacional entra: sem dados enviados, o Executor da Sentinellus não tem o que gerar.",
+      "Setembro/2026 do ACAM212 ainda está em branco — nenhum lote foi recebido. É aqui que o time Operacional entra: sem dados enviados, o Executor da Videnas não tem o que gerar.",
     seletor: '[data-tour="periodo-cabecalho"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
@@ -57,7 +57,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-stepper",
     titulo: "As 5 etapas da obrigação",
     descricao:
-      "Ingestão → Geração → Validação → Auditoria → Entrega. Você só atua na primeira etapa; as demais são conduzidas pelo time da Sentinellus e ficam visíveis aqui para acompanhamento.",
+      "Ingestão → Geração → Validação → Auditoria → Entrega. Você só atua na primeira etapa; as demais são conduzidas pelo time da Videnas e ficam visíveis aqui para acompanhamento.",
     seletor: '[data-tour="stepper-etapas"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
@@ -66,7 +66,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-modelo-csv",
     titulo: "Baixe o modelo antes de enviar",
     descricao:
-      "O botão \"Baixar modelo (CSV)\" gera um arquivo com o cabeçalho e um exemplo de linha exatamente no formato esperado pelo ACAM212. Preencher a partir dele evita a maior parte dos erros de pré-validação.",
+      "O botão \"Baixar modelo (CSV)\" gera um arquivo já com o nome no padrão exigido (acam212_meridian_202609.csv), o cabeçalho completo e um exemplo de linha. Preencher a partir dele evita a maior parte das não conformidades.",
     seletor: '[data-tour="upload-baixar-modelo"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
@@ -75,7 +75,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-upload",
     titulo: "Área de upload e pré-validação",
     descricao:
-      "Arraste o CSV, XLSX ou TXT aqui, ou clique para selecionar. Cada arquivo passa por uma pré-validação automática de formato e conteúdo antes de ser aceito — arquivos rejeitados mostram o código do erro, como em ING-E001 ou ING-E003.",
+      "Arraste o arquivo aqui, ou clique para selecionar. O conteúdo é lido no próprio navegador e conferido contra o layout da obrigação: nome do arquivo, competência, cabeçalho, colunas obrigatórias e o tipo de cada campo. Cada não conformidade recebe um código, como ING-E003 (coluna obrigatória ausente) ou ING-E010 (nome fora do padrão).",
     seletor: '[data-tour="upload-dropzone"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "top",
@@ -84,16 +84,16 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-tabela-arquivos",
     titulo: "Arquivos recebidos",
     descricao:
-      "Esta tabela reúne o histórico de lotes já confirmados e os arquivos que você acabou de enviar, com o status de cada um: recebido, em pré-validação, aceito ou rejeitado.",
+      "Esta tabela reúne os lotes já aceitos e os arquivos que não passaram na conferência, com o status de cada um: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado pelo operador. Nas linhas não aceitas o motivo e o ajuste necessário aparecem logo abaixo do status.",
     seletor: '[data-tour="upload-tabela-arquivos"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "top",
   },
   {
     id: "operacional-confirmar-envio",
-    titulo: "Confirmar o envio dos dados",
+    titulo: "Resumo da conferência",
     descricao:
-      "Depois que os arquivos aceitos aparecem no resumo de pré-validação, clique em \"Confirmar envio dos dados\" para oficializar o lote. A partir daí a competência muda de \"Aguardando dados\" para \"Dados recebidos\" e fica disponível para o Executor gerar o arquivo.",
+      "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio: você confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Não existe confirmação adicional — assim que um lote é aceito, a competência muda de \"Aguardando dados\" para \"Dados recebidos\" e fica disponível para o Executor gerar o arquivo. Este card consolida o que foi aceito, o que ficou não conforme e o que você rejeitou.",
     seletor: '[data-tour="upload-confirmar-envio"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "top",
@@ -142,7 +142,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-auditoria-segregacao",
     titulo: "Segregação de funções",
     descricao:
-      "Este card mostra quem gerou, quem liberou e quem aprovou a competência — nunca a mesma pessoa. É a regra de 4 olhos da Sentinellus tornada visível: Executor gera, Validador libera, Diretor aprova.",
+      "Este card mostra quem gerou, quem liberou e quem aprovou a competência — nunca a mesma pessoa. É a regra de 4 olhos da Videnas tornada visível: Executor gera, Validador libera, Diretor aprova.",
     seletor: '[data-tour="card-segregacao-funcoes"]',
     rota: "/app/acam212/per-meridian-acam212-202608",
     posicao: "top",
@@ -152,7 +152,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-aprovar",
     titulo: "Aprovar e assumir responsabilidade",
     descricao:
-      "O botão \"Aprovar e assumir responsabilidade\" só fica disponível depois que o Validador Sentinellus libera a competência. Ao aprovar, você declara formalmente que revisou o conteúdo e assume a obrigação perante o órgão competente — isso fica registrado na trilha com seu nome, cargo e o hash do arquivo.",
+      "O botão \"Aprovar e assumir responsabilidade\" só fica disponível depois que o Validador Videnas libera a competência. Ao aprovar, você declara formalmente que revisou o conteúdo e assume a obrigação perante o órgão competente — isso fica registrado na trilha com seu nome, cargo e o hash do arquivo.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-meridian-acam212-202608",
     posicao: "bottom",
@@ -161,7 +161,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-protocolo-bcb",
     titulo: "Protocolo do Banco Central na entrega",
     descricao:
-      "A transmissão ao Banco Central é feita pela sua instituição, fora da Sentinellus. Depois de enviar, é aqui na etapa Entrega que você registra o protocolo recebido — número, canal e data/hora — para manter a trilha de auditoria completa.",
+      "A transmissão ao Banco Central é feita pela sua instituição, fora da Videnas. Depois de enviar, é aqui na etapa Entrega que você registra o protocolo recebido — número, canal e data/hora — para manter a trilha de auditoria completa.",
     seletor: '[data-tour="entrega-conteudo"]',
     rota: "/app/cadoc/per-meridian-cadoc5710-202608",
     posicao: "top",
@@ -191,7 +191,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-somente-fiscal",
     titulo: "Por que só o Fiscal aparece para você",
     descricao:
-      "ACAM212 e Cadoc 5711/5710 não têm componente tributário, então ficam fora do seu escopo. O Fiscal é o único módulo onde a Sentinellus depende de uma validação humana de enquadramento — a sua.",
+      "ACAM212 e Cadoc 5711/5710 não têm componente tributário, então ficam fora do seu escopo. O Fiscal é o único módulo onde a Videnas depende de uma validação humana de enquadramento — a sua.",
     seletor: '[data-tour="nav-fiscal"]',
     rota: "/app",
     posicao: "right",
@@ -200,7 +200,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-selo-candidato",
     titulo: "Selo \"Candidato\" e o limite do módulo",
     descricao:
-      "O Fiscal ainda é uma funcionalidade candidata, sujeita a decisão de produto. E há um limite importante: a Sentinellus estrutura a DPS, mas não emite a NFS-e. A emissão acontece fora da plataforma, pelo emissor que a sua instituição definir.",
+      "O Fiscal ainda é uma funcionalidade candidata, sujeita a decisão de produto. E há um limite importante: a Videnas estrutura a DPS, mas não emite a NFS-e. A emissão acontece fora da plataforma, pelo emissor que a sua instituição definir.",
     seletor: '[data-tour="fiscal-banner"]',
     rota: "/app/fiscal",
     posicao: "bottom",
@@ -218,7 +218,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-conferir-tabela",
     titulo: "Alíquota, retenção e enquadramento",
     descricao:
-      "Nesta tabela você confere, DPS a DPS, a alíquota de ISS sugerida pelo dicionário, se há retenção na fonte e o enquadramento tributário. A Sentinellus calcula a sugestão a partir dos dicionários configurados — a decisão final é sempre sua.",
+      "Nesta tabela você confere, DPS a DPS, a alíquota de ISS sugerida pelo dicionário, se há retenção na fonte e o enquadramento tributário. A Videnas calcula a sugestão a partir dos dicionários configurados — a decisão final é sempre sua.",
     seletor: '[data-tour="contador-tabela-dps"]',
     rota: "/app/fiscal/per-meridian-fiscal-202608",
     posicao: "top",
@@ -227,7 +227,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-confirmar",
     titulo: "Confirmar ou devolver",
     descricao:
-      "\"Confirmar enquadramento fiscal\" registra sua confirmação em seu nome na trilha de auditoria e libera a competência para a validação de schema. Se algo estiver incorreto, use \"Devolver para correção\" com uma justificativa — o time Sentinellus será acionado para ajustar.",
+      "\"Confirmar enquadramento fiscal\" registra sua confirmação em seu nome na trilha de auditoria e libera a competência para a validação de schema. Se algo estiver incorreto, use \"Devolver para correção\" com uma justificativa — o time Videnas será acionado para ajustar.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/fiscal/per-meridian-fiscal-202608",
     posicao: "bottom",
@@ -237,7 +237,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
 const PASSOS_EXECUTOR: PassoTour[] = [
   {
     id: "executor-boas-vindas",
-    titulo: "Bem-vinda, Executor Sentinellus",
+    titulo: "Bem-vinda, Executor Videnas",
     descricao:
       "Você roda a ingestão e a geração dos arquivos para todas as instituições atendidas. O seletor de perfil no header alterna entre as 5 visões desta demonstração — o seu está ativo agora.",
     seletor: '[data-tour="seletor-perfil"]',
@@ -257,7 +257,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-multi-tenant",
     titulo: "Troca de instituição sem sair da tela",
     descricao:
-      "Como perfil da Sentinellus, você atende várias instituições. Os chips filtram a fila por tenant e trocam o contexto de toda a aplicação — inclusive a sidebar reflete a mudança.",
+      "Como perfil da Videnas, você atende várias instituições. Os chips filtram a fila por tenant e trocam o contexto de toda a aplicação — inclusive a sidebar reflete a mudança.",
     seletor: '[data-tour="operacao-chips-instituicao"]',
     rota: "/app/operacao",
     posicao: "bottom",
@@ -284,7 +284,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-enviar-validacao",
     titulo: "Enviar para validação",
     descricao:
-      "Depois de gerado, o arquivo segue para o Validador Sentinellus com o botão \"Enviar para validação\". No módulo Fiscal esse mesmo passo é substituído por \"Enviar ao contador\", já que a DPS precisa da confirmação de enquadramento antes da validação de schema.",
+      "Depois de gerado, o arquivo segue para o Validador Videnas com o botão \"Enviar para validação\". No módulo Fiscal esse mesmo passo é substituído por \"Enviar ao contador\", já que a DPS precisa da confirmação de enquadramento antes da validação de schema.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
@@ -293,7 +293,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-sem-liberar",
     titulo: "Por que você não vê \"Liberar\"",
     descricao:
-      "Segregação de funções: quem gera não libera. O botão \"Liberar para o cliente\" pertence só ao papel de Validador — mesmo trocando de instituição, ele nunca aparece para o Executor. É essa separação que a Sentinellus garante em todos os módulos.",
+      "Segregação de funções: quem gera não libera. O botão \"Liberar para o cliente\" pertence só ao papel de Validador — mesmo trocando de instituição, ele nunca aparece para o Executor. É essa separação que a Videnas garante em todos os módulos.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
@@ -303,7 +303,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
 const PASSOS_VALIDADOR: PassoTour[] = [
   {
     id: "validador-boas-vindas",
-    titulo: "Bem-vinda, Validadora Sentinellus",
+    titulo: "Bem-vinda, Validadora Videnas",
     descricao:
       "Você confere a validação de schema e libera as competências para os clientes — nunca gera arquivos. O seletor de perfil no header alterna entre as 5 visões desta demonstração.",
     seletor: '[data-tour="seletor-perfil"]',

@@ -5,7 +5,7 @@ export interface PerfilMetadados {
   rotulo: string;
   rotuloCompleto: string;
   descricao: string;
-  lado: "cliente" | "sentinellus";
+  lado: "cliente" | "videnas";
   corBadge: string;
   icone: string;
   rotasPermitidas: string[];
@@ -76,9 +76,9 @@ export const PERFIS: PerfilMetadados[] = [
   {
     id: "executor",
     rotulo: "Executor",
-    rotuloCompleto: "Executor — Sentinellus",
+    rotuloCompleto: "Executor — Videnas",
     descricao: "Roda a ingestão e a geração dos arquivos e estruturas. Nunca libera.",
-    lado: "sentinellus",
+    lado: "videnas",
     corBadge: "violet",
     icone: "Cog",
     rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/operacao"],
@@ -101,9 +101,9 @@ export const PERFIS: PerfilMetadados[] = [
   {
     id: "validador",
     rotulo: "Validador",
-    rotuloCompleto: "Validador — Sentinellus",
+    rotuloCompleto: "Validador — Videnas",
     descricao: "Confere a validação contra o schema oficial e libera o arquivo para o cliente. Nunca gera.",
-    lado: "sentinellus",
+    lado: "videnas",
     corBadge: "violet",
     icone: "BadgeCheck",
     rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/operacao"],
@@ -271,7 +271,7 @@ export function podeExecutar(
     return {
       permitido: false,
       visivel: true,
-      motivo: "O período já foi gerado. Peça a reabertura ao time Sentinellus.",
+      motivo: "O período já foi gerado. Peça a reabertura ao time Videnas.",
     };
   }
 
@@ -287,7 +287,7 @@ export function podeExecutar(
     return {
       permitido: false,
       visivel: true,
-      motivo: "Disponível após a liberação pelo Validador Sentinellus.",
+      motivo: "Disponível após a liberação pelo Validador Videnas.",
     };
   }
 

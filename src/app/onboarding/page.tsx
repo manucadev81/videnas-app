@@ -34,8 +34,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
-import { useSessaoStore } from "@/lib/store/sessao";
+import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { formatarCNPJ } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
@@ -154,7 +155,52 @@ function somenteDigitos(valor: string): string {
   return valor.replace(/\D/g, "");
 }
 
+function EsqueletoOnboarding() {
+  return (
+    <div
+      role="status"
+      aria-label="Carregando configuração guiada do ambiente"
+      className="mx-auto flex min-h-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 md:px-6"
+    >
+      <div className="space-y-3">
+        <Skeleton className="h-7 w-80" />
+        <Skeleton className="h-4 w-56" />
+        <Skeleton className="h-2 w-full rounded-full" />
+      </div>
+
+      <div className="flex flex-1 flex-col gap-6 md:flex-row">
+        <div className="flex w-full shrink-0 flex-row gap-2 overflow-x-auto md:w-64 md:flex-col md:overflow-visible">
+          {Array.from({ length: TOTAL_PASSOS }).map((_, indice) => (
+            <Skeleton key={indice} className="h-10 min-w-56 shrink-0 rounded-md md:min-w-0" />
+          ))}
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
+  const hidratado = useHidratarSessao();
+
+  if (!hidratado) {
+    return <EsqueletoOnboarding />;
+  }
+
+  return <OnboardingWizard />;
+}
+
+function OnboardingWizard() {
   const router = useRouter();
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const instituicaoAtiva =
@@ -640,7 +686,7 @@ export default function OnboardingPage() {
                 <p className="text-sm text-neutral-500">
                   Adicione ao menos 1 usuário Diretor e 1 Operacional
                   {modulosForm.fiscal ? " e 1 Contador, já que o módulo Fiscal está ativo" : ""}. Executor e Validador são
-                  papéis exclusivos da Sentinellus.
+                  papéis exclusivos da Videnas.
                 </p>
               </div>
 

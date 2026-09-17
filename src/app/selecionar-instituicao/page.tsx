@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
-import { useSessaoStore } from "@/lib/store/sessao";
+import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { instituicoes } from "@/lib/mock/instituicoes";
 import { buscarProtocolo, calcularPeriodoDerivado, periodosPorInstituicao } from "@/lib/mock/periodos";
@@ -52,6 +52,7 @@ function resumoInstituicao(instituicaoId: string) {
 
 export default function SelecionarInstituicaoPage() {
   const router = useRouter();
+  const hidratado = useHidratarSessao();
   const autenticado = useSessaoStore((estado) => estado.autenticado);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
@@ -60,17 +61,18 @@ export default function SelecionarInstituicaoPage() {
 
   const usuario = usuarioId ? buscarUsuario(usuarioId) : undefined;
 
-  const [perfilSelecionado, setPerfilSelecionado] = useState<PerfilId>(perfilAtivo ?? "operacional");
+  const [perfilEscolhido, setPerfilEscolhido] = useState<PerfilId | null>(null);
   const [instituicaoSelecionada, setInstituicaoSelecionada] = useState<string | null>(null);
   const [termoBusca, setTermoBusca] = useState("");
   const [autoSelecaoConcluida, setAutoSelecaoConcluida] = useState(false);
 
   useEffect(() => {
-    if (!autenticado) {
+    if (hidratado && !autenticado) {
       router.replace("/login");
     }
-  }, [autenticado, router]);
+  }, [hidratado, autenticado, router]);
 
+  const perfilSelecionado = perfilEscolhido ?? perfilAtivo ?? "operacional";
   const perfilMetadados = buscarPerfil(perfilSelecionado);
 
   const instituicoesDisponiveis = useMemo(() => {
@@ -104,7 +106,7 @@ export default function SelecionarInstituicaoPage() {
     }
   }, [instituicoesDisponiveis, autoSelecaoConcluida]);
 
-  if (!usuario) {
+  if (!hidratado || !usuario) {
     return null;
   }
 
@@ -137,7 +139,7 @@ export default function SelecionarInstituicaoPage() {
         </h2>
         <p className="text-sm text-neutral-500">
           Escolha o perfil para explorar a demonstração. Perfis do lado Cliente pertencem à instituição; perfis do
-          lado Sentinellus enxergam múltiplas instituições.
+          lado Videnas enxergam múltiplas instituições.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PERFIS.map((perfil) => {
@@ -147,7 +149,7 @@ export default function SelecionarInstituicaoPage() {
                 key={perfil.id}
                 type="button"
                 onClick={() => {
-                  setPerfilSelecionado(perfil.id);
+                  setPerfilEscolhido(perfil.id);
                   setInstituicaoSelecionada(null);
                 }}
                 aria-pressed={selecionado}
@@ -163,12 +165,12 @@ export default function SelecionarInstituicaoPage() {
                   <span
                     className={cn(
                       "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                      perfil.lado === "sentinellus"
+                      perfil.lado === "videnas"
                         ? "bg-status-candidate-bg text-status-candidate-text"
                         : "bg-status-info-bg text-status-info-text"
                     )}
                   >
-                    {perfil.lado === "sentinellus" ? "Sentinellus" : "Cliente"}
+                    {perfil.lado === "videnas" ? "Videnas" : "Cliente"}
                   </span>
                 </span>
                 <span className="text-xs text-neutral-500">{perfil.descricao}</span>

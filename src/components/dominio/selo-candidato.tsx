@@ -32,7 +32,7 @@ export function SeloCandidato({ tamanho = "md", className }: SeloCandidatoProps)
           Candidato
         </TooltipTrigger>
         <TooltipContent>
-          Funcionalidade candidata, sujeita a decisão de produto. A Sentinellus estrutura a DPS; a
+          Funcionalidade candidata, sujeita a decisão de produto. A Videnas estrutura a DPS; a
           emissão da NFS-e ocorre fora da plataforma.
         </TooltipContent>
       </Tooltip>

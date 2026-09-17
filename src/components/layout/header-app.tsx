@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/breadcrumb";
 import { SeletorPerfil } from "@/components/dominio/seletor-perfil";
 import { SeletorInstituicao } from "@/components/dominio/seletor-instituicao";
-import { BotaoTutorial } from "@/components/tutorial/botao-tutorial";
 
 const ROTULOS_SEGMENTO: Record<string, string> = {
   app: "Painel",
@@ -61,7 +60,6 @@ export function HeaderApp() {
         <div data-tour="seletor-perfil">
           <SeletorPerfil className="w-56" />
         </div>
-        <BotaoTutorial />
       </div>
     </header>
   );

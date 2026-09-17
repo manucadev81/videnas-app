@@ -1,4 +1,6 @@
 import { Check, Lock, TriangleAlert } from "lucide-react";
+import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
+import { chaveAjudaEtapa } from "@/lib/ajuda/textos";
 import { cn } from "@/lib/utils";
 import type { EtapaId } from "@/lib/tipos";
 import { formatarDataHora } from "@/lib/formatadores";
@@ -17,6 +19,7 @@ export interface StepperEtapasProps {
   etapas: EtapaStepperItem[];
   aoSelecionar?: (etapaId: EtapaId) => void;
   etapaSelecionadaId?: EtapaId;
+  comAjuda?: boolean;
   className?: string;
 }
 
@@ -31,6 +34,7 @@ export function StepperEtapas({
   etapas,
   aoSelecionar,
   etapaSelecionadaId,
+  comAjuda = false,
   className,
 }: StepperEtapasProps) {
   return (
@@ -69,7 +73,10 @@ export function StepperEtapas({
             </button>
 
             <div className="flex flex-col gap-0.5 md:items-center">
-              <p className="text-sm font-medium text-neutral-700">{etapa.rotulo}</p>
+              <p className="flex items-center gap-1 text-sm font-medium text-neutral-700">
+                {etapa.rotulo}
+                {comAjuda ? <BadgeAjuda chave={chaveAjudaEtapa(etapa.id)} tamanho="xs" /> : null}
+              </p>
               {etapa.concluidaEm ? (
                 <p className="text-xs text-neutral-500">
                   {formatarDataHora(etapa.concluidaEm)}

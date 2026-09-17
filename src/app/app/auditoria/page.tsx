@@ -193,7 +193,7 @@ export default function AuditoriaPage() {
                       <td className="px-4 py-2 text-neutral-600">{evento.usuarioNome}</td>
                       <td className="px-4 py-2 text-neutral-600">{ROTULOS_PERFIL[evento.perfilId]}</td>
                       <td className="px-4 py-2 text-neutral-600">
-                        {evento.lado === "sentinellus" ? "Sentinellus" : "Cliente"}
+                        {evento.lado === "videnas" ? "Videnas" : "Cliente"}
                       </td>
                       <td className="px-4 py-2 font-mono text-xs text-neutral-500">
                         {evento.referencia ? truncarHash(evento.referencia, 6, 6) : "—"}

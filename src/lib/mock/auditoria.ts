@@ -34,8 +34,8 @@ const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   TRILHA_EXPORTADA: "Trilha exportada",
 };
 
-function redeAcesso(lado: "cliente" | "sentinellus"): { ip: string; userAgent: string } {
-  return lado === "sentinellus"
+function redeAcesso(lado: "cliente" | "videnas"): { ip: string; userAgent: string } {
+  return lado === "videnas"
     ? { ip: "10.20.4.18", userAgent: "Chrome 141 · Ubuntu 24.04" }
     : { ip: "201.17.88.203", userAgent: "Chrome 141 · macOS 26" };
 }
@@ -47,13 +47,13 @@ function criarEvento(
 ): EventoAuditoria {
   contador += 1;
   const usuario = buscarUsuario(parcial.usuarioId);
-  const lado = usuario?.lado ?? "sentinellus";
+  const lado = usuario?.lado ?? "videnas";
   const acesso = redeAcesso(lado);
   return {
     ...parcial,
     id: `evt-${contador.toString(16).padStart(8, "0")}`,
     rotuloTipo: ROTULOS_TIPO[parcial.tipo],
-    usuarioNome: usuario?.nome ?? "Sistema Sentinellus",
+    usuarioNome: usuario?.nome ?? "Sistema Videnas",
     perfilId: usuario?.perfilId ?? "executor",
     lado,
     ...acesso,

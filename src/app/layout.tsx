@@ -24,7 +24,7 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sentinellus — Conformidade regulatória para criptoativos",
+  title: "Videnas — Conformidade regulatória para criptoativos",
   description:
     "Plataforma RegTech que estrutura, valida e audita os arquivos regulatórios ACAM212, Cadoc 5710/5711 e Fiscal (DPS) para instituições brasileiras de criptoativos, do dado bruto ao arquivo pronto para o Banco Central.",
 };
@@ -38,7 +38,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
-        <Toaster />
+        <Toaster
+          position="bottom-left"
+          mobileOffset={{ bottom: "6rem", left: "1rem", right: "1rem" }}
+        />
       </body>
     </html>
   );

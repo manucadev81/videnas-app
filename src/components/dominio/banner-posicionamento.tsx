@@ -13,13 +13,13 @@ export interface BannerPosicionamentoProps {
 
 const TEXTO_PADRAO: Record<VarianteBanner, { titulo: string; corpo: ReactNode }> = {
   info: {
-    titulo: "O que a Sentinellus é — e o que ela não é",
+    titulo: "O que a Videnas é — e o que ela não é",
     corpo: (
       <>
-        A Sentinellus é uma prestadora de serviços tecnológicos: uma RegTech. Recebemos os dados
+        A Videnas é uma prestadora de serviços tecnológicos: uma RegTech. Recebemos os dados
         que a sua instituição nos envia, estruturamos os arquivos no formato exigido pelo
         regulador, validamos contra o schema oficial e registramos a trilha de auditoria de cada
-        etapa. A Sentinellus não é instituição financeira, não custodia ativos virtuais, não
+        etapa. A Videnas não é instituição financeira, não custodia ativos virtuais, não
         transmite o arquivo ao Banco Central em nome da instituição, não emite NFS-e e não
         substitui o trabalho do seu contador ou do seu advogado.
       </>
@@ -29,9 +29,9 @@ const TEXTO_PADRAO: Record<VarianteBanner, { titulo: string; corpo: ReactNode }>
     titulo: "Atenção — Módulo Fiscal (Candidato)",
     corpo: (
       <>
-        Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Sentinellus
+        Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas
         estrutura os dados do serviço prestado no formato da DPS. A emissão da NFS-e acontece fora
-        do Sentinellus, pelo emissor que a sua instituição definir. A definição de alíquota,
+        da Videnas, pelo emissor que a sua instituição definir. A definição de alíquota,
         retenção e enquadramento tributário é do contador responsável, cuja validação é
         obrigatória antes da liberação.
       </>

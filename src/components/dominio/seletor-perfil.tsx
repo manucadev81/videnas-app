@@ -69,12 +69,12 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                    perfil.lado === "sentinellus"
+                    perfil.lado === "videnas"
                       ? "bg-status-candidate-bg text-status-candidate-text"
                       : "bg-status-info-bg text-status-info-text"
                   )}
                 >
-                  {perfil.lado === "sentinellus" ? "Sentinellus" : "Cliente"}
+                  {perfil.lado === "videnas" ? "Videnas" : "Cliente"}
                 </span>
               </span>
               <span className="text-xs text-neutral-500">{perfil.descricao}</span>

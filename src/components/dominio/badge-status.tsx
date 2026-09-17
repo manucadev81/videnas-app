@@ -12,6 +12,8 @@ import {
   Unlock,
   XCircle,
 } from "lucide-react";
+import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
+import { chaveAjudaEstado } from "@/lib/ajuda/textos";
 import { cn } from "@/lib/utils";
 import type { EstadoPeriodo } from "@/lib/tipos";
 
@@ -47,17 +49,29 @@ const CLASSE_VARIANTE: Record<VarianteStatus, string> = {
 
 export interface BadgeStatusProps {
   estado: EstadoPeriodo;
+  comAjuda?: boolean;
   className?: string;
 }
 
-export function BadgeStatus({ estado, className }: BadgeStatusProps) {
+export function BadgeStatus({ estado, comAjuda = false, className }: BadgeStatusProps) {
   const configuracao = CONFIGURACAO_ESTADO[estado];
   const Icone = configuracao.icone;
 
-  return (
+  const badge = (
     <span className={cn("status-badge", CLASSE_VARIANTE[configuracao.variante], className)}>
       <Icone className="size-3.5" aria-hidden="true" />
       {configuracao.rotulo}
+    </span>
+  );
+
+  if (!comAjuda) {
+    return badge;
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {badge}
+      <BadgeAjuda chave={chaveAjudaEstado(estado)} tamanho="xs" />
     </span>
   );
 }

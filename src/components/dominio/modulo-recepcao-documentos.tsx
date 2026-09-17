@@ -7,109 +7,45 @@ import { Download, FileText, Loader2, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
+import { PrevisualizacaoIngestao } from "@/components/dominio/modulo-previsualizacao-ingestao";
+import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { formatarDataHora, formatarNumero, formatarTamanhoArquivo } from "@/lib/formatadores";
-import type { CanalIngestao, ModuloId } from "@/lib/tipos";
+import {
+  ROTULO_DELIMITADOR,
+  buscarEspecificacao,
+  conteudoModeloCsv,
+  extensoesParaAccept,
+  listarExtensoes,
+  nomeModeloCsv,
+  prevalidarArquivo,
+  slugInstituicao,
+  type ResultadoPreValidacao,
+} from "@/lib/ingestao";
+import type { CanalIngestao } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
-interface EspecificacaoColuna {
-  chave: string;
-  rotulo: string;
-  exemplo: string;
-}
-
-interface EspecificacaoModulo {
-  descricao: string;
-  colunas: EspecificacaoColuna[];
-}
-
-const ESPECIFICACAO_MODULOS: Record<ModuloId, EspecificacaoModulo> = {
-  acam212: {
-    descricao: "Uma linha por operação de câmbio com ativo virtual realizada na competência.",
-    colunas: [
-      { chave: "numero_controle", rotulo: "Número de controle", exemplo: "C212-2026-08-0000741" },
-      { chave: "data_hora", rotulo: "Data/hora", exemplo: "2026-08-14T10:32:00-03:00" },
-      { chave: "tipo_operacao", rotulo: "Tipo de operação", exemplo: "Pagamento internacional" },
-      { chave: "cliente_documento", rotulo: "Cliente (CPF/CNPJ)", exemplo: "318.447.902-15" },
-      { chave: "ativo_virtual", rotulo: "Ativo virtual", exemplo: "USDT" },
-      { chave: "quantidade", rotulo: "Quantidade", exemplo: "48250.00000000" },
-      { chave: "valor_brl", rotulo: "Valor em BRL", exemplo: "250137.65" },
-      { chave: "valor_moeda_estrangeira", rotulo: "Valor em moeda estrangeira", exemplo: "48250.00" },
-      { chave: "taxa_cambio", rotulo: "Taxa de câmbio", exemplo: "5.1842" },
-    ],
-  },
-  cadoc5711: {
-    descricao: "Uma linha por posição de custódia diária por cliente, para cada data-base da competência.",
-    colunas: [
-      { chave: "data_base", rotulo: "Data-base", exemplo: "2026-08-14" },
-      { chave: "cliente_documento", rotulo: "Cliente (CPF/CNPJ)", exemplo: "22.905.663/0001-70" },
-      { chave: "ativo_virtual", rotulo: "Ativo", exemplo: "BTC" },
-      { chave: "quantidade", rotulo: "Quantidade", exemplo: "3.41827500" },
-      { chave: "valor_brl", rotulo: "Valor em BRL", exemplo: "1284902.17" },
-    ],
-  },
-  cadoc5710: {
-    descricao: "Uma linha por carteira/endereço com posição consolidada na data-base mensal.",
-    colunas: [
-      { chave: "data_base", rotulo: "Data-base", exemplo: "2026-08-31" },
-      { chave: "carteira_endereco", rotulo: "Carteira/Endereço", exemplo: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" },
-      { chave: "rede", rotulo: "Rede", exemplo: "Ethereum" },
-      { chave: "ativo_virtual", rotulo: "Ativo", exemplo: "ETH" },
-      { chave: "quantidade", rotulo: "Quantidade", exemplo: "2410.88000000" },
-      { chave: "valor_brl", rotulo: "Valor em BRL", exemplo: "41220905.10" },
-      { chave: "quantidade_staking", rotulo: "Quantidade em staking", exemplo: "1850.00000000" },
-      { chave: "recompensa_acumulada", rotulo: "Recompensa acumulada", exemplo: "6.42910000" },
-    ],
-  },
-  fiscal: {
-    descricao: "Uma linha por serviço prestado (DPS) estruturado na competência.",
-    colunas: [
-      { chave: "tomador", rotulo: "Tomador", exemplo: "Bluewave Tecnologia S.A." },
-      { chave: "tomador_documento", rotulo: "CNPJ do tomador", exemplo: "19.284.775/0001-33" },
-      { chave: "municipio", rotulo: "Município", exemplo: "São Paulo" },
-      { chave: "codigo_ibge", rotulo: "Código IBGE", exemplo: "3550308" },
-      { chave: "codigo_servico", rotulo: "Código do serviço", exemplo: "17.01" },
-      { chave: "descricao", rotulo: "Descrição", exemplo: "Assessoria ou consultoria de qualquer natureza" },
-      { chave: "valor_servico", rotulo: "Valor do serviço", exemplo: "34500.00" },
-      { chave: "aliquota_iss", rotulo: "Alíquota ISS", exemplo: "2.00" },
-      { chave: "retencao", rotulo: "Retenção", exemplo: "Sim" },
-    ],
-  },
-};
-
-const EXTENSOES_ACEITAS = ["csv", "xlsx", "txt"];
-const ATRASO_EM_PRE_VALIDACAO_MS = 650;
-const ATRASO_RESULTADO_FINAL_MS = 1500;
 const ATRASO_LIMPEZA_ESTADO_ZONA_MS = 2400;
 
-type StatusArquivo = "recebido" | "em_pre_validacao" | "aceito" | "rejeitado";
+type StatusLinha = "aceito" | "aceito_com_ressalvas" | "nao_conforme" | "rejeitado";
 
-interface MotivoRejeicao {
+interface MotivoLinha {
   codigo: string;
   mensagem: string;
+  ajuste: string;
 }
 
-interface ArquivoPendente {
+interface ArquivoAvaliado {
   id: string;
   nome: string;
   tamanhoBytes: number;
-  tipo: string;
-  ultimaModificacao: number;
-  recebidoEm: string;
-  status: StatusArquivo;
-  motivo?: MotivoRejeicao;
-  linhasRecebidas: number;
-  linhasResolvidas: number;
-  linhasComPendencia: number;
-}
-
-interface ResultadoPreValidacao {
-  status: "aceito" | "rejeitado";
-  motivo?: MotivoRejeicao;
-  linhasRecebidas: number;
-  linhasResolvidas: number;
-  linhasComPendencia: number;
+  registradoEm: string;
+  status: Extract<StatusLinha, "nao_conforme" | "rejeitado">;
+  motivo: MotivoLinha;
+  totalBloqueantes: number;
+  totalAvisos: number;
 }
 
 interface LinhaArquivo {
@@ -118,65 +54,9 @@ interface LinhaArquivo {
   tamanhoBytes: number;
   recebidoEm: string;
   canal: CanalIngestao;
-  status: StatusArquivo;
-  motivo?: MotivoRejeicao;
+  status: StatusLinha;
+  motivo?: MotivoLinha;
   removivel: boolean;
-}
-
-function obterExtensao(nomeArquivo: string): string {
-  const partes = nomeArquivo.split(".");
-  return partes.length > 1 ? (partes.at(-1) ?? "").toLowerCase() : "";
-}
-
-function somaCaracteres(texto: string): number {
-  let soma = 0;
-  for (let indice = 0; indice < texto.length; indice += 1) {
-    soma += texto.charCodeAt(indice);
-  }
-  return soma;
-}
-
-function prevalidarArquivo(nomeArquivo: string, tamanhoBytes: number, moduloId: ModuloId): ResultadoPreValidacao {
-  const extensao = obterExtensao(nomeArquivo);
-  const primeiraColuna = ESPECIFICACAO_MODULOS[moduloId].colunas[0]?.chave ?? "coluna_obrigatoria";
-
-  if (!EXTENSOES_ACEITAS.includes(extensao)) {
-    return {
-      status: "rejeitado",
-      motivo: {
-        codigo: "ING-E001",
-        mensagem: `Formato não aceito ("${extensao || "sem extensão"}"). Envie um arquivo .csv, .xlsx ou .txt.`,
-      },
-      linhasRecebidas: 0,
-      linhasResolvidas: 0,
-      linhasComPendencia: 0,
-    };
-  }
-
-  const linhasRecebidas = Math.max(1, Math.round(tamanhoBytes / 180));
-
-  if (nomeArquivo.toLowerCase().includes("erro")) {
-    return {
-      status: "rejeitado",
-      motivo: {
-        codigo: "ING-E003",
-        mensagem: `Coluna obrigatória "${primeiraColuna}" ausente na linha 1.`,
-      },
-      linhasRecebidas,
-      linhasResolvidas: 0,
-      linhasComPendencia: linhasRecebidas,
-    };
-  }
-
-  const linhasComPendencia = Math.round((linhasRecebidas * (somaCaracteres(nomeArquivo) % 7)) / 100);
-  const linhasResolvidas = linhasRecebidas - linhasComPendencia;
-
-  return {
-    status: "aceito",
-    linhasRecebidas,
-    linhasResolvidas,
-    linhasComPendencia,
-  };
 }
 
 const ROTULO_CANAL: Record<CanalIngestao, string> = {
@@ -185,17 +65,17 @@ const ROTULO_CANAL: Record<CanalIngestao, string> = {
   api: "Integração",
 };
 
-const ROTULO_STATUS: Record<StatusArquivo, string> = {
-  recebido: "Recebido",
-  em_pre_validacao: "Em pré-validação",
+const ROTULO_STATUS: Record<StatusLinha, string> = {
   aceito: "Aceito",
-  rejeitado: "Rejeitado",
+  aceito_com_ressalvas: "Aceito com ressalvas",
+  nao_conforme: "Não conforme",
+  rejeitado: "Rejeitado pelo operador",
 };
 
-const CLASSE_STATUS: Record<StatusArquivo, string> = {
-  recebido: "status-badge-neutral",
-  em_pre_validacao: "status-badge-info",
+const CLASSE_STATUS: Record<StatusLinha, string> = {
   aceito: "status-badge-success",
+  aceito_com_ressalvas: "status-badge-warning",
+  nao_conforme: "status-badge-error",
   rejeitado: "status-badge-error",
 };
 
@@ -211,18 +91,21 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
 
-  const [pendentes, setPendentes] = useState<ArquivoPendente[]>([]);
+  const [fila, setFila] = useState<ResultadoPreValidacao[]>([]);
+  const [avaliados, setAvaliados] = useState<ArquivoAvaliado[]>([]);
+  const [ressalvasPorArquivo, setRessalvasPorArquivo] = useState<Record<string, number>>({});
+  const [analisando, setAnalisando] = useState(0);
   const [zonaEstado, setZonaEstado] = useState<"repouso" | "arrastando" | "erro">("repouso");
 
   const inputRef = useRef<HTMLInputElement>(null);
   const contadorIdRef = useRef(0);
-  const timeoutsPorArquivoRef = useRef<Map<string, ReturnType<typeof setTimeout>[]>>(new Map());
+  const montadoRef = useRef(true);
   const timeoutZonaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const timeoutsPorArquivo = timeoutsPorArquivoRef.current;
+    montadoRef.current = true;
     return () => {
-      timeoutsPorArquivo.forEach((ids) => ids.forEach((id) => clearTimeout(id)));
+      montadoRef.current = false;
       if (timeoutZonaRef.current) {
         clearTimeout(timeoutZonaRef.current);
       }
@@ -233,67 +116,166 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
     return null;
   }
 
-  const especificacao = ESPECIFICACAO_MODULOS[periodo.moduloId];
+  const especificacao = buscarEspecificacao(periodo.moduloId);
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const instituicaoSlug = slugInstituicao(periodo.instituicaoId);
   const avaliacaoSubir = podeExecutarStore(perfilAtivo, "subir_dados", periodoId, usuarioId);
   const autor = { usuarioId, perfilId: perfilAtivo };
+  const emAnalise = fila[0] ?? null;
 
-  function agendar(id: string, atrasoMs: number, callback: () => void) {
-    const timeoutId = setTimeout(callback, atrasoMs);
-    const listaAtual = timeoutsPorArquivoRef.current.get(id) ?? [];
-    timeoutsPorArquivoRef.current.set(id, [...listaAtual, timeoutId]);
+  function sinalizarErroNaZona() {
+    setZonaEstado("erro");
+    if (timeoutZonaRef.current) {
+      clearTimeout(timeoutZonaRef.current);
+    }
+    timeoutZonaRef.current = setTimeout(() => {
+      if (montadoRef.current) {
+        setZonaEstado("repouso");
+      }
+    }, ATRASO_LIMPEZA_ESTADO_ZONA_MS);
   }
 
-  function adicionarArquivos(lista: FileList | File[]) {
+  async function adicionarArquivos(lista: FileList | File[]) {
     const arquivos = Array.from(lista);
     if (arquivos.length === 0) {
       return;
     }
 
-    let houveRejeicaoDeFormato = false;
+    setAnalisando((atual) => atual + arquivos.length);
 
-    const novosPendentes: ArquivoPendente[] = arquivos.map((arquivo) => {
+    for (const arquivo of arquivos) {
       contadorIdRef.current += 1;
-      const id = `pend-${periodoId}-${contadorIdRef.current}`;
-      const resultado = prevalidarArquivo(arquivo.name, arquivo.size, periodo.moduloId);
+      const identificador = `prev-${periodoId}-${contadorIdRef.current}`;
 
-      if (resultado.status === "rejeitado" && resultado.motivo?.codigo === "ING-E001") {
-        houveRejeicaoDeFormato = true;
+      let resultado: ResultadoPreValidacao | null = null;
+      try {
+        resultado = await prevalidarArquivo(
+          arquivo,
+          {
+            moduloId: periodo.moduloId,
+            competencia: periodo.competencia,
+            instituicaoSlug,
+            instituicaoNome: instituicao?.nomeFantasia ?? "esta instituição",
+          },
+          identificador
+        );
+      } catch {
+        toast.error(`Não foi possível ler ${arquivo.name}. Verifique o arquivo e tente novamente.`);
       }
 
-      agendar(id, ATRASO_EM_PRE_VALIDACAO_MS, () => {
-        setPendentes((atual) =>
-          atual.map((item) => (item.id === id ? { ...item, status: "em_pre_validacao" } : item))
-        );
-      });
-      agendar(id, ATRASO_RESULTADO_FINAL_MS, () => {
-        setPendentes((atual) =>
-          atual.map((item) => (item.id === id ? { ...item, status: resultado.status, motivo: resultado.motivo } : item))
-        );
-      });
+      if (!montadoRef.current) {
+        return;
+      }
 
-      return {
-        id,
-        nome: arquivo.name,
-        tamanhoBytes: arquivo.size,
-        tipo: arquivo.type || "desconhecido",
-        ultimaModificacao: arquivo.lastModified,
-        recebidoEm: new Date().toISOString(),
-        status: "recebido",
-        linhasRecebidas: resultado.linhasRecebidas,
-        linhasResolvidas: resultado.linhasResolvidas,
-        linhasComPendencia: resultado.linhasComPendencia,
-      };
+      setAnalisando((atual) => Math.max(0, atual - 1));
+
+      if (!resultado) {
+        continue;
+      }
+
+      const resultadoLido = resultado;
+      setFila((atual) => [...atual, resultadoLido]);
+
+      const formatoInvalido = resultadoLido.naoConformidades.some(
+        (item) => item.codigo === "ING-E001" || item.codigo === "ING-E002"
+      );
+      if (formatoInvalido) {
+        sinalizarErroNaZona();
+      }
+    }
+  }
+
+  function motivoBloqueante(resultado: ResultadoPreValidacao): MotivoLinha {
+    const bloqueante = resultado.naoConformidades.find((item) => item.severidade === "bloqueante");
+    if (bloqueante) {
+      return { codigo: bloqueante.codigo, mensagem: bloqueante.mensagem, ajuste: bloqueante.ajuste };
+    }
+    return {
+      codigo: "ING-R001",
+      mensagem: "Recusado pelo operador na conferência do arquivo.",
+      ajuste: "Ajuste o conteúdo na origem e reenvie o arquivo para nova conferência.",
+    };
+  }
+
+  function registrarAvaliado(resultado: ResultadoPreValidacao, status: ArquivoAvaliado["status"]) {
+    setAvaliados((atual) => [
+      ...atual,
+      {
+        id: resultado.id,
+        nome: resultado.resumo.nomeArquivo,
+        tamanhoBytes: resultado.resumo.tamanhoBytes,
+        registradoEm: new Date().toISOString(),
+        status,
+        motivo: motivoBloqueante(resultado),
+        totalBloqueantes: resultado.totalBloqueantes,
+        totalAvisos: resultado.totalAvisos,
+      },
+    ]);
+  }
+
+  function avancarFila() {
+    setFila((atual) => atual.slice(1));
+  }
+
+  function aoAceitar() {
+    if (!emAnalise || !emAnalise.conforme) {
+      return;
+    }
+
+    const { resumo } = emAnalise;
+    const resultadoIngestao = ingerirDados(periodoId, autor, {
+      nomeArquivo: resumo.nomeArquivo,
+      tamanhoBytes: resumo.tamanhoBytes,
+      linhasRecebidas: resumo.linhasLidas,
+      linhasResolvidas: resumo.linhasValidas,
+      linhasComPendencia: resumo.linhasComPendencia,
+      canal: "upload",
     });
 
-    setPendentes((atual) => [...atual, ...novosPendentes]);
-
-    if (houveRejeicaoDeFormato) {
-      setZonaEstado("erro");
-      if (timeoutZonaRef.current) {
-        clearTimeout(timeoutZonaRef.current);
-      }
-      timeoutZonaRef.current = setTimeout(() => setZonaEstado("repouso"), ATRASO_LIMPEZA_ESTADO_ZONA_MS);
+    if (!resultadoIngestao.sucesso) {
+      toast.error(resultadoIngestao.motivo ?? "Não foi possível registrar o lote nesta competência.");
+      return;
     }
+
+    if (emAnalise.totalAvisos > 0) {
+      setRessalvasPorArquivo((atual) => ({ ...atual, [resumo.nomeArquivo]: emAnalise.totalAvisos }));
+      toast.warning(
+        `${resumo.nomeArquivo} aceito com ${emAnalise.totalAvisos} ressalva(s) · ${formatarNumero(resumo.linhasValidas)} linha(s) reconhecida(s).`
+      );
+    } else {
+      toast.success(
+        `${resumo.nomeArquivo} aceito · ${formatarNumero(resumo.linhasValidas)} linha(s) reconhecida(s).`
+      );
+    }
+
+    avancarFila();
+  }
+
+  function aoRejeitar() {
+    if (!emAnalise) {
+      return;
+    }
+    const naoConforme = emAnalise.totalBloqueantes > 0;
+    registrarAvaliado(emAnalise, naoConforme ? "nao_conforme" : "rejeitado");
+    toast.error(
+      naoConforme
+        ? `${emAnalise.resumo.nomeArquivo} marcado como não conforme. Nenhum dado entrou na competência.`
+        : `${emAnalise.resumo.nomeArquivo} rejeitado. Solicite os ajustes ao time responsável.`
+    );
+    avancarFila();
+  }
+
+  function aoDescartar() {
+    if (!emAnalise) {
+      return;
+    }
+    if (emAnalise.totalBloqueantes > 0) {
+      registrarAvaliado(emAnalise, "nao_conforme");
+      toast.error(`${emAnalise.resumo.nomeArquivo} marcado como não conforme. Nenhum dado entrou na competência.`);
+    } else {
+      toast.info(`Conferência de ${emAnalise.resumo.nomeArquivo} cancelada. O arquivo não foi registrado.`);
+    }
+    avancarFila();
   }
 
   function aoArrastarSobre(evento: DragEvent<HTMLDivElement>) {
@@ -309,83 +291,31 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
   function aoSoltarArquivos(evento: DragEvent<HTMLDivElement>) {
     evento.preventDefault();
     setZonaEstado("repouso");
-    adicionarArquivos(evento.dataTransfer.files);
+    void adicionarArquivos(evento.dataTransfer.files);
   }
 
   function aoSelecionarArquivos(evento: ChangeEvent<HTMLInputElement>) {
     if (evento.target.files) {
-      adicionarArquivos(evento.target.files);
+      void adicionarArquivos(evento.target.files);
     }
     evento.target.value = "";
   }
 
-  function removerPendente(id: string) {
-    const timeoutsDoArquivo = timeoutsPorArquivoRef.current.get(id);
-    timeoutsDoArquivo?.forEach((timeoutId) => clearTimeout(timeoutId));
-    timeoutsPorArquivoRef.current.delete(id);
-    setPendentes((atual) => atual.filter((item) => item.id !== id));
+  function removerAvaliado(id: string) {
+    setAvaliados((atual) => atual.filter((item) => item.id !== id));
   }
 
   function baixarModelo() {
-    const cabecalho = especificacao.colunas.map((coluna) => coluna.chave).join(",");
-    const linhaExemplo = especificacao.colunas.map((coluna) => coluna.exemplo).join(",");
-    const conteudo = `${cabecalho}\n${linhaExemplo}\n`;
-    const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([conteudoModeloCsv(periodo.moduloId)], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `modelo_${periodo.moduloId}.csv`;
+    link.download = nomeModeloCsv(periodo.moduloId, periodo.instituicaoId, periodo.competencia);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success("Modelo baixado. Preencha as colunas conforme o exemplo da primeira linha.");
-  }
-
-  const aceitosPendentes = pendentes.filter((item) => item.status === "aceito");
-  const rejeitadosPendentes = pendentes.filter((item) => item.status === "rejeitado");
-  const emProcessamento = pendentes.filter((item) => item.status === "recebido" || item.status === "em_pre_validacao");
-
-  const totalLinhasReconhecidas = aceitosPendentes.reduce((total, item) => total + item.linhasResolvidas, 0);
-  const totalLinhasComPendencia = aceitosPendentes.reduce((total, item) => total + item.linhasComPendencia, 0);
-
-  const motivoBloqueio =
-    aceitosPendentes.length === 0
-      ? pendentes.length === 0
-        ? "Envie ao menos um arquivo para confirmar o recebimento dos dados."
-        : "Nenhum arquivo aceito para confirmar o envio. Corrija ou remova os arquivos rejeitados."
-      : emProcessamento.length > 0
-        ? "Aguarde a pré-validação dos arquivos terminar."
-        : undefined;
-
-  function confirmarEnvio() {
-    if (aceitosPendentes.length === 0) {
-      return;
-    }
-    let resultadoFinal: { sucesso: boolean; motivo?: string } = { sucesso: true };
-
-    for (const arquivo of aceitosPendentes) {
-      resultadoFinal = ingerirDados(periodoId, autor, {
-        nomeArquivo: arquivo.nome,
-        tamanhoBytes: arquivo.tamanhoBytes,
-        linhasRecebidas: arquivo.linhasRecebidas,
-        linhasResolvidas: arquivo.linhasResolvidas,
-        linhasComPendencia: arquivo.linhasComPendencia,
-        canal: "upload",
-      });
-      if (!resultadoFinal.sucesso) {
-        break;
-      }
-    }
-
-    if (resultadoFinal.sucesso) {
-      toast.success(
-        `${aceitosPendentes.length} arquivo(s) confirmado(s) · ${formatarNumero(totalLinhasReconhecidas)} linha(s) reconhecida(s).`
-      );
-      setPendentes((atual) => atual.filter((item) => item.status !== "aceito"));
-    } else {
-      toast.error(resultadoFinal.motivo ?? "Não foi possível confirmar o envio dos dados.");
-    }
+    toast.success("Modelo baixado. O nome do arquivo já segue o padrão exigido pela obrigação.");
   }
 
   const linhasHistorico: LinhaArquivo[] = periodo.lotes.map((lote) => ({
@@ -394,22 +324,22 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
     tamanhoBytes: lote.tamanhoBytes,
     recebidoEm: lote.recebidoEm,
     canal: lote.canal,
-    status: "aceito",
+    status: (ressalvasPorArquivo[lote.nomeArquivo] ?? 0) > 0 ? "aceito_com_ressalvas" : "aceito",
     removivel: false,
   }));
 
-  const linhasPendentes: LinhaArquivo[] = pendentes.map((item) => ({
+  const linhasAvaliadas: LinhaArquivo[] = avaliados.map((item) => ({
     id: item.id,
     nome: item.nome,
     tamanhoBytes: item.tamanhoBytes,
-    recebidoEm: item.recebidoEm,
+    recebidoEm: item.registradoEm,
     canal: "upload",
     status: item.status,
     motivo: item.motivo,
     removivel: true,
   }));
 
-  const linhasTabela = [...linhasHistorico, ...linhasPendentes].sort((a, b) =>
+  const linhasTabela = [...linhasHistorico, ...linhasAvaliadas].sort((a, b) =>
     a.recebidoEm < b.recebidoEm ? 1 : a.recebidoEm > b.recebidoEm ? -1 : 0
   );
 
@@ -437,16 +367,14 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
       cabecalho: "Status",
       renderizar: (linha) => (
         <span className="block space-y-1">
-          <span className={cn("status-badge", CLASSE_STATUS[linha.status])}>
-            {linha.status === "recebido" || linha.status === "em_pre_validacao" ? (
-              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-            ) : null}
-            {ROTULO_STATUS[linha.status]}
-          </span>
-          {linha.status === "rejeitado" && linha.motivo ? (
-            <span className="block text-xs text-status-error-text">
-              {linha.motivo.codigo} — {linha.motivo.mensagem}
-            </span>
+          <span className={cn("status-badge", CLASSE_STATUS[linha.status])}>{ROTULO_STATUS[linha.status]}</span>
+          {linha.motivo ? (
+            <>
+              <span className="block text-xs text-status-error-text">
+                {linha.motivo.codigo} — {linha.motivo.mensagem}
+              </span>
+              <span className="block text-xs text-neutral-500">Ajuste necessário: {linha.motivo.ajuste}</span>
+            </>
           ) : null}
         </span>
       ),
@@ -462,7 +390,7 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
             variant="ghost"
             size="icon-sm"
             aria-label={`Remover ${linha.nome} da lista`}
-            onClick={() => removerPendente(linha.id)}
+            onClick={() => removerAvaliado(linha.id)}
           >
             <X className="size-4" aria-hidden="true" />
           </Button>
@@ -470,14 +398,27 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
     },
   ];
 
+  const totalLinhasReconhecidas = periodo.lotes.reduce((total, lote) => total + lote.linhasResolvidas, 0);
+  const totalLinhasComPendencia = periodo.lotes.reduce((total, lote) => total + lote.linhasComPendencia, 0);
+  const totalNaoConformes = avaliados.filter((item) => item.status === "nao_conforme").length;
+  const totalRejeitados = avaliados.filter((item) => item.status === "rejeitado").length;
+
+  const mensagemStatus =
+    analisando > 0
+      ? `Lendo e pré-validando ${analisando} arquivo(s).`
+      : fila.length > 0
+        ? `${fila.length} arquivo(s) aguardando o aceite do operador.`
+        : `${periodo.lotes.length} lote(s) aceito(s), ${totalNaoConformes} não conforme(s), ${totalRejeitados} rejeitado(s).`;
+
   const inputId = `upload-recepcao-${periodoId}`;
+  const delimitadoresAceitos = especificacao.delimitadoresAceitos
+    .map((item) => ROTULO_DELIMITADOR[item] ?? item)
+    .join(" ou ");
 
   return (
     <div className={cn("space-y-4", className)}>
       <p className="sr-only" role="status" aria-live="polite">
-        {pendentes.length > 0
-          ? `${aceitosPendentes.length} arquivo(s) aceito(s), ${rejeitadosPendentes.length} rejeitado(s), ${emProcessamento.length} em processamento.`
-          : ""}
+        {mensagemStatus}
       </p>
 
       {avaliacaoSubir.visivel ? (
@@ -485,7 +426,10 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
           <div data-tour="upload-layout" className="rounded-lg border border-neutral-200 bg-white p-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-display text-lg font-bold text-neutral-700">Layout esperado do arquivo</h2>
+                <h2 className="flex items-center gap-1.5 font-display text-lg font-bold text-neutral-700">
+                  Layout esperado do arquivo
+                  <BadgeAjuda chave="recepcao.layout" tamanho="sm" />
+                </h2>
                 <p className="text-sm text-neutral-500">{especificacao.descricao}</p>
               </div>
               <Button
@@ -499,6 +443,25 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
                 Baixar modelo (CSV)
               </Button>
             </div>
+
+            <dl className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-md bg-neutral-50 p-3">
+                <dt className="text-xs text-neutral-500">Nome do arquivo</dt>
+                <dd className="font-mono text-xs text-neutral-700">
+                  {especificacao.prefixoNome}_{instituicaoSlug}_{periodo.competencia.replace("-", "")}.
+                  {especificacao.extensoesAceitas[0]}
+                </dd>
+              </div>
+              <div className="rounded-md bg-neutral-50 p-3">
+                <dt className="text-xs text-neutral-500">Formatos aceitos</dt>
+                <dd className="text-sm font-medium text-neutral-700">{listarExtensoes(periodo.moduloId)}</dd>
+              </div>
+              <div className="rounded-md bg-neutral-50 p-3">
+                <dt className="text-xs text-neutral-500">Delimitador</dt>
+                <dd className="text-sm font-medium text-neutral-700">{delimitadoresAceitos}</dd>
+              </div>
+            </dl>
+
             <div className="overflow-x-auto rounded-md border border-neutral-100">
               <table className="w-full text-left text-sm">
                 <thead>
@@ -506,6 +469,11 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
                     {especificacao.colunas.map((coluna) => (
                       <th key={coluna.chave} className="whitespace-nowrap px-3 py-2 font-medium">
                         {coluna.rotulo}
+                        {coluna.obrigatoria ? (
+                          <span className="text-status-error-text" aria-label="coluna obrigatória">
+                            {" *"}
+                          </span>
+                        ) : null}
                       </th>
                     ))}
                   </tr>
@@ -521,16 +489,27 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
                 </tbody>
               </table>
             </div>
+            <p className="mt-2 text-xs text-neutral-500">
+              Colunas marcadas com <span className="text-status-error-text">*</span> são obrigatórias. A ausência de
+              qualquer uma delas bloqueia o aceite do lote.
+            </p>
           </div>
 
           {avaliacaoSubir.permitido ? (
             <div className="rounded-lg border border-neutral-200 bg-white p-5">
-              <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Enviar arquivos</h2>
+              <h2 className="mb-1 flex items-center gap-1.5 font-display text-lg font-bold text-neutral-700">
+                Enviar arquivos
+                <BadgeAjuda chave="recepcao.envio" tamanho="sm" />
+              </h2>
+              <p className="mb-3 text-sm text-neutral-500">
+                Cada arquivo é lido no navegador e conferido contra o layout da obrigação. A pré-visualização abre no ato
+                do envio e o lote só entra na competência depois do seu aceite.
+              </p>
               <div
                 role="button"
                 tabIndex={0}
                 data-tour="upload-dropzone"
-                aria-label="Área para arrastar arquivos ou selecionar do computador. Formatos aceitos: CSV, XLSX ou TXT."
+                aria-label={`Área para arrastar arquivos ou selecionar do computador. Formatos aceitos: ${listarExtensoes(periodo.moduloId)}.`}
                 onClick={() => inputRef.current?.click()}
                 onKeyDown={(evento) => {
                   if (evento.key === "Enter" || evento.key === " ") {
@@ -557,7 +536,7 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
                   id={inputId}
                   type="file"
                   multiple
-                  accept=".csv,.xlsx,.txt"
+                  accept={extensoesParaAccept(periodo.moduloId)}
                   tabIndex={-1}
                   className="sr-only"
                   onChange={aoSelecionarArquivos}
@@ -566,10 +545,18 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
                 <p className="text-sm font-medium text-neutral-700">
                   Arraste arquivos aqui ou <span className="text-brand-700 underline">clique para selecionar</span>
                 </p>
-                <p className="text-xs text-neutral-500">Aceita .csv, .xlsx ou .txt · vários arquivos por vez.</p>
+                <p className="text-xs text-neutral-500">
+                  Aceita {listarExtensoes(periodo.moduloId)} · vários arquivos por vez.
+                </p>
+                {analisando > 0 ? (
+                  <p className="flex items-center gap-2 text-xs font-medium text-brand-700">
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    Lendo e pré-validando {analisando} arquivo(s)…
+                  </p>
+                ) : null}
                 {zonaEstado === "erro" ? (
                   <p role="alert" className="text-xs font-medium text-status-error-text">
-                    Formato não aceito. Envie arquivos .csv, .xlsx ou .txt.
+                    Formato não aceito por esta obrigação. Envie {listarExtensoes(periodo.moduloId)}.
                   </p>
                 ) : null}
               </div>
@@ -583,7 +570,16 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
       ) : null}
 
       <div data-tour="upload-tabela-arquivos" className="rounded-lg border border-neutral-200 bg-white p-5">
-        <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Arquivos recebidos</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-1.5 font-display text-lg font-bold text-neutral-700">
+            Arquivos recebidos
+            <BadgeAjuda chave="recepcao.tabela" tamanho="sm" />
+          </h2>
+          <span className="flex items-center gap-1 text-xs text-neutral-500">
+            Coluna Status
+            <BadgeAjuda chave="recepcao.status" tamanho="xs" align="end" />
+          </span>
+        </div>
         <TabelaDados
           colunas={colunasTabela}
           dados={linhasTabela}
@@ -599,11 +595,15 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
 
       {avaliacaoSubir.visivel && avaliacaoSubir.permitido ? (
         <div data-tour="upload-confirmar-envio" className="rounded-lg border border-neutral-200 bg-white p-5">
-          <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Resumo da pré-validação</h2>
+          <h2 className="mb-1 font-display text-lg font-bold text-neutral-700">Resumo da conferência</h2>
+          <p className="mb-3 text-sm text-neutral-500">
+            O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio. Não existe confirmação
+            adicional: o que está aqui como aceito já entrou na competência.
+          </p>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-md bg-neutral-50 p-3">
-              <dt className="text-xs text-neutral-500">Arquivos aceitos</dt>
-              <dd className="text-sm font-medium text-neutral-700">{aceitosPendentes.length}</dd>
+              <dt className="text-xs text-neutral-500">Lotes aceitos</dt>
+              <dd className="text-sm font-medium text-neutral-700">{periodo.lotes.length}</dd>
             </div>
             <div className="rounded-md bg-neutral-50 p-3">
               <dt className="text-xs text-neutral-500">Linhas reconhecidas</dt>
@@ -614,18 +614,22 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
               <dd className="text-sm font-medium text-neutral-700">{formatarNumero(totalLinhasComPendencia)}</dd>
             </div>
             <div className="rounded-md bg-neutral-50 p-3">
-              <dt className="text-xs text-neutral-500">Arquivos rejeitados</dt>
-              <dd className="text-sm font-medium text-neutral-700">{rejeitadosPendentes.length}</dd>
+              <dt className="text-xs text-neutral-500">Não conformes / rejeitados</dt>
+              <dd className="text-sm font-medium text-neutral-700">
+                {totalNaoConformes} / {totalRejeitados}
+              </dd>
             </div>
           </dl>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Button type="button" onClick={confirmarEnvio} disabled={Boolean(motivoBloqueio)}>
-              Confirmar envio dos dados
-            </Button>
-            {motivoBloqueio ? <p className="text-sm text-status-error-text">{motivoBloqueio}</p> : null}
-          </div>
         </div>
       ) : null}
+
+      <PrevisualizacaoIngestao
+        resultado={emAnalise}
+        restantesNaFila={Math.max(0, fila.length - 1)}
+        onAceitar={aoAceitar}
+        onRejeitar={aoRejeitar}
+        onDescartar={aoDescartar}
+      />
     </div>
   );
 }

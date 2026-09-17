@@ -21,9 +21,9 @@ export function SeletorInstituicao({ className }: SeletorInstituicaoProps) {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const definirInstituicao = useSessaoStore((estado) => estado.definirInstituicao);
 
-  const ladoSentinellus = perfilAtivo === "executor" || perfilAtivo === "validador";
+  const ladoVidenas = perfilAtivo === "executor" || perfilAtivo === "validador";
 
-  if (!ladoSentinellus) {
+  if (!ladoVidenas) {
     const instituicao = instituicaoAtivaId ? buscarInstituicao(instituicaoAtivaId) : undefined;
     if (!instituicao) return null;
 

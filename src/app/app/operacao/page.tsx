@@ -75,7 +75,7 @@ export default function OperacaoPage() {
     return (
       <EstadoVazio
         titulo="Acesso não disponível"
-        mensagem="Seu perfil não tem acesso a esta área. A fila de operação é restrita aos perfis Executor e Validador da Sentinellus."
+        mensagem="Seu perfil não tem acesso a esta área. A fila de operação é restrita aos perfis Executor e Validador da Videnas."
       />
     );
   }
@@ -85,7 +85,7 @@ export default function OperacaoPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-display text-2xl font-bold text-neutral-700">Operação Sentinellus</h1>
+        <h1 className="font-display text-2xl font-bold text-neutral-700">Operação Videnas</h1>
         <p className="text-sm text-neutral-500">
           Perfil ativo: {perfilAtivo === "executor" ? "Executor" : "Validador"} · {totalFila} itens na fila
         </p>

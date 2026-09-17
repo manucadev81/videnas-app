@@ -33,7 +33,7 @@ export function TimelineAuditoria({ eventos, className }: TimelineAuditoriaProps
               <p className="font-mono text-xs text-neutral-500">{formatarDataHora(evento.ocorridoEm)}</p>
               <p className="text-sm font-medium text-neutral-700">{evento.usuarioNome}</p>
               <span className="text-xs text-neutral-500">
-                ({evento.perfilId} · {evento.lado === "sentinellus" ? "Sentinellus" : "Cliente"})
+                ({evento.perfilId} · {evento.lado === "videnas" ? "Videnas" : "Cliente"})
               </span>
             </div>
             <p className="mt-1 text-sm text-neutral-600">{evento.rotuloTipo}</p>

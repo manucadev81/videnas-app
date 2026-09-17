@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, Info, LogIn } from "lucide-react";
-import { LogoSentinellus } from "@/components/marca/logo-sentinellus";
+import { LogoVidenas } from "@/components/marca/logo-videnas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,14 +35,14 @@ const ATALHOS: AtalhoDemo[] = [
     instituicao: "Atende os 3 tenants",
   },
   {
-    email: "t.nakamura@sentinellus.com.br",
+    email: "t.nakamura@videnas.com.br",
     rotulo: "Executor",
-    instituicao: "Sentinellus",
+    instituicao: "Videnas",
   },
   {
-    email: "c.veloso@sentinellus.com.br",
+    email: "c.veloso@videnas.com.br",
     rotulo: "Validador",
-    instituicao: "Sentinellus",
+    instituicao: "Videnas",
   },
 ];
 
@@ -88,25 +87,17 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-full flex-1">
       <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-linear-to-br from-brand-700 to-brand-800 p-10 text-white md:flex">
-        <Image
-          src="/logowhite-cropped.png"
-          alt="Sentinellus"
-          width={212}
-          height={40}
-          priority
-          unoptimized
-          className="h-10 w-auto self-start"
-        />
+        <LogoVidenas className="h-10 w-auto self-start text-white" />
         <div className="max-w-md">
           <p className="font-display text-3xl font-bold text-balance">
             Do dado bruto ao arquivo pronto para o Banco Central, com trilha de auditoria em cada etapa.
           </p>
           <p className="mt-4 text-sm text-brand-100">
-            Ambiente de demonstração da plataforma Sentinellus, com dados e usuários fictícios.
+            Ambiente de demonstração da plataforma Videnas, com dados e usuários fictícios.
           </p>
         </div>
         <p className="text-xs text-brand-200">
-          A Sentinellus é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
+          A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
           SPSAV.
         </p>
       </div>
@@ -122,12 +113,12 @@ export default function LoginPage() {
           </Link>
 
           <div className="mb-6 md:hidden">
-            <LogoSentinellus className="h-8 w-auto text-brand-700" />
+            <LogoVidenas className="h-8 w-auto text-brand-700" />
           </div>
 
           <h1 className="font-display text-2xl font-bold text-neutral-700">Entrar</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Acesse o ambiente de demonstração da Sentinellus.
+            Acesse o ambiente de demonstração da Videnas.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={aoSubmeter} noValidate>
@@ -198,7 +189,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-8 text-center text-[11px] leading-relaxed text-neutral-400">
-            A Sentinellus é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
+            A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
             SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado.
           </p>
         </div>
