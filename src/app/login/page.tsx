@@ -30,6 +30,11 @@ const ATALHOS: AtalhoDemo[] = [
     instituicao: "Meridian Digital Assets",
   },
   {
+    email: "natalia.queiroz@meridiandigital.com.br",
+    rotulo: "Cliente / Fornecedor de dados",
+    instituicao: "Meridian Digital Assets",
+  },
+  {
     email: "joao.beraldo@contabilberaldo.com.br",
     rotulo: "Contador / Fiscal",
     instituicao: "Atende os 3 tenants",
@@ -66,11 +71,13 @@ export default function LoginPage() {
 
     if (!resultado.reconhecido) {
       toast.info("Usuário não reconhecido na demonstração. Entrando como Operacional / Backoffice.");
+    } else if (resultado.contextoFixo) {
+      toast.success("Login simulado realizado. Entrando direto na instituição vinculada ao seu cadastro.");
     } else {
       toast.success("Login simulado realizado.");
     }
 
-    router.push("/selecionar-instituicao");
+    router.push(resultado.destino);
   }
 
   function aoSubmeter(evento: FormEvent<HTMLFormElement>) {

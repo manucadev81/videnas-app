@@ -5,6 +5,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { PerfilId } from "@/lib/tipos";
 import { buscarUsuario, usuariosPorEmail } from "@/lib/mock/usuarios";
+import { PERFIS } from "@/lib/permissoes";
 
 export interface EstadoSessao {
   hidratado: boolean;
@@ -12,7 +13,12 @@ export interface EstadoSessao {
   usuarioId: string | null;
   perfilAtivo: PerfilId | null;
   instituicaoAtivaId: string | "todas" | null;
-  entrar: (email: string) => { usuarioId: string; reconhecido: boolean };
+  entrar: (email: string) => {
+    usuarioId: string;
+    reconhecido: boolean;
+    contextoFixo: boolean;
+    destino: string;
+  };
   sair: () => void;
   definirPerfil: (perfilId: PerfilId) => void;
   definirInstituicao: (instituicaoId: string | "todas") => void;
@@ -26,6 +32,37 @@ type SessaoPersistida = Pick<
 const USUARIO_PADRAO_NAO_RECONHECIDO = "usr-paula";
 
 export const NOME_ARMAZENAMENTO_SESSAO = "videnas-sessao";
+
+export function perfilEhMultiTenant(perfilId: PerfilId | null): boolean {
+  if (!perfilId) {
+    return false;
+  }
+  return PERFIS.find((perfil) => perfil.id === perfilId)?.multiTenant ?? false;
+}
+
+export function perfilTemContextoFixo(perfilId: PerfilId | null): boolean {
+  if (!perfilId) {
+    return false;
+  }
+  return PERFIS.find((perfil) => perfil.id === perfilId)?.contextoFixo ?? false;
+}
+
+export function normalizarInstituicaoAtiva(
+  perfilAtivo: PerfilId | null,
+  usuarioId: string | null,
+  instituicaoId: string | "todas" | null
+): string | "todas" | null {
+  if (instituicaoId !== "todas") {
+    return instituicaoId;
+  }
+  if (perfilEhMultiTenant(perfilAtivo)) {
+    return "todas";
+  }
+  if (!usuarioId) {
+    return null;
+  }
+  return buscarUsuario(usuarioId)?.instituicaoIds[0] ?? null;
+}
 
 export const useSessaoStore = create<EstadoSessao>()(
   persist<EstadoSessao, [], [], SessaoPersistida>(
@@ -41,14 +78,20 @@ export const useSessaoStore = create<EstadoSessao>()(
         const reconhecido = emailNormalizado in usuariosPorEmail;
         const usuario = buscarUsuario(usuarioId);
 
+        const perfilAtivo = usuario?.perfilId ?? "operacional";
+
         set({
           autenticado: true,
           usuarioId,
-          perfilAtivo: usuario?.perfilId ?? "operacional",
+          perfilAtivo,
           instituicaoAtivaId: usuario?.instituicaoIds[0] ?? null,
         });
 
-        return { usuarioId, reconhecido };
+        const contextoFixo =
+          perfilTemContextoFixo(perfilAtivo) && (usuario?.instituicaoIds.length ?? 0) === 1;
+        const destino = contextoFixo ? "/app" : "/selecionar-instituicao";
+
+        return { usuarioId, reconhecido, contextoFixo, destino };
       },
       sair: () => {
         set({
@@ -59,9 +102,23 @@ export const useSessaoStore = create<EstadoSessao>()(
         });
         useSessaoStore.persist?.clearStorage();
       },
-      definirPerfil: (perfilId: PerfilId) => set({ perfilAtivo: perfilId }),
+      definirPerfil: (perfilId: PerfilId) =>
+        set((estado) => ({
+          perfilAtivo: perfilId,
+          instituicaoAtivaId: normalizarInstituicaoAtiva(
+            perfilId,
+            estado.usuarioId,
+            estado.instituicaoAtivaId
+          ),
+        })),
       definirInstituicao: (instituicaoId: string | "todas") =>
-        set({ instituicaoAtivaId: instituicaoId }),
+        set((estado) => ({
+          instituicaoAtivaId: normalizarInstituicaoAtiva(
+            estado.perfilAtivo,
+            estado.usuarioId,
+            instituicaoId
+          ),
+        })),
     }),
     {
       name: NOME_ARMAZENAMENTO_SESSAO,
@@ -74,7 +131,15 @@ export const useSessaoStore = create<EstadoSessao>()(
         instituicaoAtivaId: estado.instituicaoAtivaId,
       }),
       onRehydrateStorage: () => () => {
-        useSessaoStore.setState({ hidratado: true });
+        const atual = useSessaoStore.getState();
+        useSessaoStore.setState({
+          hidratado: true,
+          instituicaoAtivaId: normalizarInstituicaoAtiva(
+            atual.perfilAtivo,
+            atual.usuarioId,
+            atual.instituicaoAtivaId
+          ),
+        });
       },
     }
   )

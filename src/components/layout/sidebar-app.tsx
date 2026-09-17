@@ -4,11 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calendar,
+  FileLock2,
   History,
   LayoutDashboard,
   Menu,
+  PackageCheck,
   Settings,
   ShieldCheck,
+  UploadCloud,
   Vault,
   Wallet,
   Workflow,
@@ -22,6 +25,9 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSessaoStore } from "@/lib/store/sessao";
+import { useEvidenciasStore } from "@/lib/store/evidencias";
+import { usePeriodosStore } from "@/lib/store/periodos";
+import { calcularCompletude } from "@/lib/fornecimento";
 import { podeVerRota } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
@@ -31,18 +37,68 @@ interface ItemNavegacao {
   icone: LucideIcon;
   chaveAjuda: ChaveAjuda;
   candidato?: boolean;
+  comPendenciasDoCliente?: boolean;
 }
 
 const ITENS_NAVEGACAO: ItemNavegacao[] = [
   { href: "/app", rotulo: "Dashboard", icone: LayoutDashboard, chaveAjuda: "nav.dashboard" },
+  {
+    href: "/app/fornecimento",
+    rotulo: "Fornecimento de dados",
+    icone: UploadCloud,
+    chaveAjuda: "nav.fornecimento",
+    comPendenciasDoCliente: true,
+  },
   { href: "/app/acam212", rotulo: "ACAM212", icone: ShieldCheck, chaveAjuda: "nav.acam212" },
   { href: "/app/cadoc", rotulo: "Cadoc 5710/5711", icone: Vault, chaveAjuda: "nav.cadoc" },
   { href: "/app/fiscal", rotulo: "Fiscal", icone: Wallet, chaveAjuda: "nav.fiscal", candidato: true },
+  { href: "/app/entregas", rotulo: "Arquivos entregues", icone: PackageCheck, chaveAjuda: "nav.entregas" },
   { href: "/app/calendario", rotulo: "Calendário", icone: Calendar, chaveAjuda: "nav.calendario" },
   { href: "/app/auditoria", rotulo: "Auditoria", icone: History, chaveAjuda: "nav.auditoria" },
+  { href: "/app/evidencias", rotulo: "Evidências", icone: FileLock2, chaveAjuda: "nav.evidencias" },
   { href: "/app/operacao", rotulo: "Operação", icone: Workflow, chaveAjuda: "nav.operacao" },
   { href: "/app/configuracoes", rotulo: "Configurações", icone: Settings, chaveAjuda: "nav.configuracoes" },
 ];
+
+function DistintivoPendenciasFornecimento() {
+  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
+  const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
+  const evidenciasHidratadas = useEvidenciasStore((estado) => estado.hidratado);
+  const fornecimentos = useEvidenciasStore((estado) => estado.fornecimentos);
+  const periodos = usePeriodosStore((estado) => estado.periodos);
+
+  if (
+    perfilAtivo !== "cliente" ||
+    !evidenciasHidratadas ||
+    !instituicaoAtivaId ||
+    instituicaoAtivaId === "todas"
+  ) {
+    return null;
+  }
+
+  const total = Object.values(periodos).filter((periodo) => {
+    if (periodo.instituicaoId !== instituicaoAtivaId) {
+      return false;
+    }
+    if (periodo.estado !== "aguardando_dados" && periodo.estado !== "dados_ingeridos") {
+      return false;
+    }
+    return calcularCompletude(periodo, fornecimentos[periodo.id] ?? {}).pendencias.length > 0;
+  }).length;
+
+  if (total === 0) {
+    return null;
+  }
+
+  return (
+    <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 text-xs font-semibold text-status-warning-text">
+      <span aria-hidden="true">{total}</span>
+      <span className="sr-only">
+        {total === 1 ? "1 competência com pendências" : `${total} competências com pendências`}
+      </span>
+    </span>
+  );
+}
 
 function ConteudoNavegacao({ pathname, itens }: { pathname: string; itens: ItemNavegacao[] }) {
   return (
@@ -65,6 +121,7 @@ function ConteudoNavegacao({ pathname, itens }: { pathname: string; itens: ItemN
               <Icone className="size-4 shrink-0" aria-hidden="true" />
               <span className="flex-1 truncate">{item.rotulo}</span>
               {item.candidato ? <SeloCandidato tamanho="sm" /> : null}
+              {item.comPendenciasDoCliente ? <DistintivoPendenciasFornecimento /> : null}
             </Link>
             <BadgeAjuda chave={item.chaveAjuda} tamanho="xs" side="right" align="start" />
           </div>

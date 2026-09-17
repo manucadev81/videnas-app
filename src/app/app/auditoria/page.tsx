@@ -30,6 +30,7 @@ const ROTULOS_PERFIL: Record<PerfilId, string> = {
   diretor: "Diretor",
   operacional: "Operacional",
   contador: "Contador",
+  cliente: "Cliente",
   executor: "Executor",
   validador: "Validador",
 };

@@ -33,7 +33,7 @@ import { formatarDataHora } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
 import type { ModuloId, PerfilId, SituacaoUsuario, Usuario } from "@/lib/tipos";
 
-const PERFIS_CONVITE: PerfilId[] = ["diretor", "operacional", "contador"];
+const PERFIS_CONVITE: PerfilId[] = ["diretor", "operacional", "contador", "cliente"];
 
 const ROTULO_SITUACAO: Record<SituacaoUsuario, string> = {
   ativo: "Ativo",
@@ -70,6 +70,10 @@ const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
   editar_dicionarios: "Editar dicionários",
   trocar_tenant: "Trocar de instituição",
   exportar_auditoria: "Exportar trilha (CSV)",
+  fornecer_dados: "Fornecer dados do período",
+  baixar_comprovante: "Baixar comprovante lacrado",
+  verificar_integridade: "Verificar integridade do arquivo",
+  ver_evidencias: "Ver cadeia de custódia",
 };
 
 export default function ConfiguracoesUsuariosPage() {
@@ -108,6 +112,12 @@ export default function ConfiguracoesUsuariosPage() {
   }
 
   const todosUsuarios = [...usuariosInstituicao, ...usuariosExtras];
+  const responsaveisEnvio = todosUsuarios.filter((usuario) => usuario.perfilId === "cliente");
+
+  function abrirConvite(perfilInicial: PerfilId) {
+    setNovo((atual) => ({ ...atual, perfil: perfilInicial }));
+    setDialogAberto(true);
+  }
 
   function alternarModulo(moduloId: ModuloId) {
     setNovo((atual) => ({
@@ -159,7 +169,20 @@ export default function ConfiguracoesUsuariosPage() {
   }
 
   const colunas: ColunaTabela<Usuario>[] = [
-    { id: "nome", cabecalho: "Nome", renderizar: (u) => <span className="font-medium text-neutral-700">{u.nome}</span> },
+    {
+      id: "nome",
+      cabecalho: "Nome",
+      renderizar: (u) => (
+        <span className="flex flex-col gap-1">
+          <span className="font-medium text-neutral-700">{u.nome}</span>
+          {u.perfilId === "cliente" ? (
+            <span className="w-fit rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
+              Responsável pelo envio de dados
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
     { id: "email", cabecalho: "E-mail", renderizar: (u) => u.email },
     { id: "perfil", cabecalho: "Perfil", renderizar: (u) => buscarPerfil(u.perfilId).rotulo },
     { id: "lado", cabecalho: "Lado", renderizar: (u) => (u.lado === "videnas" ? "Videnas" : "Cliente") },
@@ -197,6 +220,22 @@ export default function ConfiguracoesUsuariosPage() {
     },
   ];
 
+  const colunasResponsaveis: ColunaTabela<Usuario>[] = [
+    { id: "nome", cabecalho: "Nome", renderizar: (u) => <span className="font-medium text-neutral-700">{u.nome}</span> },
+    { id: "email", cabecalho: "E-mail", renderizar: (u) => u.email },
+    { id: "cargo", cabecalho: "Cargo", renderizar: (u) => u.cargo || "—" },
+    {
+      id: "modulos",
+      cabecalho: "Módulos",
+      renderizar: (u) => (u.moduloIds.length > 0 ? u.moduloIds.map((m) => m.toUpperCase()).join(", ") : "—"),
+    },
+    {
+      id: "situacao",
+      cabecalho: "Situação",
+      renderizar: (u) => <span className={cn("status-badge", CLASSE_SITUACAO[u.situacao])}>{ROTULO_SITUACAO[u.situacao]}</span>,
+    },
+  ];
+
   const perfisMatriz = perfilFiltro === "todos" ? PERFIS : PERFIS.filter((p) => p.id === perfilFiltro);
 
   return (
@@ -213,7 +252,9 @@ export default function ConfiguracoesUsuariosPage() {
           <h2 className="font-display text-lg font-bold text-neutral-700">Usuários da instituição</h2>
           {podeEditar ? (
             <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
-              <DialogTrigger render={<Button type="button" size="sm" />}>
+              <DialogTrigger
+                render={<Button type="button" size="sm" onClick={() => abrirConvite("operacional")} />}
+              >
                 <Plus className="size-4" aria-hidden="true" />
                 Convidar usuário
               </DialogTrigger>
@@ -276,6 +317,34 @@ export default function ConfiguracoesUsuariosPage() {
             chave={(u) => u.id}
             tituloVazio="Nenhum usuário nesta instituição"
             mensagemVazia="Convide o primeiro usuário para começar."
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-2xl">
+            <h2 className="font-display text-lg font-bold text-neutral-700">Responsáveis pelo envio de dados</h2>
+            <p className="mt-1 text-sm text-neutral-500">
+              O responsável pelo envio de dados é cadastrado previamente aqui, pelo operador do tenant. Ele já nasce
+              vinculado a esta instituição: entra direto no painel dela e não escolhe instituição no login.
+            </p>
+          </div>
+          {podeEditar ? (
+            <Button type="button" size="sm" variant="secondary" onClick={() => abrirConvite("cliente")}>
+              <Plus className="size-4" aria-hidden="true" />
+              Designar responsável
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="mt-4">
+          <TabelaDados
+            colunas={colunasResponsaveis}
+            dados={responsaveisEnvio}
+            chave={(u) => u.id}
+            tituloVazio="Nenhum responsável pelo envio de dados designado"
+            mensagemVazia="Use o botão Designar responsável para cadastrar a pessoa que vai fornecer os dados desta instituição."
           />
         </div>
       </section>

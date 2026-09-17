@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SeletorPerfil } from "@/components/dominio/seletor-perfil";
 import { SeletorInstituicao } from "@/components/dominio/seletor-instituicao";
+import { IdentidadeUsuario } from "@/components/dominio/identidade-usuario";
 import { useLogout } from "@/lib/hooks/use-logout";
+import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
 
 const ROTULOS_SEGMENTO: Record<string, string> = {
   app: "Painel",
@@ -34,6 +36,8 @@ function rotuloSegmento(segmento: string): string {
 export function HeaderApp() {
   const pathname = usePathname();
   const aoSair = useLogout();
+  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
+  const contextoFixo = perfilTemContextoFixo(perfilAtivo);
   const segmentos = pathname.split("/").filter(Boolean);
 
   return (
@@ -61,10 +65,16 @@ export function HeaderApp() {
       </Breadcrumb>
 
       <div className="flex flex-wrap items-center gap-4">
-        <SeletorInstituicao className="min-w-40" />
-        <div data-tour="seletor-perfil">
-          <SeletorPerfil className="w-56" />
-        </div>
+        {contextoFixo ? (
+          <IdentidadeUsuario className="max-w-72" />
+        ) : (
+          <>
+            <SeletorInstituicao className="min-w-40" />
+            <div data-tour="seletor-perfil">
+              <SeletorPerfil className="w-56" />
+            </div>
+          </>
+        )}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger

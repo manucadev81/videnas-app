@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Lock, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { usuarios } from "@/lib/mock/usuarios";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
@@ -27,6 +29,12 @@ export default function ConfiguracoesInstituicaoPage() {
 
   const podeEditar = perfilAtivo === "diretor";
   const [modulosAtivos, setModulosAtivos] = useState<ModuloId[]>(instituicao?.modulosContratados ?? []);
+
+  const responsavelEnvio = instituicao
+    ? usuarios.find(
+        (usuario) => usuario.perfilId === "cliente" && usuario.instituicaoIds.includes(instituicao.id)
+      )
+    : undefined;
 
   if (!instituicao) {
     return (
@@ -97,6 +105,29 @@ export default function ConfiguracoesInstituicaoPage() {
           <CampoLeitura label="E-mail" valor={instituicao.responsavelBcb.email} editavel={podeEditar} />
           <CampoLeitura label="Telefone" valor={instituicao.responsavelBcb.telefone} editavel={podeEditar} />
         </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-6">
+        <h2 className="font-display text-lg font-bold text-neutral-700">Responsável pelo envio de dados</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Pessoa cadastrada previamente pelo operador do tenant para fornecer os dados de origem desta
+          instituição. Ela entra direto no painel da instituição, sem escolher instituição no login.
+        </p>
+        {responsavelEnvio ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <CampoLeitura label="Nome do responsável pelo envio" valor={responsavelEnvio.nome} editavel={false} />
+            <CampoLeitura label="E-mail do responsável pelo envio" valor={responsavelEnvio.email} editavel={false} />
+            <CampoLeitura label="Cargo do responsável pelo envio" valor={responsavelEnvio.cargo} editavel={false} />
+          </div>
+        ) : (
+          <p className="mt-4 rounded-md bg-neutral-50 px-4 py-2.5 text-sm text-neutral-500">
+            Nenhum responsável pelo envio de dados designado para esta instituição. Designe a pessoa em{" "}
+            <Link href="/app/configuracoes/usuarios" className="font-medium text-brand-700 underline underline-offset-2">
+              Usuários e papéis
+            </Link>
+            .
+          </p>
+        )}
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-6">

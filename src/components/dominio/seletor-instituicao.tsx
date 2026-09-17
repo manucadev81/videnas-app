@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSessaoStore } from "@/lib/store/sessao";
+import { perfilEhMultiTenant, useSessaoStore } from "@/lib/store/sessao";
 import { instituicoes, buscarInstituicao } from "@/lib/mock/instituicoes";
 import { formatarCNPJ } from "@/lib/formatadores";
 
@@ -21,9 +21,9 @@ export function SeletorInstituicao({ className }: SeletorInstituicaoProps) {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const definirInstituicao = useSessaoStore((estado) => estado.definirInstituicao);
 
-  const ladoVidenas = perfilAtivo === "executor" || perfilAtivo === "validador";
+  const multiTenant = perfilEhMultiTenant(perfilAtivo);
 
-  if (!ladoVidenas) {
+  if (!multiTenant) {
     const instituicao = instituicaoAtivaId ? buscarInstituicao(instituicaoAtivaId) : undefined;
     if (!instituicao) return null;
 

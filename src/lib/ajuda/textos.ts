@@ -216,6 +216,130 @@ export const TEXTOS_AJUDA = {
     descricao:
       "Fila de trabalho dos perfis Videnas, visível apenas para Executor e Validador. Reúne os períodos de todas as instituições atendidas que aguardam geração, validação ou liberação.",
   },
+  "nav.fornecimento": {
+    titulo: "Fornecimento de dados",
+    pergunta: "O que há em Fornecimento de dados?",
+    descricao:
+      "É a sua central de entrega para a Videnas. Reúne, competência a competência, tudo o que a instituição precisa fornecer em cada obrigação: quais arquivos e formulários faltam, até quando, e o que já foi recebido. Cada envio sai daqui lacrado, com data, hora e autor registrados.",
+  },
+  "nav.entregas": {
+    titulo: "Entregas",
+    pergunta: "O que há em Entregas?",
+    descricao:
+      "Os arquivos que a Videnas devolveu à instituição depois de gerados e validados. Cada entrega traz o hash do arquivo e o comprovante de saída, para que você consiga provar, a qualquer momento, exatamente qual versão recebeu e quando.",
+  },
+  "nav.evidencias": {
+    titulo: "Evidências",
+    pergunta: "O que há em Evidências?",
+    descricao:
+      "A cadeia de custódia completa da operação: todos os lacres de entrada e de saída, por instituição, obrigação e competência. É a área usada pelos times Videnas e pelo Diretor da instituição para responder a qualquer questionamento sobre o que foi enviado e o que foi devolvido.",
+  },
+
+  "fornecimento.checklist": {
+    titulo: "Checklist de fornecimento",
+    pergunta: "Como funciona o checklist da competência?",
+    descricao:
+      "Cada obrigação tem um conjunto fixo de insumos — arquivos e formulários — que precisam chegar à Videnas para que a competência possa ser gerada. O checklist mostra item a item o que já foi fornecido, o que está pendente e como fornecer cada coisa, sem depender de troca de e-mails.",
+  },
+  "fornecimento.insumo": {
+    titulo: "Insumo",
+    pergunta: "O que é um insumo?",
+    descricao:
+      "É cada peça de dado de origem que a instituição fornece para uma obrigação: um arquivo exportado do sistema da casa ou um formulário preenchido na plataforma. Todo insumo traz a descrição do que a Videnas espera, o formato aceito e a base normativa que justifica a exigência.",
+  },
+  "fornecimento.formulario": {
+    titulo: "Insumo do tipo formulário",
+    pergunta: "Por que alguns insumos são formulários?",
+    descricao:
+      "Nem tudo cabe num arquivo. Parâmetros como regime tributário, data-base adotada, fonte de cotação ou responsável pela declaração são informações pontuais que a Videnas precisa registrar de forma estruturada. Ao salvar, os valores são lacrados junto com os arquivos e passam a constar do comprovante de envio.",
+  },
+  "fornecimento.completude": {
+    titulo: "Completude da competência",
+    pergunta: "O que o percentual de completude mede?",
+    descricao:
+      "A proporção de insumos obrigatórios já fornecidos em relação ao total exigido pela obrigação. Um formulário só conta como fornecido quando todos os seus campos obrigatórios estão preenchidos. Enquanto a completude não chega a 100%, a Videnas não consegue modelar os dados nem gerar o arquivo.",
+  },
+  "fornecimento.faltantes": {
+    titulo: "O que ainda falta",
+    pergunta: "Como sei exatamente o que falta fornecer?",
+    descricao:
+      "A lista de pendências aponta o insumo, o motivo (não enviado, envio recusado ou campos obrigatórios em branco) e a instrução de como fornecer. No caso de formulários, os campos faltantes aparecem pelo nome, para que você saiba o que preencher sem precisar abrir cada tela.",
+  },
+  "fornecimento.prazo": {
+    titulo: "Prazo de fornecimento",
+    pergunta: "Até quando preciso fornecer os dados?",
+    descricao:
+      "O prazo mostrado é a data-limite regulatória da entrega da competência. A Videnas ainda precisa gerar, validar e liberar o arquivo depois que os dados chegam, por isso fornecer com antecedência é o que garante folga para corrigir qualquer inconsistência antes do vencimento.",
+  },
+  "fornecimento.canonico": {
+    titulo: "Modelagem canônica",
+    pergunta: "O que é a modelagem canônica?",
+    descricao:
+      "É a tradução dos seus arquivos e formulários para o modelo de dados único da Videnas: colunas com nomes estáveis, tipos normalizados e chave por registro. É esse modelo canônico — e não o arquivo bruto — que alimenta a geração no schema oficial de cada obrigação.",
+  },
+  "fornecimento.statusCanonico": {
+    titulo: "Status do lote canônico",
+    pergunta: "O que significam os status do lote?",
+    descricao:
+      "Incompleto: ainda falta insumo obrigatório e nada pode ser modelado. Completo — aguardando modelagem: tudo chegou e a Videnas ainda vai normalizar os dados. Modelado canonicamente: os dados já estão no modelo único e prontos para a geração do arquivo da obrigação.",
+  },
+
+  "evidencia.lacre": {
+    titulo: "Lacre criptográfico",
+    pergunta: "O que é o lacre e para que ele serve?",
+    descricao:
+      "Todo dado que entra e todo arquivo que sai recebe um lacre: uma impressão digital criptográfica do conteúdo, somada a data, hora, autor e perfil de quem executou a ação. O lacre protege as duas partes numa contestação — prova o que o cliente enviou e prova o que a Videnas devolveu. Se a base de origem for alterada depois, o hash deixa de bater e a divergência fica evidente.",
+  },
+  "evidencia.hash": {
+    titulo: "Hash SHA-256",
+    pergunta: "O que é o hash do arquivo?",
+    descricao:
+      "Um código de 64 caracteres calculado a partir do conteúdo do arquivo. Basta um único byte diferente para o hash mudar por completo, e não é possível partir do hash e reconstruir o arquivo. É por isso que ele serve como prova de que um arquivo é exatamente aquele que foi lacrado.",
+  },
+  "evidencia.encadeamento": {
+    titulo: "Encadeamento de lacres",
+    pergunta: "Por que um lacre aponta para o anterior?",
+    descricao:
+      "Cada novo lacre de um mesmo insumo guarda o hash do lacre anterior, formando uma corrente. Reenvios não apagam o histórico: eles se somam a ele. Remover ou adulterar um elo no meio quebra a corrente e fica visível na cadeia de custódia.",
+  },
+  "evidencia.envelope": {
+    titulo: "Envelope cifrado",
+    pergunta: "O conteúdo fica protegido como?",
+    descricao:
+      "Além do hash, o conteúdo é guardado dentro de um envelope cifrado com AES-GCM de 256 bits, usando um vetor de inicialização próprio para cada lacre. Nesta demonstração, a chave é derivada localmente no seu navegador a partir do identificador da instituição e nada sai do dispositivo. Em produção, essa chave é gerada e custodiada em KMS/HSM, com rotação, segregação por instituição e registro de cada uso — quem não tem a chave nunca lê o conteúdo lacrado.",
+  },
+  "evidencia.comprovanteEnvio": {
+    titulo: "Comprovante de envio",
+    pergunta: "O que vem no comprovante de envio?",
+    descricao:
+      "Um arquivo JSON legível com o identificador do lacre, a instituição, a obrigação, a competência, quem enviou, a data e a hora, o hash do conteúdo e o hash do lacre anterior. É o documento que a instituição guarda para comprovar o que foi fornecido à Videnas naquela competência.",
+  },
+  "evidencia.comprovanteEntrega": {
+    titulo: "Comprovante de entrega",
+    pergunta: "O que o comprovante de entrega prova?",
+    descricao:
+      "Prova qual arquivo a Videnas disponibilizou à instituição, com hash, data, hora e nome de quem liberou. Junto com o comprovante de envio, ele fecha o ciclo: mostra o que entrou, o que saiu e que nenhuma das duas pontas foi alterada depois.",
+  },
+  "evidencia.verificarIntegridade": {
+    titulo: "Verificar integridade",
+    pergunta: "Como confirmo que um arquivo não foi alterado?",
+    descricao:
+      "Selecione o arquivo que você tem em mãos e a plataforma recalcula o hash SHA-256 dele no seu próprio navegador, comparando com o hash registrado no lacre. Conferindo, é o mesmo arquivo, byte a byte. Não conferindo, o arquivo sofreu alguma alteração depois do lacre e a verificação fica registrada.",
+  },
+  "evidencia.cadeiaCustodia": {
+    titulo: "Cadeia de custódia",
+    pergunta: "O que é a cadeia de custódia?",
+    descricao:
+      "A linha do tempo completa dos lacres de uma obrigação: cada entrada de dado do cliente e cada saída de arquivo da Videnas, em ordem, com autor, perfil, data, hora e hash. É a evidência usada quando alguém contesta o que foi informado — ela protege as duas partes, porque mostra tanto o que o cliente enviou quanto o que a Videnas devolveu.",
+  },
+
+  "entrega.arquivosEntregues": {
+    titulo: "Arquivos entregues",
+    pergunta: "O que aparece em arquivos entregues?",
+    descricao:
+      "Cada arquivo que a Videnas liberou para a instituição, com versão, formato, tamanho, quantidade de registros e o hash do lacre de saída. Ao baixar, você pode conferir a integridade na hora e guardar o comprovante de entrega junto com o arquivo.",
+  },
+
   "nav.configuracoes": {
     titulo: "Configurações",
     pergunta: "O que há em Configurações?",

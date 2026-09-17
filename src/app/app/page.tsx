@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
 import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { CardPrazo } from "@/components/dominio/card-prazo";
@@ -12,6 +14,9 @@ import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { chaveAjudaModulo } from "@/lib/ajuda/textos";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
+import { fornecimentosDoPeriodo, useEvidenciasStore } from "@/lib/store/evidencias";
+import { calcularCompletude } from "@/lib/fornecimento";
+import { descreverContagemPrazo } from "@/components/fornecimento/constantes";
 import { buscarInstituicao, instituicoes } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
@@ -41,6 +46,9 @@ function rotaPeriodo(moduloId: ModuloId, periodoId: string): string {
 }
 
 function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao): string {
+  if (perfil === "cliente") {
+    return "Fornecer dados";
+  }
   if (perfil === "operacional" && (periodo.estado === "aguardando_dados" || periodo.estado === "dados_ingeridos")) {
     return "Enviar dados";
   }
@@ -75,12 +83,18 @@ export default function DashboardPage() {
   const periodosStore = usePeriodosStore((estado) => estado.periodos);
   const eventosStore = usePeriodosStore((estado) => estado.eventos);
   const excecoesStore = usePeriodosStore((estado) => estado.excecoes);
+  const evidenciasHidratadas = useEvidenciasStore((estado) => estado.hidratado);
+  const fornecimentosStore = useEvidenciasStore((estado) => estado.fornecimentos);
 
   const todosPeriodos = Object.values(periodosStore);
   const instituicao =
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
 
   const ehOperacao = perfilAtivo === "executor" || perfilAtivo === "validador";
+  const ehCliente = perfilAtivo === "cliente";
+
+  const rotaDoPeriodo = (moduloId: ModuloId, periodoId: string) =>
+    ehCliente ? "/app/fornecimento" : rotaPeriodo(moduloId, periodoId);
 
   const periodosEscopo = todosPeriodos.filter((periodo) =>
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? periodo.instituicaoId === instituicaoAtivaId : true
@@ -110,6 +124,32 @@ export default function DashboardPage() {
     .filter((excecao) => (perfilAtivo === "contador" ? excecao.moduloId === "fiscal" : true))
     .filter((excecao) => excecao.status === "aberta" || excecao.status === "em_tratamento")
     .sort((a) => (perfilAtivo === "operacional" ? (a.origem === "ingestao" ? -1 : 1) : 0));
+
+  const competenciasParaFornecer = ehCliente
+    ? periodosEscopo
+        .filter(
+          (periodo) => periodo.estado === "aguardando_dados" || periodo.estado === "dados_ingeridos"
+        )
+        .map((periodo) => ({
+          periodo,
+          completude: calcularCompletude(
+            periodo,
+            fornecimentosDoPeriodo(fornecimentosStore, periodo.id)
+          ),
+        }))
+        .filter((item) => item.completude.pendencias.length > 0)
+        .sort((a, b) => a.completude.diasParaPrazo - b.completude.diasParaPrazo)
+    : [];
+
+  const insumosPendentes = competenciasParaFornecer.flatMap(({ periodo, completude }) =>
+    completude.pendencias.map((pendencia) => ({
+      chave: `${periodo.id}-${pendencia.insumoId}`,
+      moduloSigla: buscarModulo(periodo.moduloId).sigla,
+      competenciaRotulo: formatarCompetenciaCurta(periodo.competencia),
+      rotulo: pendencia.rotulo,
+      motivo: pendencia.motivo,
+    }))
+  );
 
   const eventosRecentes = eventosStore
     .filter((evento) => (instituicaoAtivaId && instituicaoAtivaId !== "todas" ? evento.instituicaoId === instituicaoAtivaId : true))
@@ -168,6 +208,87 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
+      {ehCliente ? (
+        <section
+          data-tour="dashboard-fornecimento"
+          aria-labelledby="dashboard-fornecimento-titulo"
+          className="rounded-lg border border-neutral-200 bg-white p-5"
+        >
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2
+                id="dashboard-fornecimento-titulo"
+                className="flex items-center gap-1.5 font-display text-base font-bold text-neutral-700"
+              >
+                Dados a fornecer
+                <BadgeAjuda chave="nav.fornecimento" tamanho="sm" />
+              </h2>
+              <p className="text-sm text-neutral-500">
+                Competências abertas que ainda dependem de insumos da sua instituição.
+              </p>
+            </div>
+            <Button
+              render={<Link href="/app/fornecimento" />}
+              nativeButton={false}
+              size="sm"
+              variant="outline"
+            >
+              <UploadCloud aria-hidden="true" />
+              Ir para o fornecimento
+            </Button>
+          </div>
+
+          {!evidenciasHidratadas ? (
+            <div role="status" aria-label="Carregando competências a fornecer" className="space-y-2">
+              <Skeleton className="h-16 w-full rounded-md" />
+              <Skeleton className="h-16 w-full rounded-md" />
+            </div>
+          ) : competenciasParaFornecer.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              Nenhum insumo pendente nas competências abertas. Assim que a Videnas abrir uma nova
+              competência, ela aparece aqui.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {competenciasParaFornecer.map(({ periodo, completude }) => {
+                const modulo = buscarModulo(periodo.moduloId);
+                const contagem = descreverContagemPrazo(completude.diasParaPrazo, completude.atrasado);
+                const prazoCritico = completude.atrasado || completude.diasParaPrazo <= 3;
+                const faltando = completude.pendencias.length;
+
+                return (
+                  <li key={periodo.id}>
+                    <Link
+                      href="/app/fornecimento"
+                      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md bg-neutral-50 p-3 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-neutral-700">
+                          {modulo.nome} · Competência {formatarCompetenciaCurta(periodo.competencia)}
+                        </span>
+                        <span className="block text-xs text-neutral-500">
+                          {faltando === 1 ? "1 insumo pendente" : `${faltando} insumos pendentes`} ·{" "}
+                          {completude.totalFornecidos} de {completude.totalObrigatorios} obrigatórios
+                          fornecidos · Prazo {formatarData(completude.prazoEntrega)}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "status-badge shrink-0 first-letter:uppercase",
+                          prazoCritico ? "status-badge-error" : "status-badge-neutral"
+                        )}
+                      >
+                        {contagem}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
       {ehOperacao ? (
         <div data-tour="dashboard-fila" className="rounded-lg border border-neutral-200 bg-white p-4">
           <h2 className="mb-2 font-display text-base font-bold text-neutral-700">Sua fila</h2>
@@ -212,7 +333,7 @@ export default function DashboardPage() {
                 etapas={construirEtapasStepper(modulo.etapas, derivado.etapaAtual, periodo.estado, {})}
                 className="mt-3 border-0 px-0 py-0"
               />
-              <Button render={<Link href={rotaPeriodo(periodo.moduloId, periodo.id)} />} nativeButton={false} className="mt-3 w-full" size="sm">
+              <Button render={<Link href={rotaDoPeriodo(periodo.moduloId, periodo.id)} />} nativeButton={false} className="mt-3 w-full" size="sm">
                 {rotuloAcaoContextual(perfilAtivo, periodo)}
               </Button>
             </div>
@@ -239,7 +360,7 @@ export default function DashboardPage() {
                     subtitulo={ROTULOS_ESTADO[periodo.estado]}
                     dataVencimento={periodo.prazoEntrega}
                     diasParaPrazo={derivado.diasParaPrazo}
-                    href={rotaPeriodo(periodo.moduloId, periodo.id)}
+                    href={rotaDoPeriodo(periodo.moduloId, periodo.id)}
                   />
                 );
               })}
@@ -249,10 +370,52 @@ export default function DashboardPage() {
 
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700">
-            Pendências e exceções
-            <BadgeAjuda chave="painel.excecoes" tamanho="sm" align="end" />
+            {ehCliente ? "Pendências de fornecimento" : "Pendências e exceções"}
+            <BadgeAjuda
+              chave={ehCliente ? "nav.fornecimento" : "painel.excecoes"}
+              tamanho="sm"
+              align="end"
+            />
           </h2>
-          {excecoesEscopo.length === 0 ? (
+          {ehCliente ? (
+            !evidenciasHidratadas ? (
+              <div role="status" aria-label="Carregando pendências de fornecimento" className="space-y-2">
+                <Skeleton className="h-12 w-full rounded-md" />
+                <Skeleton className="h-12 w-full rounded-md" />
+              </div>
+            ) : insumosPendentes.length === 0 ? (
+              <p className="text-sm text-neutral-500">
+                Nenhum insumo pendente. Tudo o que a Videnas espera desta instituição já foi fornecido
+                e lacrado.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {insumosPendentes.slice(0, 5).map((pendencia) => (
+                  <div
+                    key={pendencia.chave}
+                    className="flex items-start justify-between gap-2 rounded-md bg-neutral-50 p-2.5 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-mono text-xs text-neutral-500">
+                        {pendencia.moduloSigla} · {pendencia.competenciaRotulo}
+                      </p>
+                      <p className="text-neutral-700">{pendencia.rotulo}</p>
+                      <p className="text-xs text-neutral-500">{pendencia.motivo}</p>
+                    </div>
+                    <span className="status-badge status-badge-warning shrink-0">Falta fornecer</span>
+                  </div>
+                ))}
+                {insumosPendentes.length > 5 ? (
+                  <Link
+                    href="/app/fornecimento"
+                    className="inline-block text-xs font-medium text-brand-700 hover:text-brand-800"
+                  >
+                    Ver todos ({insumosPendentes.length})
+                  </Link>
+                ) : null}
+              </div>
+            )
+          ) : excecoesEscopo.length === 0 ? (
             <p className="text-sm text-neutral-500">Nenhuma pendência aberta. Todas as exceções foram tratadas.</p>
           ) : (
             <div className="space-y-2">
@@ -299,7 +462,7 @@ export default function DashboardPage() {
                       {formatarData(prazo.dataVencimento)} · {buscarModulo(prazo.moduloId).sigla}
                     </span>
                     <Link
-                      href={rotaPeriodo(prazo.moduloId, prazo.periodoId)}
+                      href={rotaDoPeriodo(prazo.moduloId, prazo.periodoId)}
                       className="text-xs font-medium text-brand-700 hover:text-brand-800"
                     >
                       Abrir
@@ -313,6 +476,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {ehCliente ? null : (
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 font-display text-base font-bold text-neutral-700">Últimos eventos de auditoria</h2>
           {eventosRecentes.length === 0 ? (
@@ -333,6 +497,7 @@ export default function DashboardPage() {
             Ver trilha completa
           </Link>
         </div>
+        )}
       </div>
     </div>
   );

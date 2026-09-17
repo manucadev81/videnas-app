@@ -77,3 +77,51 @@ Interface densa, adequada a dados regulatórios: gutter horizontal padrão de 16
 - **`src/components/ui/`** — primitivos shadcn/ui (Button, Card, Dialog, Select, Table etc.), construídos sobre `@base-ui/react` com `class-variance-authority`.
 - **`src/components/dominio/`** — componentes que já embutem regra de negócio visual (badge de estado, stepper de etapas, banner de posicionamento, selo Candidato).
 - **`src/components/marca/`** — `LogoVidenas` e `SimboloVidenas`, ambos SVG com `fill="currentColor"`, servindo qualquer fundo via classe de cor: `text-brand-700` em fundo claro e `text-white` sobre fundo azul (`brand-700`/`brand-800`).
+
+## Padrões visuais de fornecimento e evidências
+
+### Status canônico do lote
+
+Selo `.status-badge` no cabeçalho do painel de completude, mapeado em `CLASSE_STATUS_CANONICO` (`src/components/fornecimento/constantes.ts`):
+
+| Status canônico | Classe | Leitura |
+|---|---|---|
+| Incompleto | `status-badge-warning` | Ainda falta insumo obrigatório |
+| Completo, aguardando modelagem | `status-badge-info` | Tudo recebido, nada normalizado ainda |
+| Modelado canonicamente | `status-badge-success` | Lote normalizado no modelo interno |
+
+### Status de insumo
+
+Mesmo componente visual, escala própria (`CLASSE_STATUS_INSUMO`), no cartão de cada insumo do checklist:
+
+| Status do insumo | Classe |
+|---|---|
+| Pendente | `status-badge-neutral` |
+| Parcial | `status-badge-warning` |
+| Fornecido | `status-badge-success` |
+| Rejeitado | `status-badge-error` |
+
+Atenção (`warning`) é sempre "falta algo do cliente"; erro (`error`) é sempre "o que chegou não serve". Nunca se usa `error` para pendência — pendência não é falha.
+
+### Exibição de hash
+
+Componente `ValorHash` (`src/components/evidencias/valor-hash.tsx`): `<code>` em `font-mono text-xs`, fundo `neutral-50`, `rounded-md`, `break-all`, com o hash completo sempre no `title`.
+
+- **Em lista/tabela** — prop `truncado`, que corta em 10 caracteres + reticências + 10 via `truncarHash`, para a coluna não dominar a linha.
+- **Em detalhe** — hash completo, sem truncar.
+- **Sempre** — botão-ícone de copiar ao lado (`variant="ghost"`, `size="icon-xs"`), com `aria-label` explícito e confirmação por toast.
+
+### Badge de sentido do lacre
+
+Componente `BadgeSentido`: `.status-badge` com ícone direcional e rótulo curto visível, mais o rótulo completo em `sr-only`.
+
+| Sentido | Ícone | Classe | Rótulo curto / leitor de tela |
+|---|---|---|---|
+| Entrada | `ArrowDownToLine` | `status-badge-info` | "Entrada" / "Entrada — dado recebido do cliente" |
+| Saída | `ArrowUpFromLine` | `status-badge-success` | "Saída" / "Saída — arquivo devolvido pela Videnas" |
+
+### Bloco de ressalva
+
+Para avisos que qualificam o que está na tela sem alarmar (o aviso de simulação do envelope, em `AvisoEnvelope`): `role="note"`, caixa `rounded-lg border border-neutral-200 bg-neutral-50 p-4`, ícone `Lock` neutro à esquerda, título curto em `neutral-700` e o texto em `neutral-600 leading-relaxed`, com badge de ajuda ao lado do título.
+
+É deliberadamente **neutro, não colorido**: ressalva não é erro nem alerta. Quando a condição de fato bloqueia a ação (Web Crypto indisponível, por exemplo), aí sim o bloco vira `role="alert"` com os tokens de `error`.

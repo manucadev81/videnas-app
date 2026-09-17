@@ -11,6 +11,7 @@ export interface PerfilMetadados {
   rotasPermitidas: string[];
   acoesPermitidas: AcaoId[];
   multiTenant: boolean;
+  contextoFixo: boolean;
 }
 
 const ROTAS_COMUNS = [
@@ -35,7 +36,13 @@ export const PERFIS: PerfilMetadados[] = [
     lado: "cliente",
     corBadge: "brand",
     icone: "ShieldCheck",
-    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding"],
+    rotasPermitidas: [
+      ...ROTAS_COMUNS,
+      ...ROTAS_REGULATORIAS,
+      "/onboarding",
+      "/app/evidencias",
+      "/app/entregas",
+    ],
     acoesPermitidas: [
       "aprovar",
       "baixar_arquivo",
@@ -46,8 +53,12 @@ export const PERFIS: PerfilMetadados[] = [
       "gerenciar_usuarios",
       "editar_dicionarios",
       "exportar_auditoria",
+      "ver_evidencias",
+      "verificar_integridade",
+      "baixar_comprovante",
     ],
     multiTenant: false,
+    contextoFixo: false,
   },
   {
     id: "operacional",
@@ -57,9 +68,10 @@ export const PERFIS: PerfilMetadados[] = [
     lado: "cliente",
     corBadge: "brand",
     icone: "Boxes",
-    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding"],
+    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/entregas"],
     acoesPermitidas: ["subir_dados", "remover_lote", "baixar_arquivo", "tratar_excecao", "editar_dicionarios"],
     multiTenant: false,
+    contextoFixo: false,
   },
   {
     id: "contador",
@@ -72,6 +84,29 @@ export const PERFIS: PerfilMetadados[] = [
     rotasPermitidas: ["/", "/login", "/selecionar-instituicao", "/app", "/app/fiscal", "/app/calendario", "/app/auditoria", "/app/configuracoes", "/onboarding"],
     acoesPermitidas: ["validar_fiscal", "devolver_fiscal", "baixar_arquivo", "tratar_excecao", "editar_dicionarios"],
     multiTenant: false,
+    contextoFixo: false,
+  },
+  {
+    id: "cliente",
+    rotulo: "Cliente",
+    rotuloCompleto: "Cliente / Fornecedor de dados",
+    descricao:
+      "Fornece os dados de origem de cada obrigação, acompanha o que ainda falta entregar e retira os arquivos lacrados pela Videnas.",
+    lado: "cliente",
+    corBadge: "brand",
+    icone: "UploadCloud",
+    rotasPermitidas: [
+      "/",
+      "/login",
+      "/onboarding",
+      "/app",
+      "/app/fornecimento",
+      "/app/entregas",
+      "/app/calendario",
+    ],
+    acoesPermitidas: ["fornecer_dados", "baixar_comprovante", "baixar_arquivo", "verificar_integridade"],
+    multiTenant: false,
+    contextoFixo: true,
   },
   {
     id: "executor",
@@ -81,7 +116,13 @@ export const PERFIS: PerfilMetadados[] = [
     lado: "videnas",
     corBadge: "violet",
     icone: "Cog",
-    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/operacao"],
+    rotasPermitidas: [
+      ...ROTAS_COMUNS,
+      ...ROTAS_REGULATORIAS,
+      "/onboarding",
+      "/app/operacao",
+      "/app/evidencias",
+    ],
     acoesPermitidas: [
       "subir_dados",
       "remover_lote",
@@ -95,8 +136,12 @@ export const PERFIS: PerfilMetadados[] = [
       "editar_dicionarios",
       "trocar_tenant",
       "exportar_auditoria",
+      "ver_evidencias",
+      "verificar_integridade",
+      "baixar_comprovante",
     ],
     multiTenant: true,
+    contextoFixo: false,
   },
   {
     id: "validador",
@@ -106,7 +151,13 @@ export const PERFIS: PerfilMetadados[] = [
     lado: "videnas",
     corBadge: "violet",
     icone: "BadgeCheck",
-    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/operacao"],
+    rotasPermitidas: [
+      ...ROTAS_COMUNS,
+      ...ROTAS_REGULATORIAS,
+      "/onboarding",
+      "/app/operacao",
+      "/app/evidencias",
+    ],
     acoesPermitidas: [
       "executar_validacao",
       "liberar",
@@ -117,10 +168,16 @@ export const PERFIS: PerfilMetadados[] = [
       "tratar_excecao",
       "trocar_tenant",
       "exportar_auditoria",
+      "ver_evidencias",
+      "verificar_integridade",
+      "baixar_comprovante",
     ],
     multiTenant: true,
+    contextoFixo: false,
   },
 ];
+
+export const PERFIS_SIMULAVEIS: PerfilMetadados[] = PERFIS.filter((perfil) => !perfil.contextoFixo);
 
 export function buscarPerfil(perfilId: PerfilId): PerfilMetadados {
   const perfil = PERFIS.find((item) => item.id === perfilId);
@@ -165,6 +222,10 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
   editar_dicionarios: "Editar dicionários",
   trocar_tenant: "Trocar de instituição",
   exportar_auditoria: "Exportar trilha (CSV)",
+  fornecer_dados: "Fornecer dados do período",
+  baixar_comprovante: "Baixar comprovante lacrado",
+  verificar_integridade: "Verificar integridade do arquivo",
+  ver_evidencias: "Ver cadeia de custódia",
 };
 
 interface RegraAcao {
@@ -194,6 +255,10 @@ const REGRAS_ACAO: RegraAcao[] = [
   { id: "baixar_arquivo", estadosOrigem: ["gerado", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
   { id: "tratar_excecao", estadosOrigem: ["com_excecoes", "em_validacao"], estadoDestino: null, variante: "secundario" },
   { id: "exportar_auditoria", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "fornecer_dados", estadosOrigem: ["aguardando_dados", "dados_ingeridos"], estadoDestino: null, variante: "primario" },
+  { id: "baixar_comprovante", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "verificar_integridade", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "ver_evidencias", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
 ];
 
 export function acoesDisponiveis(perfil: PerfilId, periodo: PeriodoObrigacao): Acao[] {
@@ -272,6 +337,14 @@ export function podeExecutar(
       permitido: false,
       visivel: true,
       motivo: "O período já foi gerado. Peça a reabertura ao time Videnas.",
+    };
+  }
+
+  if (acaoId === "fornecer_dados" && !["aguardando_dados", "dados_ingeridos"].includes(periodo.estado)) {
+    return {
+      permitido: false,
+      visivel: true,
+      motivo: "O período já foi gerado pela Videnas. Solicite a reabertura para reenviar dados.",
     };
   }
 

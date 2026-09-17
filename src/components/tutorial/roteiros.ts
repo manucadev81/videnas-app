@@ -100,6 +100,81 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
   },
 ];
 
+const PASSOS_CLIENTE: PassoTour[] = [
+  {
+    id: "cliente-boas-vindas",
+    titulo: "Bem-vinda, Cliente / Fornecedora de dados",
+    descricao:
+      "Aqui no topo fica a sua identidade: nome, instituição e papel. Você foi cadastrada previamente pelo operador do tenant, já vinculada a esta instituição — por isso entra direto nela, sem tela de seleção. Seu papel é fornecer os dados de origem de cada obrigação, o combustível de todo o resto: você não opera o pipeline nem gera arquivos, isso é do time Operacional e da Videnas. Por isso sua superfície é enxuta de propósito — fornecer, acompanhar o que falta e retirar os arquivos lacrados.",
+    seletor: '[data-tour="identidade-usuario"]',
+    rota: "/app",
+    posicao: "bottom",
+  },
+  {
+    id: "cliente-dashboard-fornecimento",
+    titulo: "O que a Videnas espera de você hoje",
+    descricao:
+      "O card \"Dados a fornecer\" reúne as competências abertas que ainda dependem de algum insumo seu: módulo, competência, quantos insumos faltam e quanto tempo resta até o prazo regulatório. Quando a contagem fica vermelha, o prazo está vencido ou vence em até 3 dias.",
+    seletor: '[data-tour="dashboard-fornecimento"]',
+    rota: "/app",
+    posicao: "top",
+  },
+  {
+    id: "cliente-menu-fornecimento",
+    titulo: "Fornecimento de dados",
+    descricao:
+      "Este é o seu item de menu principal. O distintivo ao lado do nome conta quantas competências ainda têm pendência — ele some sozinho quando tudo é entregue.",
+    seletor: '[data-tour="nav-fornecimento"]',
+    rota: "/app",
+    posicao: "right",
+  },
+  {
+    id: "cliente-completude",
+    titulo: "Completude da competência",
+    descricao:
+      "Aqui a plataforma mede insumo a insumo, e campo a campo nos formulários, quanto da competência já foi fornecido. O selo à direita mostra o status canônico do lote: Incompleto, Completo aguardando modelagem ou Modelado canonicamente. Ao lado ficam o prazo regulatório e a contagem regressiva.",
+    seletor: '[data-tour="fornecimento-completude"]',
+    rota: "/app/fornecimento",
+    posicao: "bottom",
+  },
+  {
+    id: "cliente-faltantes",
+    titulo: "O que ainda falta",
+    descricao:
+      "Este painel não diz apenas que falta algo: diz exatamente o quê, por quê e como fornecer. Em formulários ele lista os campos obrigatórios em aberto, um a um. Clicar em um item leva direto ao insumo correspondente no checklist abaixo.",
+    seletor: '[data-tour="fornecimento-faltantes"]',
+    rota: "/app/fornecimento",
+    posicao: "top",
+  },
+  {
+    id: "cliente-insumo",
+    titulo: "Checklist de insumos e o lacre do envio",
+    descricao:
+      "Cada obrigação tem seu próprio checklist: uns insumos são arquivo, outros são formulário curto. No envio de arquivo você confere a pré-visualização e aceita explicitamente. Todo envio aceito é lacrado no ato — hash SHA-256 do conteúdo real, data, hora, seu nome e a instituição — e você baixa o comprovante de envio em JSON. Conteúdo lacrado nunca é editado: reenviar cria um lacre novo, encadeado ao anterior.",
+    seletor: '[data-tour="fornecimento-insumo"]',
+    rota: "/app/fornecimento",
+    posicao: "top",
+  },
+  {
+    id: "cliente-entregas",
+    titulo: "Arquivos entregues pela Videnas",
+    descricao:
+      "Quando a Videnas libera o arquivo final da competência, ele aparece aqui com o hash SHA-256 da entrega — a prova de entrega. É esse o arquivo que a sua instituição apresenta aos órgãos reguladores.",
+    seletor: '[data-tour="entregas-lista"]',
+    rota: "/app/entregas",
+    posicao: "top",
+  },
+  {
+    id: "cliente-verificar-integridade",
+    titulo: "Verificar integridade antes de encaminhar",
+    descricao:
+      "Selecione o arquivo que está em suas mãos e a plataforma recalcula o hash no próprio navegador, comparando com o lacre. Confere: o arquivo é exatamente o que a Videnas entregou. Não confere: um único byte mudou desde a entrega. É a mesma prova que protege os dois lados em qualquer contestação.",
+    seletor: '[data-tour="entregas-verificar-tabela"], [data-tour="entregas-verificar-cartao"]',
+    rota: "/app/entregas",
+    posicao: "left",
+  },
+];
+
 const PASSOS_DIRETOR: PassoTour[] = [
   {
     id: "diretor-boas-vindas",
@@ -370,6 +445,7 @@ export const ROTEIROS: Record<PerfilId, PassoTour[]> = {
   operacional: PASSOS_OPERACIONAL,
   diretor: PASSOS_DIRETOR,
   contador: PASSOS_CONTADOR,
+  cliente: PASSOS_CLIENTE,
   executor: PASSOS_EXECUTOR,
   validador: PASSOS_VALIDADOR,
 };

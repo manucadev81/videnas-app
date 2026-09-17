@@ -1,4 +1,10 @@
-export type PerfilId = "diretor" | "operacional" | "contador" | "executor" | "validador";
+export type PerfilId =
+  | "diretor"
+  | "operacional"
+  | "contador"
+  | "cliente"
+  | "executor"
+  | "validador";
 
 export type LadoId = "cliente" | "videnas";
 
@@ -85,7 +91,12 @@ export type TipoEventoAuditoria =
   | "PERFIL_ALTERADO"
   | "DICIONARIO_ATUALIZADO"
   | "CONFIG_INSTITUICAO_ALTERADA"
-  | "TRILHA_EXPORTADA";
+  | "TRILHA_EXPORTADA"
+  | "INSUMO_FORNECIDO"
+  | "LOTE_SELADO"
+  | "ENTREGA_DISPONIBILIZADA"
+  | "LACRE_VERIFICADO"
+  | "COMPROVANTE_EMITIDO";
 
 export type AcaoId =
   | "subir_dados"
@@ -109,7 +120,11 @@ export type AcaoId =
   | "gerenciar_usuarios"
   | "editar_dicionarios"
   | "trocar_tenant"
-  | "exportar_auditoria";
+  | "exportar_auditoria"
+  | "fornecer_dados"
+  | "baixar_comprovante"
+  | "verificar_integridade"
+  | "ver_evidencias";
 
 export interface ResponsavelBcb {
   nome: string;
@@ -457,4 +472,110 @@ export interface Acao {
   rotulo: string;
   estadoDestino: EstadoPeriodo | null;
   variante: "primario" | "secundario" | "destrutivo-suave" | "ghost";
+}
+
+export type TipoInsumo = "arquivo" | "formulario";
+
+export type StatusInsumo = "pendente" | "parcial" | "fornecido" | "rejeitado";
+
+export type StatusCanonicoLote =
+  | "incompleto"
+  | "completo_aguardando_modelagem"
+  | "modelado_canonicamente";
+
+export type SentidoLacre = "entrada" | "saida";
+
+export interface CampoFormularioInsumo {
+  chave: string;
+  rotulo: string;
+  tipo: "texto" | "numero" | "data" | "booleano" | "selecao";
+  obrigatorio: boolean;
+  placeholder?: string;
+  opcoes?: { valor: string; rotulo: string }[];
+  ajuda: string;
+}
+
+export interface InsumoDefinicao {
+  id: string;
+  moduloId: ModuloId;
+  rotulo: string;
+  descricao: string;
+  tipo: TipoInsumo;
+  obrigatorio: boolean;
+  comoFornecer: string;
+  baseNormativa: string;
+  camposFormulario: CampoFormularioInsumo[] | null;
+}
+
+export interface FornecimentoInsumo {
+  insumoId: string;
+  periodoId: string;
+  status: StatusInsumo;
+  lacreId: string | null;
+  fornecidoEm: string | null;
+  fornecidoPorUsuarioId: string | null;
+  nomeArquivo: string | null;
+  tamanhoBytes: number | null;
+  linhasAceitas: number | null;
+  valoresFormulario: Record<string, string> | null;
+  camposFaltantes: string[];
+}
+
+export interface PendenciaFornecimento {
+  insumoId: string;
+  rotulo: string;
+  motivo: string;
+  camposFaltantes: string[];
+  comoFornecer: string;
+}
+
+export interface ResultadoCompletude {
+  periodoId: string;
+  moduloId: ModuloId;
+  totalObrigatorios: number;
+  totalFornecidos: number;
+  percentual: number;
+  statusCanonico: StatusCanonicoLote;
+  pendencias: PendenciaFornecimento[];
+  prazoEntrega: string;
+  diasParaPrazo: number;
+  atrasado: boolean;
+}
+
+export interface RegistroLacre {
+  id: string;
+  sentido: SentidoLacre;
+  instituicaoId: string;
+  moduloId: ModuloId;
+  competencia: string;
+  periodoId: string;
+  insumoId: string | null;
+  arquivoId: string | null;
+  hashSha256: string;
+  algoritmoHash: string;
+  hashAnterior: string | null;
+  seladoEm: string;
+  seladoPorUsuarioId: string;
+  seladoPorNome: string;
+  perfilId: PerfilId;
+  origemNome: string;
+  tamanhoBytes: number;
+  envelopeCifrado: string;
+  vetorInicializacao: string;
+  identificadorChave: string;
+  resumoConteudo: string;
+}
+
+export interface LinhaCanonica {
+  chave: string;
+  valores: Record<string, string>;
+}
+
+export interface ModeloCanonico {
+  moduloId: ModuloId;
+  periodoId: string;
+  colunas: { chave: string; rotulo: string }[];
+  linhas: LinhaCanonica[];
+  totalLinhas: number;
+  geradoEm: string;
 }

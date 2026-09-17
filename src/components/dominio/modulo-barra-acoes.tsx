@@ -66,6 +66,10 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
   editar_dicionarios: "Editar dicionários",
   trocar_tenant: "Trocar de instituição",
   exportar_auditoria: "Exportar trilha (CSV)",
+  fornecer_dados: "Fornecer dados do período",
+  baixar_comprovante: "Baixar comprovante lacrado",
+  verificar_integridade: "Verificar integridade do arquivo",
+  ver_evidencias: "Ver cadeia de custódia",
 };
 
 const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "ghost"> = {

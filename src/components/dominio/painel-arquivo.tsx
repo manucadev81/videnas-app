@@ -1,10 +1,13 @@
 "use client";
 
 import { toast } from "sonner";
-import { Copy, Download, FileText } from "lucide-react";
+import { Copy, Download, FileText, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { baixarArquivoEntregue } from "@/components/evidencias/arquivo-entregue";
+import { lacreDeSaidaDoArquivo, useEvidenciasStore } from "@/lib/store/evidencias";
+import { usePeriodosStore } from "@/lib/store/periodos";
 import type { ArquivoGerado } from "@/lib/tipos";
-import { formatarDataHora, truncarHash } from "@/lib/formatadores";
+import { formatarDataHora, formatarTamanhoArquivo, truncarHash } from "@/lib/formatadores";
 
 export interface PainelArquivoProps {
   arquivo: ArquivoGerado;
@@ -13,9 +16,18 @@ export interface PainelArquivoProps {
 }
 
 export function PainelArquivo({ arquivo, competenciaRotulo, className }: PainelArquivoProps) {
+  const periodo = usePeriodosStore((estado) => estado.periodos[arquivo.periodoId]);
+  const lacres = useEvidenciasStore((estado) => estado.lacres);
+
+  const lacreDeSaida = lacreDeSaidaDoArquivo(lacres, arquivo.id);
+  const hashExibido = lacreDeSaida?.hashSha256 ?? arquivo.hashSha256;
+  const tamanhoExibido = lacreDeSaida
+    ? formatarTamanhoArquivo(lacreDeSaida.tamanhoBytes)
+    : arquivo.tamanhoLegivel;
+
   async function copiarHash() {
     try {
-      await navigator.clipboard.writeText(arquivo.hashSha256);
+      await navigator.clipboard.writeText(hashExibido);
       toast.success("Hash copiado para a área de transferência.");
     } catch {
       toast.error("Não foi possível copiar o hash.");
@@ -23,7 +35,17 @@ export function PainelArquivo({ arquivo, competenciaRotulo, className }: PainelA
   }
 
   function baixarArquivo() {
-    toast.info("Download simulado. Nenhum arquivo real é gerado nesta demonstração.");
+    if (!periodo) {
+      toast.error("Não foi possível localizar a competência deste arquivo para montar o download.");
+      return;
+    }
+
+    try {
+      baixarArquivoEntregue(arquivo, periodo);
+      toast.success(`${arquivo.nomeArquivo} baixado.`);
+    } catch {
+      toast.error("Não foi possível gerar o arquivo para download.");
+    }
   }
 
   return (
@@ -45,10 +67,12 @@ export function PainelArquivo({ arquivo, competenciaRotulo, className }: PainelA
         </div>
 
         <div>
-          <p className="text-xs font-medium text-neutral-500">Hash SHA-256</p>
+          <p className="text-xs font-medium text-neutral-500">
+            {lacreDeSaida ? "Hash SHA-256 do lacre de entrega" : "Hash SHA-256 do arquivo gerado"}
+          </p>
           <div className="mt-1 flex gap-2">
             <code className="flex-1 truncate rounded-md bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600">
-              {truncarHash(arquivo.hashSha256)}
+              {truncarHash(hashExibido)}
             </code>
             <Button
               type="button"
@@ -61,12 +85,22 @@ export function PainelArquivo({ arquivo, competenciaRotulo, className }: PainelA
               Copiar
             </Button>
           </div>
+          {lacreDeSaida ? (
+            <p className="mt-1.5 flex items-start gap-1.5 text-xs text-neutral-500">
+              <ShieldCheck className="mt-px size-3.5 shrink-0 text-brand-700" aria-hidden="true" />
+              <span>
+                Este é o hash calculado sobre o conteúdo entregue e registrado no lacre{" "}
+                <span className="font-mono">{lacreDeSaida.id}</span>. É o mesmo valor mostrado na
+                prova de entrega e o único usado na verificação de integridade.
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs font-medium text-neutral-500">Tamanho</p>
-            <p className="text-sm text-neutral-700">{arquivo.tamanhoLegivel}</p>
+            <p className="text-sm text-neutral-700">{tamanhoExibido}</p>
           </div>
           <div>
             <p className="text-xs font-medium text-neutral-500">Schema</p>
@@ -82,7 +116,7 @@ export function PainelArquivo({ arquivo, competenciaRotulo, className }: PainelA
         </div>
       </div>
 
-      <Button type="button" className="w-full" onClick={baixarArquivo}>
+      <Button type="button" className="w-full" onClick={baixarArquivo} disabled={!periodo}>
         <Download className="size-4" aria-hidden="true" />
         Baixar arquivo
       </Button>

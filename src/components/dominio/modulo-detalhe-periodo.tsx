@@ -18,8 +18,10 @@ import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dado
 import { BarraAcoesFluxo } from "@/components/dominio/modulo-barra-acoes";
 import { PainelExcecoes } from "@/components/dominio/modulo-painel-excecoes";
 import { RecepcaoDocumentos } from "@/components/dominio/modulo-recepcao-documentos";
+import { EtapaEntrega } from "@/components/dominio/modulo-etapa-entrega";
 import { construirEtapasStepper, type MarcoEtapa } from "@/components/dominio/modulo-etapas";
 import { usePeriodosStore } from "@/lib/store/periodos";
+import { previaDoConteudoArquivoEntregue } from "@/lib/evidencias/conteudo-arquivo";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
@@ -497,9 +499,13 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
                 </div>
 
                 <div className="rounded-lg border border-neutral-200 bg-white p-5">
-                  <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Visualização do arquivo</h2>
+                  <h2 className="mb-1 font-display text-lg font-bold text-neutral-700">Visualização do arquivo</h2>
+                  <p className="mb-3 text-sm text-neutral-500">
+                    Início do arquivo que o botão &ldquo;Baixar arquivo&rdquo; entrega e sobre o qual
+                    o hash do lacre de entrega é calculado.
+                  </p>
                   <pre className="max-h-64 overflow-auto rounded-md bg-neutral-50 p-3 font-mono text-xs text-neutral-600">
-                    {arquivoCorrente.previewConteudo}
+                    {previaDoConteudoArquivoEntregue(arquivoCorrente, periodo)}
                   </pre>
                 </div>
               </div>
@@ -706,66 +712,13 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         </TabsContent>
 
         <TabsContent value="entrega" className="space-y-4">
-          {!ehFiscal ? (
-            <div data-tour="entrega-conteudo" className="space-y-4">
-              {arquivoCorrente ? <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={periodo.competenciaRotulo} /> : null}
-              <BannerPosicionamento variante="info" titulo="Transmissão ao Banco Central">
-                O arquivo está pronto e íntegro. A transmissão ao Banco Central é feita pela instituição, fora do
-                Videnas. Depois de enviar, registre aqui o protocolo recebido para manter a trilha de
-                auditoria completa.
-              </BannerPosicionamento>
-              {protocoloCorrente ? (
-                <div className="rounded-lg border border-status-success-border bg-status-success-bg p-5">
-                  <h2 className="mb-2 font-display text-lg font-bold text-status-success-text">Protocolo registrado</h2>
-                  <p className="font-mono text-sm text-status-success-text">{protocoloCorrente.numeroProtocolo}</p>
-                  <p className="text-xs text-status-success-text">
-                    {formatarDataHora(protocoloCorrente.dataHoraEnvio)} · canal {protocoloCorrente.canalEnvio} ·
-                    registrado por {buscarUsuario(protocoloCorrente.registradoPorUsuarioId)?.nome ?? "—"}
-                  </p>
-                  <p className="mt-2 text-sm text-status-success-text">
-                    Situação do retorno:{" "}
-                    {protocoloCorrente.situacaoRetorno === "aguardando"
-                      ? "Aguardando retorno do BCB"
-                      : protocoloCorrente.situacaoRetorno === "aceito"
-                        ? "Aceito"
-                        : protocoloCorrente.situacaoRetorno === "aceito_com_ressalvas"
-                          ? "Aceito com ressalvas"
-                          : "Rejeitado"}
-                  </p>
-                  {protocoloCorrente.mensagemRetorno ? (
-                    <p className="text-xs text-status-success-text">
-                      {protocoloCorrente.codigoRetorno} — {protocoloCorrente.mensagemRetorno}
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <EstadoVazio
-                  titulo="A entrega será liberada após a aprovação do Diretor/Compliance"
-                  mensagem="Assim que o período for aprovado, o protocolo do Banco Central pode ser registrado por aqui."
-                />
-              )}
-            </div>
-          ) : (
-            <>
-              <BannerPosicionamento variante="atencao" />
-              {arquivoCorrente ? <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={periodo.competenciaRotulo} /> : null}
-              {protocoloCorrente ? (
-                <div className="rounded-lg border border-status-success-border bg-status-success-bg p-5">
-                  <h2 className="mb-2 font-display text-lg font-bold text-status-success-text">Encaminhamento registrado</h2>
-                  <p className="text-sm text-status-success-text">{protocoloCorrente.observacao}</p>
-                  <p className="text-xs text-status-success-text">
-                    {formatarDataHora(protocoloCorrente.dataHoraEnvio)} · registrado por{" "}
-                    {buscarUsuario(protocoloCorrente.registradoPorUsuarioId)?.nome ?? "—"}
-                  </p>
-                </div>
-              ) : (
-                <EstadoVazio
-                  titulo="A entrega será liberada após a aprovação do Diretor/Compliance"
-                  mensagem="A emissão da NFS-e ocorre fora da Videnas, pelo emissor definido pela instituição."
-                />
-              )}
-            </>
-          )}
+          <EtapaEntrega
+            periodoId={periodoId}
+            ehFiscal={ehFiscal}
+            arquivoCorrente={arquivoCorrente}
+            protocoloCorrente={protocoloCorrente}
+            competenciaRotulo={periodo.competenciaRotulo}
+          />
         </TabsContent>
       </Tabs>
 

@@ -13,11 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
-import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
+import { useHidratarSessao, useSessaoStore, perfilTemContextoFixo } from "@/lib/store/sessao";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { instituicoes } from "@/lib/mock/instituicoes";
 import { buscarProtocolo, calcularPeriodoDerivado, periodosPorInstituicao } from "@/lib/mock/periodos";
-import { PERFIS, buscarPerfil } from "@/lib/permissoes";
+import { PERFIS_SIMULAVEIS, buscarPerfil } from "@/lib/permissoes";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
 import type { PerfilId, TipoInstituicao } from "@/lib/tipos";
@@ -66,13 +66,22 @@ export default function SelecionarInstituicaoPage() {
   const [termoBusca, setTermoBusca] = useState("");
   const [autoSelecaoConcluida, setAutoSelecaoConcluida] = useState(false);
 
+  const contextoFixo = perfilTemContextoFixo(perfilAtivo);
+
   useEffect(() => {
     if (hidratado && !autenticado) {
       router.replace("/login");
     }
   }, [hidratado, autenticado, router]);
 
-  const perfilSelecionado = perfilEscolhido ?? perfilAtivo ?? "operacional";
+  useEffect(() => {
+    if (hidratado && autenticado && contextoFixo) {
+      router.replace("/app");
+    }
+  }, [hidratado, autenticado, contextoFixo, router]);
+
+  const perfilSelecionado =
+    perfilEscolhido ?? (contextoFixo ? "operacional" : (perfilAtivo ?? "operacional"));
   const perfilMetadados = buscarPerfil(perfilSelecionado);
 
   const instituicoesDisponiveis = useMemo(() => {
@@ -106,7 +115,7 @@ export default function SelecionarInstituicaoPage() {
     }
   }, [instituicoesDisponiveis, autoSelecaoConcluida]);
 
-  if (!hidratado || !usuario) {
+  if (!hidratado || !usuario || contextoFixo) {
     return null;
   }
 
@@ -139,10 +148,12 @@ export default function SelecionarInstituicaoPage() {
         </h2>
         <p className="text-sm text-neutral-500">
           Escolha o perfil para explorar a demonstração. Perfis do lado Cliente pertencem à instituição; perfis do
-          lado Videnas enxergam múltiplas instituições.
+          lado Videnas enxergam múltiplas instituições. O perfil Cliente / Fornecedor de dados não aparece aqui:
+          ele é pré-cadastrado pelo operador do tenant, já vem vinculado a uma instituição e entra direto nela,
+          sem passar por esta tela.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PERFIS.map((perfil) => {
+          {PERFIS_SIMULAVEIS.map((perfil) => {
             const selecionado = perfil.id === perfilSelecionado;
             return (
               <button

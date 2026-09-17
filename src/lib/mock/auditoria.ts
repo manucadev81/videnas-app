@@ -32,6 +32,11 @@ const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   DICIONARIO_ATUALIZADO: "Dicionário atualizado",
   CONFIG_INSTITUICAO_ALTERADA: "Configuração da instituição alterada",
   TRILHA_EXPORTADA: "Trilha exportada",
+  INSUMO_FORNECIDO: "Insumo fornecido pelo cliente",
+  LOTE_SELADO: "Lote selado criptograficamente",
+  ENTREGA_DISPONIBILIZADA: "Entrega disponibilizada ao cliente",
+  LACRE_VERIFICADO: "Integridade do lacre verificada",
+  COMPROVANTE_EMITIDO: "Comprovante emitido",
 };
 
 function redeAcesso(lado: "cliente" | "videnas"): { ip: string; userAgent: string } {

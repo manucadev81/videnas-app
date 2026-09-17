@@ -151,6 +151,36 @@ export const usuarios: Usuario[] = [
     ultimoAcesso: "2026-09-12T13:27:40-03:00",
     avatarIniciais: "IS",
   },
+  {
+    id: "usr-natalia",
+    nome: "Natália Queiroz",
+    email: "natalia.queiroz@meridiandigital.com.br",
+    cpf: "731.058.294-11",
+    perfilId: "cliente",
+    lado: "cliente",
+    instituicaoIds: ["inst-meridian"],
+    moduloIds: ["acam212", "cadoc5711", "cadoc5710", "fiscal"],
+    cargo: "Analista de Dados Regulatórios",
+    registroProfissional: null,
+    situacao: "ativo",
+    ultimoAcesso: "2026-09-16T09:03:27-03:00",
+    avatarIniciais: "NQ",
+  },
+  {
+    id: "usr-diego",
+    nome: "Diego Vasconcelos",
+    email: "diego.vasconcelos@cofreatlantico.com.br",
+    cpf: "466.913.720-58",
+    perfilId: "cliente",
+    lado: "cliente",
+    instituicaoIds: ["inst-cofre-atlantico"],
+    moduloIds: ["cadoc5711", "cadoc5710", "fiscal"],
+    cargo: "Analista de Dados Regulatórios",
+    registroProfissional: null,
+    situacao: "ativo",
+    ultimoAcesso: "2026-09-15T14:41:06-03:00",
+    avatarIniciais: "DV",
+  },
 ];
 
 export function buscarUsuario(id: string): Usuario | undefined {
@@ -163,4 +193,6 @@ export const usuariosPorEmail: Record<string, string> = {
   "joao.beraldo@contabilberaldo.com.br": "usr-joao",
   "t.nakamura@videnas.com.br": "usr-tomoe",
   "c.veloso@videnas.com.br": "usr-clarice",
+  "natalia.queiroz@meridiandigital.com.br": "usr-natalia",
+  "diego.vasconcelos@cofreatlantico.com.br": "usr-diego",
 };

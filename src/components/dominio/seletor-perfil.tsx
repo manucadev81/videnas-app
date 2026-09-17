@@ -11,8 +11,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSessaoStore } from "@/lib/store/sessao";
-import { PERFIS } from "@/lib/permissoes";
+import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
+import { PERFIS, PERFIS_SIMULAVEIS } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
   const usuario = usuarioId ? buscarUsuario(usuarioId) : undefined;
   const perfilMetadados = PERFIS.find((perfil) => perfil.id === perfilAtivo);
 
-  if (!usuario || !perfilMetadados) {
+  if (!usuario || !perfilMetadados || perfilTemContextoFixo(perfilAtivo)) {
     return null;
   }
 
@@ -58,7 +58,7 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
         <DropdownMenuGroup>
           <DropdownMenuLabel>Simular perfil (demonstração)</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {PERFIS.map((perfil) => (
+          {PERFIS_SIMULAVEIS.map((perfil) => (
             <DropdownMenuItem
               key={perfil.id}
               onClick={() => definirPerfil(perfil.id)}
