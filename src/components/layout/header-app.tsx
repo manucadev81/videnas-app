@@ -74,15 +74,11 @@ export function HeaderApp() {
       </Breadcrumb>
 
       <div className="flex flex-wrap items-center gap-4">
-        {contextoFixo ? (
-          <IdentidadeUsuario className="max-w-72" />
-        ) : (
-          <>
-            <SeletorInstituicao className="min-w-40" />
-            <div data-tour="seletor-perfil">
-              <SeletorPerfil className="w-56" />
-            </div>
-          </>
+        {contextoFixo ? <IdentidadeUsuario className="max-w-72" /> : <SeletorInstituicao className="min-w-40" />}
+        {perfilAtivo === "cliente" ? null : (
+          <div data-tour="seletor-perfil">
+            <SeletorPerfil className="w-56" />
+          </div>
         )}
         <TooltipProvider>
           <Tooltip>

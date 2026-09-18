@@ -65,6 +65,7 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
   }
 
   const autor = { usuarioId, perfilId: perfilAtivo };
+  const mostrarAcompanhamento = perfilAtivo !== "validador";
 
   const linhas = [...periodo.lotes].sort((a, b) =>
     a.recebidoEm < b.recebidoEm ? 1 : a.recebidoEm > b.recebidoEm ? -1 : 0
@@ -72,7 +73,9 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
 
   return (
     <div className={cn("space-y-4", className)}>
-      <PainelAcompanhamentoFornecimento periodo={periodo} autor={autor} />
+      {mostrarAcompanhamento ? (
+        <PainelAcompanhamentoFornecimento periodo={periodo} autor={autor} />
+      ) : null}
 
       <div data-tour="recepcao-tabela-arquivos" className="rounded-lg border border-neutral-200 bg-white p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

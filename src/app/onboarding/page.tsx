@@ -53,7 +53,7 @@ const ROTULO_TIPO_INSTITUICAO: Record<TipoInstituicao, string> = {
 };
 
 const PERFIS_CLIENTE: { id: PerfilId; rotulo: string }[] = [
-  { id: "diretor", rotulo: "Diretor / Compliance Responsável" },
+  { id: "diretor", rotulo: "Responsável de Compliance" },
   { id: "operacional", rotulo: "Operacional / Suporte ao cliente" },
   { id: "contador", rotulo: "Contador / Fiscal" },
 ];
@@ -307,7 +307,7 @@ function OnboardingWizard() {
       const temDiretor = usuarios.some((usuario) => usuario.perfil === "diretor");
       const temOperacional = usuarios.some((usuario) => usuario.perfil === "operacional");
       const temContador = usuarios.some((usuario) => usuario.perfil === "contador");
-      if (!temDiretor) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Diretor / Compliance.";
+      if (!temDiretor) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Responsável de Compliance.";
       else if (!temOperacional) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Operacional / Suporte ao cliente.";
       else if (modulosForm.fiscal && !temContador)
         novosErros.usuarios = "O módulo Fiscal está ativo: é necessário ao menos 1 usuário com o perfil Contador / Fiscal.";
@@ -727,7 +727,7 @@ function OnboardingWizard() {
               <div>
                 <h2 className="font-display text-lg font-bold text-neutral-700">Usuários e papéis</h2>
                 <p className="text-sm text-neutral-500">
-                  Adicione ao menos 1 usuário Diretor e 1 Operacional
+                  Adicione ao menos 1 usuário de Compliance e 1 Operacional
                   {modulosForm.fiscal ? " e 1 Contador, já que o módulo Fiscal está ativo" : ""}. Executor, Validador e
                   Administrador são papéis exclusivos da Videnas.
                 </p>

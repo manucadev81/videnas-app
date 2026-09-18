@@ -186,7 +186,7 @@ export default function ClientesPage() {
     },
     {
       id: "diretor",
-      cabecalho: "Diretor",
+      cabecalho: "Compliance",
       renderizar: (tenant) => <Contato usuario={diretorDoTenant(usuariosProvisionados, tenant.id)} />,
     },
     {

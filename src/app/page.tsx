@@ -283,9 +283,10 @@ export default function LandingPage() {
             </div>
             <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center">
               <ShieldCheck className="mx-auto size-8 text-brand-700" aria-hidden="true" />
-              <p className="mt-3 font-display text-base font-bold text-neutral-700">Diretor/Compliance aprova</p>
+              <p className="mt-3 font-display text-base font-bold text-neutral-700">Instituição aprova e envia</p>
               <p className="mt-1 text-sm text-neutral-500">
-                Assume formalmente a responsabilidade pela obrigação perante o regulador antes da transmissão.
+                O Responsável de Compliance da casa cliente assume a obrigação e transmite ao órgão.
+                A Videnas não envia o arquivo ao regulador.
               </p>
             </div>
           </div>

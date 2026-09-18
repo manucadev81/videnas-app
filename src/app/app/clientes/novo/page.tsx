@@ -186,10 +186,10 @@ export default function NovoClientePage() {
       novos.modulos = "Contrate ao menos um módulo para o cliente.";
     }
     if (!formulario.diretorNome.trim()) {
-      novos.diretorNome = "Informe o nome do Diretor responsável.";
+      novos.diretorNome = "Informe o nome do Responsável de Compliance.";
     }
     if (!emailPlausivel(formulario.diretorEmail)) {
-      novos.diretorEmail = "Informe um e-mail válido para o Diretor responsável.";
+      novos.diretorEmail = "Informe um e-mail válido para o Responsável de Compliance.";
     }
 
     const temResponsavel =
@@ -280,7 +280,7 @@ export default function NovoClientePage() {
 
     setConviteEnviado(true);
     toast.success(
-      `Convite simulado enviado. Nenhum e-mail real sai daqui: para entrar na demonstração como Diretor desta instituição, use ${provisionado.diretorEmail} na tela de login.`
+      `Convite simulado enviado. Nenhum e-mail real sai daqui: para entrar na demonstração como Responsável de Compliance desta instituição, use ${provisionado.diretorEmail} na tela de login.`
     );
   }
 
@@ -315,7 +315,7 @@ export default function NovoClientePage() {
             <h1 className="font-display text-2xl font-bold text-neutral-700">Cadastrar novo cliente</h1>
             <p className="text-sm text-neutral-500">
               O cadastro cria a instituição na plataforma e os usuários iniciais dela. A configuração
-              guiada do ambiente é feita depois, pelo próprio Diretor do cliente.
+              guiada do ambiente é feita depois, pelo Responsável de Compliance do cliente.
             </p>
           </header>
 
@@ -476,7 +476,7 @@ export default function NovoClientePage() {
 
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-sm font-bold text-neutral-700">Diretor responsável</h2>
+                  <h2 className="text-sm font-bold text-neutral-700">Responsável de Compliance</h2>
                   <p className="text-sm text-neutral-500">
                     É ele quem recebe o convite inicial, conclui a configuração guiada do ambiente e
                     responde pela instituição perante o Banco Central.
@@ -486,7 +486,7 @@ export default function NovoClientePage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Campo
                     id="cliente-diretor-nome"
-                    rotulo="Nome do Diretor"
+                    rotulo="Nome"
                     obrigatorio
                     erro={erros.diretorNome}
                   >
@@ -497,7 +497,7 @@ export default function NovoClientePage() {
                   </Campo>
                   <Campo
                     id="cliente-diretor-email"
-                    rotulo="E-mail do Diretor"
+                    rotulo="E-mail"
                     obrigatorio
                     erro={erros.diretorEmail}
                   >
@@ -667,7 +667,7 @@ function BlocoSucesso({
           </dd>
         </div>
         <Resumo
-          rotulo="Diretor responsável"
+          rotulo="Responsável de Compliance"
           valor={`${provisionado.diretorNome} · ${provisionado.diretorEmail}`}
         />
         {provisionado.responsavelEmail ? (
@@ -680,7 +680,7 @@ function BlocoSucesso({
 
       <p className="rounded-md border border-status-info-border bg-status-info-bg px-4 py-3 text-sm leading-relaxed text-status-info-text">
         A instituição já existe na plataforma e aparece para Executor, Validador e Administrador.
-        Falta enviar o convite para o Diretor responsável — é ele quem conclui a configuração guiada
+        Falta enviar o convite para o Responsável de Compliance — é ele quem conclui a configuração guiada
         do ambiente.
       </p>
 

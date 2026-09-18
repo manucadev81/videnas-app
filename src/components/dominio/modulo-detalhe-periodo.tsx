@@ -21,6 +21,7 @@ import { RecepcaoDocumentos } from "@/components/dominio/modulo-recepcao-documen
 import { EtapaEntrega } from "@/components/dominio/modulo-etapa-entrega";
 import { construirEtapasStepper, type MarcoEtapa } from "@/components/dominio/modulo-etapas";
 import { usePeriodosStore } from "@/lib/store/periodos";
+import { useSessaoStore } from "@/lib/store/sessao";
 import { previaDoConteudoArquivoEntregue } from "@/lib/evidencias/conteudo-arquivo";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
@@ -264,6 +265,7 @@ export interface DetalhePeriodoProps {
 }
 
 export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
+  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const periodo = usePeriodosStore((estado) => estado.periodos[periodoId]);
   const arquivos = usePeriodosStore((estado) => estado.arquivos);
   const validacoes = usePeriodosStore((estado) => estado.validacoes);
@@ -307,6 +309,10 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
   const validacaoCorrente = periodo.validacaoId ? validacoes[periodo.validacaoId] : undefined;
   const protocoloCorrente = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
   const excecoesPeriodo = Object.values(excecoesStore).filter((excecao) => excecao.periodoId === periodoId);
+  const excecoesAbertas = excecoesPeriodo.filter(
+    (excecao) => excecao.status === "aberta" || excecao.status === "em_tratamento"
+  );
+  const bloqueantesAbertas = excecoesAbertas.filter((excecao) => excecao.severidade === "bloqueante");
   const eventosPeriodo = eventos
     .filter((evento) => evento.periodoId === periodoId)
     .sort((a, b) => (a.ocorridoEm < b.ocorridoEm ? -1 : a.ocorridoEm > b.ocorridoEm ? 1 : 0));
@@ -536,8 +542,9 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
                 </p>
               ) : periodo.estado === "aguardando_contador" ? (
                 <p className="text-sm text-status-warning-text">
-                  Aguardando análise do contador responsável desde {formatarData(periodo.dataAbertura)}. Use os
-                  botões de ação no topo da página para confirmar ou devolver.
+                  {perfilAtivo === "contador"
+                    ? `Aguardando a sua análise desde ${formatarData(periodo.dataAbertura)}. Use os botões de ação no topo da página para confirmar ou devolver.`
+                    : `Aguardando análise do contador responsável desde ${formatarData(periodo.dataAbertura)}. Confirmar ou devolver o enquadramento é papel exclusivo do Contador.`}
                 </p>
               ) : (
                 <p className="text-sm text-neutral-500">
@@ -635,10 +642,24 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
             <EstadoVazio titulo="A validação ainda não foi executada" mensagem="Ela roda o schema oficial e as regras determinísticas do módulo." />
           )}
 
-          <div className="rounded-lg border border-neutral-200 bg-white p-5">
-            <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Exceções da competência</h2>
-            <PainelExcecoes excecoes={excecoesPeriodo} />
-          </div>
+          {perfilAtivo === "validador" ? (
+            excecoesAbertas.length > 0 ? (
+              <div className="rounded-lg border border-status-warning-border bg-status-warning-bg p-5">
+                <h2 className="mb-2 font-display text-lg font-bold text-neutral-700">
+                  Exceções pendentes de tratamento
+                </h2>
+                <AvisoExcecoesValidador
+                  total={excecoesAbertas.length}
+                  bloqueantes={bloqueantesAbertas.length}
+                />
+              </div>
+            ) : null
+          ) : (
+            <div className="rounded-lg border border-neutral-200 bg-white p-5">
+              <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Exceções da competência</h2>
+              <PainelExcecoes excecoes={excecoesPeriodo} />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="auditoria" className="space-y-4">
@@ -724,5 +745,18 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
 
       <Separator />
     </div>
+  );
+}
+
+function AvisoExcecoesValidador({ total, bloqueantes }: { total: number; bloqueantes: number }) {
+  return (
+    <p className="text-sm text-neutral-700">
+      {total === 1 ? "Há 1 exceção aberta" : `Há ${total} exceções abertas`}
+      {bloqueantes > 0
+        ? `, ${bloqueantes} bloqueante${bloqueantes === 1 ? "" : "s"}.`
+        : "."}{" "}
+      O tratamento da origem é do Executor. Você não trata nem gera de novo — reprocessa a validação
+      quando as bloqueantes estiverem resolvidas.
+    </p>
   );
 }

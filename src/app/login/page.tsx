@@ -22,7 +22,7 @@ interface AtalhoDemo {
 const ATALHOS: AtalhoDemo[] = [
   {
     email: "ricardo.menezes@meridiandigital.com.br",
-    rotulo: "Diretor / Compliance",
+    rotulo: "Responsável de Compliance",
     instituicao: "Meridian Digital Assets",
   },
   {

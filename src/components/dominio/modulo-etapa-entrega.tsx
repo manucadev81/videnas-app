@@ -277,7 +277,7 @@ export function EtapaEntrega({
             </div>
           ) : (
             <EstadoVazio
-              titulo="A entrega será liberada após a aprovação do Diretor/Compliance"
+              titulo="A entrega será liberada após a aprovação do Responsável de Compliance da instituição"
               mensagem="Assim que o período for aprovado, o protocolo do Banco Central pode ser registrado por aqui."
             />
           )}
@@ -299,7 +299,7 @@ export function EtapaEntrega({
             </div>
           ) : (
             <EstadoVazio
-              titulo="A entrega será liberada após a aprovação do Diretor/Compliance"
+              titulo="A entrega será liberada após a aprovação do Responsável de Compliance da instituição"
               mensagem="A emissão da NFS-e ocorre fora da Videnas, pelo emissor definido pela instituição."
             />
           )}

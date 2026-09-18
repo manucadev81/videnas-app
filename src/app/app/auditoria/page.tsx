@@ -27,7 +27,7 @@ const ROTULOS_MODULO: Record<ModuloId, string> = {
 };
 
 const ROTULOS_PERFIL: Record<PerfilId, string> = {
-  diretor: "Diretor",
+  diretor: "Compliance",
   operacional: "Operacional",
   contador: "Contador",
   cliente: "Cliente",

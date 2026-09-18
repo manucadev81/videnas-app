@@ -225,10 +225,10 @@ export default function CalendarioPage() {
                     ) : null}
                     <p className="text-xs text-neutral-500">Estado: {periodo.estado}</p>
                     <Link
-                      href={rotaPeriodo(prazo.moduloId, periodo.id)}
+                      href={perfilAtivo === "cliente" ? "/app/fornecimento" : rotaPeriodo(prazo.moduloId, periodo.id)}
                       className="mt-1 inline-block text-xs font-medium text-brand-700 hover:text-brand-800"
                     >
-                      Abrir período
+                      {perfilAtivo === "cliente" ? "Ir para o fornecimento" : "Abrir período"}
                     </Link>
                   </li>
                 );

@@ -159,8 +159,9 @@ export function PainelPeriodo({
               <BadgeAjuda chave="fornecimento.acompanhamento" tamanho="xs" side="top" />
             </p>
             <p className="mt-1">
-              Apenas o Cliente fornece os dados. Use &quot;Notificar cliente&quot; no período da
-              obrigação para cobrar o que falta.
+              {perfilAtivo === "operacional"
+                ? "Apenas o Cliente fornece os dados. Use \"Notificar cliente do que falta\" no período da obrigação para cobrar o prazo."
+                : "Apenas o Cliente fornece os dados. Esta tela é consulta: você não envia insumos. Cobrar o que falta é papel do Operacional / Suporte ao cliente."}
             </p>
           </div>
         </div>

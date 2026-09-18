@@ -21,7 +21,7 @@ import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
 import { formatarData, formatarDataHora } from "@/lib/formatadores";
-import type { ModuloId, PeriodoObrigacao } from "@/lib/tipos";
+import type { EstadoPeriodo, ModuloId, PeriodoObrigacao } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
 function rotaPeriodo(moduloId: ModuloId, periodoId: string): string {
@@ -60,16 +60,26 @@ export default function OperacaoPage() {
         : true
     );
 
+  const ehExecutor = perfilAtivo === "executor";
   const aGerar = filaBase.filter((periodo) => periodo.estado === "dados_ingeridos");
-  const aValidar = filaBase.filter((periodo) => periodo.estado === "em_validacao" || periodo.estado === "com_excecoes");
+  const aEnviar = filaBase.filter((periodo) => periodo.estado === "gerado");
+  const emValidacao = filaBase.filter((periodo) => periodo.estado === "em_validacao");
   const aLiberar = filaBase.filter((periodo) => periodo.estado === "validado");
+  const aTratarExcecoes = filaBase.filter((periodo) => periodo.estado === "com_excecoes");
+
+  const filaDoPerfil = ehExecutor
+    ? [...aGerar, ...aEnviar, ...aTratarExcecoes]
+    : [...emValidacao, ...aTratarExcecoes, ...aLiberar];
+
+  const estadosFila: EstadoPeriodo[] =
+    perfilAtivo === "executor"
+      ? ["dados_ingeridos", "gerado", "com_excecoes"]
+      : ["em_validacao", "com_excecoes", "validado"];
 
   const contadorPorInstituicao = tenants.map((instituicao) => ({
     instituicao,
     total: todosPeriodos.filter(
-      (periodo) =>
-        periodo.instituicaoId === instituicao.id &&
-        (periodo.estado === "dados_ingeridos" || periodo.estado === "em_validacao" || periodo.estado === "com_excecoes" || periodo.estado === "validado")
+      (periodo) => periodo.instituicaoId === instituicao.id && estadosFila.includes(periodo.estado)
     ).length,
   }));
 
@@ -82,7 +92,7 @@ export default function OperacaoPage() {
     );
   }
 
-  const totalFila = aGerar.length + aValidar.length + aLiberar.length;
+  const totalFila = filaDoPerfil.length;
 
   return (
     <div className="space-y-6">
@@ -122,26 +132,37 @@ export default function OperacaoPage() {
       </div>
 
       <div data-tour="operacao-contadores" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-md border border-neutral-200 bg-white p-3">
-          <p className="text-xs text-neutral-500">
-            {perfilAtivo === "validador" ? "Aguardando validação" : "Aguardando geração"}
-          </p>
-          <p className="text-xl font-bold text-neutral-700">{aGerar.length}</p>
-        </div>
-        <div className="rounded-md border border-neutral-200 bg-white p-3">
-          <p className="text-xs text-neutral-500">Em validação</p>
-          <p className="text-xl font-bold text-neutral-700">{aValidar.length}</p>
-        </div>
+        {ehExecutor ? (
+          <>
+            <div className="rounded-md border border-neutral-200 bg-white p-3">
+              <p className="text-xs text-neutral-500">Aguardando geração</p>
+              <p className="text-xl font-bold text-neutral-700">{aGerar.length}</p>
+            </div>
+            <div className="rounded-md border border-neutral-200 bg-white p-3">
+              <p className="text-xs text-neutral-500">A enviar para validação</p>
+              <p className="text-xl font-bold text-neutral-700">{aEnviar.length}</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-md border border-neutral-200 bg-white p-3">
+              <p className="text-xs text-neutral-500">Aguardando validação</p>
+              <p className="text-xl font-bold text-neutral-700">{emValidacao.length}</p>
+            </div>
+            <div className="rounded-md border border-neutral-200 bg-white p-3">
+              <p className="text-xs text-neutral-500">A liberar</p>
+              <p className="text-xl font-bold text-neutral-700">{aLiberar.length}</p>
+            </div>
+          </>
+        )}
         <div className="rounded-md border border-neutral-200 bg-white p-3">
           <p className="text-xs text-neutral-500">Com exceções</p>
-          <p className="text-xl font-bold text-neutral-700">
-            {filaBase.filter((periodo) => periodo.estado === "com_excecoes").length}
-          </p>
+          <p className="text-xl font-bold text-neutral-700">{aTratarExcecoes.length}</p>
         </div>
         <div className="rounded-md border border-neutral-200 bg-white p-3">
           <p className="text-xs text-neutral-500">Vencendo em 3 dias</p>
           <p className="text-xl font-bold text-neutral-700">
-            {filaBase.filter((periodo) => {
+            {filaDoPerfil.filter((periodo) => {
               const derivado = calcularPeriodoDerivado(periodo);
               return derivado.diasParaPrazo >= 0 && derivado.diasParaPrazo <= 3;
             }).length}
@@ -155,10 +176,9 @@ export default function OperacaoPage() {
           "border-status-info-border bg-status-info-bg text-status-info-text"
         )}
       >
-        Você está no perfil {perfilAtivo === "executor" ? "Executor" : "Validador"}.{" "}
-        {perfilAtivo === "executor"
-          ? "Itens já gerados por você aparecem destacados e só podem ser liberados por outro usuário."
-          : "Itens gerados por você não podem ser liberados pelo mesmo usuário — segregação de funções obrigatória."}
+        {ehExecutor
+          ? "Você gera o arquivo e o envia para validação. Liberar para o cliente é papel do Validador — essa ação nunca aparece aqui."
+          : "Você valida o schema e libera para o cliente. Gerar o arquivo é papel do Executor — essa ação nunca aparece aqui. Quem gerou um item não pode liberá-lo."}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
@@ -194,24 +214,49 @@ export default function OperacaoPage() {
         <EstadoVazio titulo="Nenhum item na sua fila. Tudo em dia." mensagem="Ajuste os filtros para ver outros itens." />
       ) : (
         <div data-tour="operacao-fila" className="space-y-6">
-          <GrupoFila
-            titulo="A gerar"
-            periodos={aGerar}
-            rotuloAcao="Gerar arquivo"
-            usuarioId={usuarioId}
-          />
-          <GrupoFila
-            titulo="A validar"
-            periodos={aValidar}
-            rotuloAcao="Executar validação"
-            usuarioId={usuarioId}
-          />
-          <GrupoFila
-            titulo="A liberar"
-            periodos={aLiberar}
-            rotuloAcao="Liberar"
-            usuarioId={usuarioId}
-          />
+          {ehExecutor ? (
+            <>
+              <GrupoFila
+                titulo="A gerar"
+                periodos={aGerar}
+                rotuloAcao="Gerar arquivo"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="A enviar para validação"
+                periodos={aEnviar}
+                rotuloAcao="Enviar para validação"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="Exceções a tratar"
+                periodos={aTratarExcecoes}
+                rotuloAcao="Tratar exceção"
+                usuarioId={usuarioId}
+              />
+            </>
+          ) : (
+            <>
+              <GrupoFila
+                titulo="A validar"
+                periodos={emValidacao}
+                rotuloAcao="Executar validação"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="Exceções a reprocessar"
+                periodos={aTratarExcecoes}
+                rotuloAcao="Reprocessar validação"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="A liberar"
+                periodos={aLiberar}
+                rotuloAcao="Liberar"
+                usuarioId={usuarioId}
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -263,9 +308,10 @@ function GrupoFila({
               const instituicao = buscarInstituicao(periodo.instituicaoId);
               const modulo = buscarModulo(periodo.moduloId);
               const geradoPorMim = periodo.geradoPorUsuarioId === usuarioId;
+              const bloquearPorSegregacao = rotuloAcao === "Liberar" && geradoPorMim;
 
               return (
-                <tr key={periodo.id} className={cn("border-t border-neutral-200", geradoPorMim && "bg-neutral-50 text-neutral-400")}>
+                <tr key={periodo.id} className={cn("border-t border-neutral-200", bloquearPorSegregacao && "bg-neutral-50 text-neutral-400")}>
                   <td className="px-4 py-2">
                     <span className={cn("status-badge", derivado.atrasado ? "status-badge-error" : "status-badge-neutral")}>
                       {derivado.atrasado ? "Atrasado" : derivado.diasParaPrazo <= 3 ? "Urgente" : "Normal"}
@@ -300,7 +346,7 @@ function GrupoFila({
                       href={rotaPeriodo(periodo.moduloId, periodo.id)}
                       className="text-xs font-medium text-brand-700 hover:text-brand-800"
                     >
-                      {geradoPorMim ? "Abrir" : rotuloAcao}
+                      {bloquearPorSegregacao ? "Abrir" : rotuloAcao}
                     </Link>
                   </td>
                 </tr>

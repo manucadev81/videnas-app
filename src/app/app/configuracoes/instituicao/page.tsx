@@ -22,13 +22,12 @@ const TODOS_MODULOS: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710", "fiscal"
 const ROTULO_TIPO: Record<string, string> = { exchange: "Exchange", custodiante: "Custodiante", mesa_otc: "Mesa de OTC" };
 
 export default function ConfiguracoesInstituicaoPage() {
-  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const instituicao =
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
 
   const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
-  const podeEditar = perfilAtivo === "diretor";
+  const podeEditar = false;
   const [modulosAtivos, setModulosAtivos] = useState<ModuloId[]>(instituicao?.modulosContratados ?? []);
 
   const responsavelEnvio = instituicao
@@ -58,7 +57,8 @@ export default function ConfiguracoesInstituicaoPage() {
       {!podeEditar ? (
         <p className="flex items-center gap-2 rounded-md bg-neutral-50 px-4 py-2.5 text-xs text-neutral-500">
           <Lock className="size-3.5" aria-hidden="true" />
-          Modo somente leitura. Apenas o perfil Diretor / Compliance edita os dados da instituição.
+          Os dados cadastrais da instituição foram informados pela Videnas no provisionamento. Não
+          se editam aqui.
         </p>
       ) : null}
 

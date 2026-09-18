@@ -30,33 +30,28 @@ const ROTAS_SEM_DESCENDENTES = new Set(["/", "/app", "/app/configuracoes"]);
 export const PERFIS: PerfilMetadados[] = [
   {
     id: "diretor",
-    rotulo: "Diretor",
-    rotuloCompleto: "Diretor / Compliance Responsável",
-    descricao: "Aprova, responde perante o BCB e revisa exceções da instituição.",
+    rotulo: "Compliance",
+    rotuloCompleto: "Responsável de Compliance",
+    descricao:
+      "Na instituição cliente: aprova o que a Videnas já validou e registra a transmissão ao órgão. A Videnas não envia o arquivo ao regulador.",
     lado: "cliente",
     corBadge: "brand",
     icone: "ShieldCheck",
     rotasPermitidas: [
       ...ROTAS_PUBLICAS,
-      "/selecionar-instituicao",
       "/onboarding",
       "/app",
-      "/app/fornecimento",
       ...ROTAS_MODULOS_REGULATORIOS,
       "/app/fiscal",
       "/app/entregas",
       "/app/calendario",
       "/app/auditoria",
       "/app/evidencias",
-      ...ROTAS_CONFIGURACOES_TENANT,
     ],
     acoesPermitidas: [
       "aprovar",
       "registrar_protocolo",
       "marcar_encaminhado",
-      "tratar_excecao",
-      "editar_config_instituicao",
-      "gerenciar_usuarios",
       "exportar_auditoria",
       "baixar_arquivo",
       "baixar_comprovante",
@@ -64,7 +59,7 @@ export const PERFIS: PerfilMetadados[] = [
       "ver_evidencias",
     ],
     multiTenant: false,
-    contextoFixo: false,
+    contextoFixo: true,
   },
   {
     id: "operacional",
@@ -152,7 +147,6 @@ export const PERFIS: PerfilMetadados[] = [
       "/selecionar-instituicao",
       "/app",
       "/app/operacao",
-      "/app/fornecimento",
       ...ROTAS_MODULOS_REGULATORIOS,
       "/app/fiscal",
       "/app/calendario",
@@ -245,7 +239,7 @@ export const PERFIS: PerfilMetadados[] = [
   },
 ];
 
-export const PERFIS_SIMULAVEIS: PerfilMetadados[] = PERFIS.filter((perfil) => !perfil.contextoFixo);
+export const PERFIS_SIMULAVEIS: PerfilMetadados[] = PERFIS.filter((perfil) => perfil.id !== "cliente");
 
 export function buscarPerfil(perfilId: PerfilId): PerfilMetadados {
   const perfil = PERFIS.find((item) => item.id === perfilId);

@@ -90,8 +90,10 @@ export function PainelAcompanhamentoFornecimento({
     );
   }
 
+  const ehExecutor = autor.perfilId === "executor";
+  const ehOperacional = autor.perfilId === "operacional";
   const podeVerFornecimento = podeVerRota(autor.perfilId, "/app/fornecimento");
-  const mostrarRodape = avaliacaoNotificar.visivel || podeVerFornecimento;
+  const mostrarRodape = !ehExecutor && (avaliacaoNotificar.visivel || podeVerFornecimento);
 
   const botaoNotificar = (
     <Button
@@ -117,9 +119,11 @@ export function PainelAcompanhamentoFornecimento({
               <BadgeAjuda chave="fornecimento.acompanhamento" tamanho="sm" />
             </h2>
             <p className="text-sm text-neutral-500">
-              Quem envia os insumos desta competência é o Cliente / Fornecedor de dados, em
-              Fornecimento de dados. Aqui você acompanha o que já chegou e cobra o que falta —
-              sem subir dados em nome dele.
+              {ehExecutor
+                ? "Quem envia os insumos desta competência é o Cliente / Fornecedor de dados. Você não fornece dados: só gera o arquivo a partir do que já chegou."
+                : ehOperacional
+                  ? "Quem envia os insumos desta competência é o Cliente / Fornecedor de dados, em Fornecimento de dados. Aqui você acompanha o que já chegou e cobra o que falta — sem subir dados em nome dele."
+                  : "Quem envia os insumos desta competência é o Cliente / Fornecedor de dados. Você consulta o andamento; cobrar o que falta é papel do Operacional / Suporte ao cliente."}
             </p>
           </div>
           <span
@@ -182,7 +186,7 @@ export function PainelAcompanhamentoFornecimento({
         </ul>
       </div>
 
-      {semPendencia ? null : (
+      {semPendencia || !ehOperacional ? null : (
         <div className="rounded-lg border border-status-warning-border bg-status-warning-bg p-4">
           <h3 className="mb-2 text-sm font-semibold text-status-warning-text">
             O que ainda falta
@@ -197,7 +201,7 @@ export function PainelAcompanhamentoFornecimento({
         </div>
       )}
 
-      {lacresEntrada.length > 0 ? (
+      {ehExecutor || lacresEntrada.length === 0 ? null : (
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
           <h3 className="mb-3 font-display text-base font-bold text-neutral-700">
             Evidências de entrada recebidas
@@ -220,7 +224,7 @@ export function PainelAcompanhamentoFornecimento({
             ))}
           </ul>
         </div>
-      ) : null}
+      )}
 
       {mostrarRodape ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-5">

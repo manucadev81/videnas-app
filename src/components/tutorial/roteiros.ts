@@ -169,18 +169,18 @@ const PASSOS_CLIENTE: PassoTour[] = [
 const PASSOS_DIRETOR: PassoTour[] = [
   {
     id: "diretor-boas-vindas",
-    titulo: "Bem-vindo, Diretor / Compliance",
+    titulo: "Bem-vindo, Responsável de Compliance",
     descricao:
-      "Este tour segue o caminho de quem aprova e responde pela obrigação perante o Banco Central. O seletor de perfil aqui no header é como este mock alterna entre as visões do produto.",
+      "Você atua pela instituição cliente: aprova o arquivo que a Videnas já validou e registra a transmissão ao órgão. A Videnas não envia nada ao regulador. A instituição já está fixa — você não escolhe tenant.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
   },
   {
     id: "diretor-dashboard-prazos",
-    titulo: "Prazos e pendências em um só lugar",
+    titulo: "O que pede a sua atuação hoje",
     descricao:
-      "A lista de próximos prazos regulatórios traz cada competência ordenada por urgência, com o estado atual e o link direto para abrir o período. É o ponto de partida do seu dia.",
+      "O painel lista só o que é seu: competências liberadas pela Videnas aguardando aprovação, e as já aprovadas em que falta registrar o protocolo da transmissão — que a sua instituição faz fora da plataforma.",
     seletor: '[data-tour="dashboard-prazos"]',
     rota: "/app",
     posicao: "top",
@@ -208,7 +208,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-auditoria-segregacao",
     titulo: "Segregação de funções",
     descricao:
-      "Este card mostra quem gerou, quem liberou e quem aprovou a competência — nunca a mesma pessoa. É a regra de 4 olhos da Videnas tornada visível: Executor gera, Validador libera, Diretor aprova.",
+      "Este card mostra quem gerou, quem liberou e quem aprovou a competência — nunca a mesma pessoa. A Videnas gera e valida; o Responsável de Compliance da instituição aprova.",
     seletor: '[data-tour="card-segregacao-funcoes"]',
     rota: "/app/acam212/per-meridian-acam212-202608",
     posicao: "top",
@@ -218,7 +218,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-aprovar",
     titulo: "Aprovar e assumir responsabilidade",
     descricao:
-      "O botão \"Aprovar e assumir responsabilidade\" só fica disponível depois que o Validador Videnas libera a competência. Ao aprovar, você declara formalmente que revisou o conteúdo e assume a obrigação perante o órgão competente — isso fica registrado na trilha com seu nome, cargo e o hash do arquivo.",
+      "O botão \"Aprovar e assumir responsabilidade\" só fica disponível depois que o Validador Videnas libera a competência. Ao aprovar, você declara, pela instituição cliente, que revisou o conteúdo e assume a obrigação perante o órgão — a Videnas não transmite o arquivo.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-meridian-acam212-202608",
     posicao: "bottom",
@@ -332,7 +332,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-ingestao-fornecimento",
     titulo: "Sua etapa Ingestão é o fornecimento do cliente",
     descricao:
-      "Na Pampulha Capital, a etapa Ingestão do ACAM212 de agosto não tem dropzone para você: quem fornece os insumos é exclusivamente o Cliente / Fornecedor de dados, em Fornecimento de dados. Aqui você confere a completude da competência, o checklist de insumos exigidos × fornecidos e as evidências de entrada já lacradas — é o insumo do seu trabalho.",
+      "Na Pampulha Capital, a etapa Ingestão do ACAM212 de agosto não tem dropzone nem menu de fornecimento para você: quem fornece os insumos é exclusivamente o Cliente. Aqui você só confere se os lotes já chegaram — é o insumo do seu trabalho de gerar o arquivo, não uma tela para enviar dados.",
     seletor: '[data-tour="acompanhamento-fornecimento"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "top",
@@ -342,7 +342,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-gerar-arquivo",
     titulo: "Gerar o arquivo a partir do que o cliente entregou",
     descricao:
-      "A Pampulha Capital tem o ACAM212 de agosto com dados já fornecidos pelo Cliente e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só fica disponível quando o Cliente já entregou pelo menos um lote nesta competência; sem fornecimento dele, não há o que gerar e o caminho é cobrar o cliente, não subir os dados por ele.",
+      "A Pampulha Capital tem o ACAM212 de agosto com dados já fornecidos pelo Cliente e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só fica disponível quando o Cliente já entregou pelo menos um lote nesta competência. Sem esse lote, não há o que gerar: quem cobra o que falta é o Operacional; você não sobe dados no lugar do cliente.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
@@ -391,7 +391,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-fila",
     titulo: "Fila de operação, visão multi-tenant",
     descricao:
-      "Assim como o Executor, você atende várias instituições a partir desta única fila. Os tiles de contadores mostram, de relance, quanto está aguardando validação, em validação, com exceções e vencendo em 3 dias.",
+      "Assim como o Executor, você atende várias instituições a partir desta única fila. Os tiles mostram só o seu recorte: aguardando validação, a liberar, com exceções e o que vence em 3 dias. Gerar arquivo não entra nesta fila — é trabalho do Executor.",
     seletor: '[data-tour="operacao-contadores"]',
     rota: "/app/operacao",
     posicao: "bottom",
@@ -409,7 +409,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-erros-avisos",
     titulo: "Erros e avisos com código",
     descricao:
-      "Cada item traz severidade, código, mensagem e localização. Exemplo real deste período: 5711-E008, bloqueante — \"Data-base 2026-08-17 ausente na sequência de posições diárias.\" Erros bloqueantes impedem a liberação até serem tratados.",
+      "Cada item traz severidade, código, mensagem e localização. Exemplo real deste período: 5711-E008, bloqueante — \"Data-base 2026-08-17 ausente na sequência de posições diárias.\" Erros bloqueantes impedem a liberação. Quem trata a origem é o Executor; você reprocessa a validação depois.",
     seletor: '[data-tour="lista-erros-avisos"]',
     rota: "/app/cadoc/per-cofre-atlantico-cadoc5711-202608",
     posicao: "top",
@@ -436,7 +436,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-sem-gerar",
     titulo: "Por que você não vê \"Gerar\"",
     descricao:
-      "Assim como o Diretor não vê \"Gerar\" nem \"Liberar\", o botão \"Gerar arquivo\" nunca aparece para o Validador — é um botão do papel de Executor. Cada perfil só enxerga as ações do seu próprio papel no fluxo de 4 olhos.",
+      "Assim como o Responsável de Compliance da instituição não vê \"Gerar\" nem \"Liberar\", o botão \"Gerar arquivo\" nunca aparece para o Validador — é um botão do papel de Executor. Cada perfil só enxerga as ações do seu próprio papel no fluxo de 4 olhos.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/cadoc/per-meridian-cadoc5711-202608",
     posicao: "bottom",

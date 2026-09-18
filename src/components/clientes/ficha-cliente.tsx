@@ -172,7 +172,7 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
       }
       toast.success(
         diretor
-          ? `Convite simulado enviado. Para entrar como Diretor desta instituição na demonstração, use ${diretor.email} no login.`
+          ? `Convite simulado enviado. Para entrar como Responsável de Compliance desta instituição na demonstração, use ${diretor.email} no login.`
           : "Convite simulado enviado."
       );
       return;

@@ -263,7 +263,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     resposta: [
       "Quem alimenta a Ingestão é exclusivamente o Cliente / Fornecedor de dados, em Fornecimento de dados. Nenhum outro perfil sobe arquivos: o Operacional / Suporte ao cliente acompanha a completude, orienta o que falta e notifica o cliente; o Executor Videnas parte do que já foi fornecido. Sem dados enviados pelo Cliente, não há o que gerar.",
       "O arquivo é lido no próprio navegador e conferido contra o layout da obrigação: nome do arquivo, competência, instituição, delimitador, cabeçalho, colunas obrigatórias e o tipo de cada campo.",
-      "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio: você confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Assim que um lote é aceito, a competência passa de \"Aguardando dados\" para \"Dados recebidos\".",
+      "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio pelo Cliente: ele confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Assim que um lote é aceito, a competência passa de \"Aguardando dados\" para \"Dados recebidos\".",
       "Na etapa Ingestão da competência, a tabela \"Arquivos recebidos\" lista apenas os lotes aceitos pelo Cliente e que entraram na competência, com o status Aceito. O que não passa na conferência é barrado ainda na tela do Cliente e nunca chega a essa tabela.",
     ].join("\n\n"),
     relacionados: ["envio-lote", "nao-conformidades", "perfil-cliente"],
@@ -329,7 +329,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     ],
     resposta: [
       "A Validação é feita pelo Validador Videnas, que nunca gera arquivos. \"Executar validação de schema\" roda o schema oficial e as regras determinísticas do módulo contra o arquivo gerado.",
-      "Cada item encontrado traz severidade, código, mensagem e localização — por exemplo 5711-E008, bloqueante: \"Data-base 2026-08-17 ausente na sequência de posições diárias.\" Erros bloqueantes impedem a liberação até serem tratados.",
+      "Cada item encontrado traz severidade, código, mensagem e localização — por exemplo 5711-E008, bloqueante: \"Data-base 2026-08-17 ausente na sequência de posições diárias.\" Erros bloqueantes impedem a liberação até o Executor tratar a origem; o Validador não trata exceção nem gera de novo.",
       "Com zero erro bloqueante, a competência fica \"Validada\". Em seguida, \"Liberar para o cliente\" torna o arquivo visível e baixável pela instituição e grava o evento PERIODO_LIBERADO com o hash.",
     ].join("\n\n"),
     relacionados: ["pendencias-excecoes", "segregacao-funcoes", "etapa-auditoria"],
@@ -342,8 +342,8 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     palavrasChave: ["auditoria", "aprovar", "aprovacao", "diretor aprova", "assumir responsabilidade"],
     resposta: [
       "A Auditoria consolida a evidência da competência: o card de segregação de funções mostra quem gerou, quem liberou e quem aprovou — nunca a mesma pessoa.",
-      "O botão \"Aprovar e assumir responsabilidade\" é exclusivo do Diretor / Compliance e só aparece depois que o Validador libera a competência (estado Liberado).",
-      "Ao aprovar, o Diretor declara formalmente que revisou o conteúdo e assume a obrigação perante o órgão competente. Isso fica registrado na trilha com nome, cargo e o hash do arquivo.",
+      "O botão \"Aprovar e assumir responsabilidade\" é exclusivo do Responsável de Compliance da instituição cliente e só aparece depois que o Validador libera a competência (estado Liberado). A Videnas não transmite o arquivo ao órgão.",
+      "Ao aprovar, o Responsável de Compliance da instituição declara que revisou o conteúdo e assume a obrigação perante o órgão. Isso fica registrado na trilha com nome, cargo e o hash. A transmissão ao órgão a instituição faz fora da Videnas.",
     ].join("\n\n"),
     relacionados: ["segregacao-funcoes", "trilha-auditoria", "etapa-entrega"],
   },
@@ -636,7 +636,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "O Cliente / Fornecedor de dados é quem FORNECE os dados de origem de cada obrigação. Ele abre a competência em Fornecimento de dados, vê o checklist de insumos obrigatórios, envia arquivos e preenche os formulários curtos — e é só isso que ele faz.",
       "O Operacional / Suporte ao cliente é outro papel, e é só isso mesmo: suporte. Ele NÃO sobe dados em nome do cliente — acompanha a completude do fornecimento, orienta o que falta, cobra prazos, trata exceções e dicionários, e cuida do cadastro do responsável pelo envio de dados. Os dois são do lado cliente, mas não se confundem: o Cliente fornece, o Operacional apoia.",
       "Por isso a superfície do Cliente é reduzida de propósito: ele acessa apenas o painel, Fornecimento de dados, Arquivos entregues e Calendário. Não há módulos, auditoria, configurações nem fila de operação para esse perfil. As ações liberadas são fornecer dados, baixar comprovante, baixar arquivo e verificar integridade.",
-      "A tela de Fornecimento de dados abre em modo consulta para os demais perfis, incluindo o Operacional: eles acompanham o andamento e podem notificar o cliente do que falta, mas o envio é sempre do Cliente.",
+      "A tela de Fornecimento de dados abre em modo consulta para Diretor e Operacional: só o Cliente envia. O Operacional pode notificar o cliente do que falta; o Diretor consulta o andamento, sem cobrar.",
       "Antes de tudo isso existe um passo anterior: a própria instituição é cadastrada pela Videnas. A cadeia completa é Administrador — Videnas provisiona a instituição, contrata os módulos e convida o Diretor responsável; o Diretor entra com o e-mail cadastrado e conclui a configuração guiada, o que ativa o tenant e abre as competências; e então o operador do tenant designa o responsável pelo envio de dados.",
       "O Cliente é pré-cadastrado pelo operador do tenant em Configurações > Usuários e papéis, na seção \"Responsáveis pelo envio de dados\": instituição e pessoa responsável já existem antes do primeiro acesso. Por isso ele entra direto na instituição dele e não aparece no simulador de perfil.",
       "Na demonstração, o Cliente é Natália Queiroz (natalia.queiroz@meridiandigital.com.br), analista de dados regulatórios da Meridian Digital Assets; no Cofre Atlântico, o responsável é Diego Vasconcelos (diego.vasconcelos@cofreatlantico.com.br).",

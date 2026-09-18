@@ -36,7 +36,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Etapa Ingestão",
     pergunta: "O que é a etapa Ingestão?",
     descricao:
-      "Recepção dos arquivos de origem da competência. Cada arquivo é lido e conferido contra o layout da obrigação antes de entrar no período. O lote só passa a contar para a competência depois do aceite explícito do operador.",
+      "Recepção dos arquivos de origem da competência. Quem envia é exclusivamente o Cliente / Fornecedor de dados; o lote só passa a contar depois do aceite explícito dele, na conferência de layout. O Executor não sobe dados — parte do que já entrou para gerar o arquivo.",
   },
   "etapa.geracao": {
     titulo: "Etapa Geração",
@@ -54,7 +54,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Etapa Validação",
     pergunta: "O que é a etapa Validação?",
     descricao:
-      "O Validador Videnas confere o arquivo gerado contra o schema oficial da obrigação. Se aparecerem não conformidades, o período vai para Com exceções e as bloqueantes precisam ser tratadas antes de reprocessar. Aprovada a validação, o arquivo é liberado para o cliente.",
+      "O Validador Videnas confere o arquivo gerado contra o schema oficial da obrigação. Se aparecerem não conformidades, o período vai para Com exceções: o Executor trata as bloqueantes e o Validador só reprocessa a validação depois disso. Aprovada a validação, o Validador libera o arquivo para o cliente. Quem valida nunca gera nem trata a origem.",
   },
   "etapa.auditoria": {
     titulo: "Etapa Auditoria",
@@ -66,7 +66,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Etapa Entrega",
     pergunta: "O que é a etapa Entrega?",
     descricao:
-      "Fecha o ciclo depois da aprovação do Diretor. Nas obrigações do Banco Central, registra-se o protocolo devolvido pelo órgão; no módulo Fiscal, marca-se o encaminhamento ao emissor. Um retorno com erro reabre o período para correção.",
+      "Fecha o ciclo depois que o Responsável de Compliance da instituição aprovou. Nas obrigações do Banco Central, registra-se o protocolo devolvido pelo órgão; no módulo Fiscal, marca-se o encaminhamento ao emissor. A transmissão em si acontece fora da Videnas. Um retorno com erro reabre o período para correção.",
   },
 
   "estado.aguardando_dados": {
@@ -79,7 +79,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Dados recebidos",
     pergunta: "O que significa o status Dados recebidos?",
     descricao:
-      "Pelo menos um lote foi conferido e aceito na competência. O Executor Videnas já pode gerar o arquivo no schema oficial. Novos lotes ainda podem ser enviados enquanto o período não é gerado.",
+      "Pelo menos um lote foi conferido e aceito pelo Cliente nesta competência. O Executor Videnas já pode gerar o arquivo no schema oficial. O Cliente ainda pode enviar novos lotes enquanto o período não é gerado — o Executor não envia nada em nome dele.",
   },
   "estado.gerado": {
     titulo: "Arquivo gerado",
@@ -97,25 +97,25 @@ export const TEXTOS_AJUDA = {
     titulo: "Em validação",
     pergunta: "O que significa o status Em validação?",
     descricao:
-      "O Validador Videnas está conferindo o arquivo contra o schema oficial da obrigação. Nesta fase ainda é possível tratar exceções abertas. Quem gerou o arquivo não pode liberá-lo.",
+      "O Validador Videnas está conferindo o arquivo contra o schema oficial da obrigação. Exceções abertas nesta fase são tratadas pelo Executor; o Validador só reprocessa a validação depois do tratamento. Quem gerou o arquivo não pode liberá-lo.",
   },
   "estado.validado": {
     titulo: "Validado",
     pergunta: "O que significa o status Validado?",
     descricao:
-      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para o cliente, o que habilita a aprovação pelo Diretor.",
+      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para a instituição. Depois disso, o Responsável de Compliance da casa cliente aprova e transmite ao órgão — a Videnas não envia o arquivo.",
   },
   "estado.com_excecoes": {
     titulo: "Com exceções",
     pergunta: "O que significa o status Com exceções?",
     descricao:
-      "A validação apontou não conformidades no arquivo. As exceções bloqueantes precisam ser tratadas antes de reprocessar a validação; as de aviso apenas sinalizam risco. Também é possível gerar o arquivo novamente após corrigir a origem.",
+      "A validação apontou não conformidades no arquivo. O Executor trata as exceções bloqueantes (ou gera de novo depois de corrigir a origem); o Validador não trata nem gera — só reprocessa a validação quando as bloqueantes estiverem resolvidas. Avisos apenas sinalizam risco e não travam a liberação.",
   },
   "estado.liberado": {
     titulo: "Liberado",
     pergunta: "O que significa o status Liberado?",
     descricao:
-      "O Validador Videnas liberou o arquivo para a instituição. Agora o Diretor precisa aprovar, assumindo a responsabilidade pela entrega perante o Banco Central.",
+      "O Validador Videnas liberou o arquivo para a instituição. Cabe ao Responsável de Compliance da casa cliente aprovar — assumindo a obrigação — e transmitir ao órgão fora da Videnas.",
   },
   "estado.aprovado": {
     titulo: "Aprovado",
@@ -159,7 +159,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Envio de arquivos",
     pergunta: "Como funciona o envio de arquivos?",
     descricao:
-      "Cada arquivo é lido no próprio navegador e conferido contra o layout antes de entrar na competência. O nome deve seguir o padrão {modulo}_{instituicao}_{AAAAMM}.{extensao}, e cada obrigação aceita apenas suas extensões (CSV ou TXT nas obrigações do Banco Central, CSV ou XLSX no Fiscal). A pré-visualização abre no ato do envio e nada é registrado sem o seu aceite.",
+      "Cada arquivo é lido no próprio navegador e conferido contra o layout antes de entrar na competência. O nome deve seguir o padrão {modulo}_{instituicao}_{AAAAMM}.{extensao}, e cada obrigação aceita apenas suas extensões (CSV ou TXT nas obrigações do Banco Central, CSV ou XLSX no Fiscal). A pré-visualização abre no ato do envio pelo Cliente e nada é registrado sem o aceite dele.",
   },
   "recepcao.tabela": {
     titulo: "Arquivos recebidos",
@@ -178,7 +178,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Dashboard",
     pergunta: "O que é o Dashboard?",
     descricao:
-      "Visão consolidada da competência corrente: um card por obrigação contratada, prazos mais próximos, pendências abertas e os últimos eventos de auditoria. É o ponto de partida para abrir qualquer período.",
+      "Visão de partida da competência corrente, recortada pelo perfil: o Cliente vê o que falta fornecer; Diretor e Operacional vêem prazos e pendências da instituição; Executor e Validador vêem a fila de operação.",
   },
   "nav.acam212": {
     titulo: "ACAM212",
@@ -220,7 +220,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Fornecimento de dados",
     pergunta: "O que há em Fornecimento de dados?",
     descricao:
-      "É a sua central de entrega para a Videnas. Reúne, competência a competência, tudo o que a instituição precisa fornecer em cada obrigação: quais arquivos e formulários faltam, até quando, e o que já foi recebido. Cada envio sai daqui lacrado, com data, hora e autor registrados.",
+      "Para o Cliente / Fornecedor de dados, é a central de entrega: checklist de insumos, envio lacrado e o que ainda falta. Para o Operacional, a mesma tela abre em consulta — só o Cliente envia; o Operacional pode notificar o que falta.",
   },
   "nav.entregas": {
     titulo: "Entregas",
@@ -232,7 +232,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Evidências",
     pergunta: "O que há em Evidências?",
     descricao:
-      "A cadeia de custódia completa da operação: todos os lacres de entrada e de saída, por instituição, obrigação e competência. É a área usada pelos perfis Videnas — Executor, Validador e Administrador — e pelo Diretor da instituição para responder a qualquer questionamento sobre o que foi enviado e o que foi devolvido.",
+      "A cadeia de custódia completa da operação: todos os lacres de entrada e de saída, por instituição, obrigação e competência. É a área usada pelos perfis Videnas — Executor, Validador e Administrador — e pelo Responsável de Compliance da instituição para responder a qualquer questionamento sobre o que foi enviado e o que foi devolvido.",
   },
   "nav.clientes": {
     titulo: "Clientes",
@@ -249,9 +249,9 @@ export const TEXTOS_AJUDA = {
   },
   "cliente.usuarios-iniciais": {
     titulo: "Usuários iniciais do cliente",
-    pergunta: "Por que só o Diretor é obrigatório no cadastro?",
+    pergunta: "Por que o Responsável de Compliance é obrigatório no cadastro?",
     descricao:
-      "O Diretor responsável é obrigatório porque ele é o destinatário do convite inicial e a única pessoa que conclui a configuração guiada do ambiente: sem ele, o tenant fica parado em Provisionado e nenhuma competência é aberta. Ele também é quem responde pela instituição perante o Banco Central. O responsável pelo envio de dados é opcional nesse momento porque nem sempre a Videnas sabe, no fechamento do contrato, quem vai operacionalizar o fornecimento; o próprio cliente designa essa pessoa depois, em Configurações → Usuários e papéis. Cada e-mail é único na plataforma e é exatamente o e-mail digitado aqui que serve para entrar na demonstração.",
+      "O Responsável de Compliance é obrigatório no cadastro porque ele é o destinatário do convite inicial e a única pessoa que conclui a configuração guiada: sem ele, o tenant fica parado em Provisionado. Depois, é ele quem aprova o que a Videnas validou e transmite ao órgão — a Videnas não envia o arquivo. O responsável pelo envio de dados é opcional nesse momento; o Operacional do cliente o designa depois, em Configurações → Usuários e papéis.",
   },
 
   "fornecimento.checklist": {
@@ -300,7 +300,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Fornecimento do cliente",
     pergunta: "O que este painel de acompanhamento mostra?",
     descricao:
-      "É a visão de quem depende do fornecimento do Cliente / Fornecedor de dados nesta competência: completude, insumos pendentes, prazo e as evidências de entrada já lacradas. Ela aparece para o Operacional, que orienta e cobra o que falta, e para o Executor Videnas, que só consegue gerar o arquivo a partir do que o Cliente já entregou. O envio continua sendo exclusivo do Cliente.",
+      "É a visão de quem depende do fornecimento do Cliente / Fornecedor de dados nesta competência: completude, insumos e prazo. O Operacional usa este painel para orientar e cobrar o que falta. O Executor só consulta o que já chegou para gerar. O Diretor consulta o andamento, sem cobrar. O Validador não vê este painel. O envio continua exclusivo do Cliente.",
   },
   "fornecimento.statusCanonico": {
     titulo: "Status do lote canônico",
@@ -369,7 +369,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Configurações",
     pergunta: "O que há em Configurações?",
     descricao:
-      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. São as configurações do próprio tenant: a instituição e os usuários iniciais já foram cadastrados antes pela Videnas, no provisionamento do cliente, e aqui a gestão passa a ser do cliente. As abas visíveis dependem do seu perfil: só o Diretor edita os dados cadastrais da instituição; Diretor e Operacional administram usuários e o responsável pelo envio de dados; os dicionários são editados pelo Operacional e pelo Executor Videnas, e o Executor enxerga apenas essa aba.",
+      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. A instituição e os usuários iniciais já foram cadastrados pela Videnas no provisionamento. Aqui o Operacional administra usuários e o responsável pelo envio de dados; os dicionários são editados pelo Operacional e pelo Executor Videnas. O Executor enxerga apenas a aba de dicionários. O cadastro da instituição não se edita neste ambiente.",
   },
 } as const satisfies Record<string, TextoAjuda>;
 

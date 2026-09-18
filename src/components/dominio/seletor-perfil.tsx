@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
+import { useSessaoStore } from "@/lib/store/sessao";
 import { PERFIS, PERFIS_SIMULAVEIS } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
   const usuario = usuarioId ? buscarUsuario(usuarioId) : undefined;
   const perfilMetadados = PERFIS.find((perfil) => perfil.id === perfilAtivo);
 
-  if (!usuario || !perfilMetadados || perfilTemContextoFixo(perfilAtivo)) {
+  if (!usuario || !perfilMetadados || perfilAtivo === "cliente") {
     return null;
   }
 

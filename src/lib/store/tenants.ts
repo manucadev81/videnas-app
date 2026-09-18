@@ -256,10 +256,10 @@ export const useTenantsStore = create<EstadoTenants>()(
         const emailDiretor = normalizarEmail(entrada.diretor.email);
 
         if (!nomeDiretor) {
-          return { sucesso: false, motivo: "Informe o nome do Diretor responsável." };
+          return { sucesso: false, motivo: "Informe o nome do Responsável de Compliance." };
         }
         if (!emailPlausivel(emailDiretor)) {
-          return { sucesso: false, motivo: "Informe um e-mail válido para o Diretor responsável." };
+          return { sucesso: false, motivo: "Informe um e-mail válido para o Responsável de Compliance." };
         }
 
         const responsavelEnvio = entrada.responsavelEnvio ?? null;
@@ -279,7 +279,7 @@ export const useTenantsStore = create<EstadoTenants>()(
           if (emailResponsavel === emailDiretor) {
             return {
               sucesso: false,
-              motivo: "O responsável pelo envio precisa ter um e-mail diferente do Diretor.",
+              motivo: "O responsável pelo envio precisa ter um e-mail diferente do Responsável de Compliance.",
             };
           }
         }
@@ -318,7 +318,7 @@ export const useTenantsStore = create<EstadoTenants>()(
           responsavelBcb: {
             nome: nomeDiretor,
             cpf: "",
-            cargo: "Diretor Responsável",
+            cargo: "Responsável de Compliance",
             email: emailDiretor,
             telefone: "",
           },
@@ -338,7 +338,7 @@ export const useTenantsStore = create<EstadoTenants>()(
           lado: "cliente",
           instituicaoIds: [tenantId],
           moduloIds: [...modulosContratados],
-          cargo: "Diretor Responsável",
+          cargo: "Responsável de Compliance",
           registroProfissional: null,
           situacao: "convite_pendente",
           ultimoAcesso: agora,

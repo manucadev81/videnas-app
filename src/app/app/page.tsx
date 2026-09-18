@@ -6,6 +6,7 @@ import { Plus, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CardPrazo } from "@/components/dominio/card-prazo";
+import { BadgeStatus } from "@/components/dominio/badge-status";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { CardModuloDashboard } from "@/components/dominio/card-modulo-dashboard";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
@@ -22,7 +23,6 @@ import { descreverContagemPrazo } from "@/components/fornecimento/constantes";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
-import { prazosRegulatorios } from "@/lib/mock/prazos";
 import { buscarPerfil, podeVerRota } from "@/lib/permissoes";
 import { formatarCNPJ, formatarCompetencia, formatarCompetenciaCurta, formatarData, formatarDataHora } from "@/lib/formatadores";
 import type {
@@ -65,11 +65,23 @@ function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao):
   if (perfil === "executor" && periodo.estado === "dados_ingeridos") {
     return "Gerar arquivo";
   }
-  if (perfil === "validador" && (periodo.estado === "em_validacao" || periodo.estado === "com_excecoes")) {
+  if (perfil === "validador" && periodo.estado === "em_validacao") {
     return "Executar validação";
+  }
+  if (perfil === "validador" && periodo.estado === "com_excecoes") {
+    return "Reprocessar validação";
+  }
+  if (perfil === "validador" && periodo.estado === "validado") {
+    return "Liberar para o cliente";
   }
   if (perfil === "diretor" && periodo.estado === "liberado") {
     return "Aprovar";
+  }
+  if (perfil === "diretor" && periodo.estado === "aprovado") {
+    return periodo.moduloId === "fiscal" ? "Marcar encaminhado" : "Registrar protocolo";
+  }
+  if (perfil === "contador" && periodo.estado === "aguardando_contador") {
+    return "Confirmar enquadramento";
   }
   return "Abrir período";
 }
@@ -91,6 +103,10 @@ export default function DashboardPage() {
 
   const ehOperacao = perfilAtivo === "executor" || perfilAtivo === "validador";
   const ehCliente = perfilAtivo === "cliente";
+  const ehContador = perfilAtivo === "contador";
+  const mostrarCardsModulo = !ehCliente;
+  const mostrarExcecoes = !ehCliente && !ehContador;
+  const mostrarAuditoria = !ehCliente && !ehContador;
 
   const rotaDoPeriodo = (moduloId: ModuloId, periodoId: string) =>
     ehCliente ? "/app/fornecimento" : rotaPeriodo(moduloId, periodoId);
@@ -140,16 +156,6 @@ export default function DashboardPage() {
         .sort((a, b) => a.completude.diasParaPrazo - b.completude.diasParaPrazo)
     : [];
 
-  const insumosPendentes = competenciasParaFornecer.flatMap(({ periodo, completude }) =>
-    completude.pendencias.map((pendencia) => ({
-      chave: `${periodo.id}-${pendencia.insumoId}`,
-      moduloSigla: buscarModulo(periodo.moduloId).sigla,
-      competenciaRotulo: formatarCompetenciaCurta(periodo.competencia),
-      rotulo: pendencia.rotulo,
-      motivo: pendencia.motivo,
-    }))
-  );
-
   const eventosRecentes = eventosStore
     .filter((evento) => (instituicaoAtivaId && instituicaoAtivaId !== "todas" ? evento.instituicaoId === instituicaoAtivaId : true))
     .filter((evento) => (perfilAtivo === "contador" ? evento.moduloId === "fiscal" : true))
@@ -159,20 +165,17 @@ export default function DashboardPage() {
   const filaPorInstituicao = ehOperacao
     ? tenants.map((inst) => ({
         instituicao: inst,
-        total: todosPeriodos.filter(
-          (periodo) =>
-            periodo.instituicaoId === inst.id &&
-            ["dados_ingeridos", "em_validacao", "com_excecoes", "validado"].includes(periodo.estado)
-        ).length,
+        total: todosPeriodos.filter((periodo) => {
+          if (periodo.instituicaoId !== inst.id) {
+            return false;
+          }
+          if (perfilAtivo === "executor") {
+            return ["dados_ingeridos", "gerado", "com_excecoes"].includes(periodo.estado);
+          }
+          return ["em_validacao", "com_excecoes", "validado"].includes(periodo.estado);
+        }).length,
       }))
     : [];
-
-  const prazosMesEscopo = prazosRegulatorios.filter(
-    (prazo) =>
-      prazo.dataVencimento.startsWith(competenciaCorrente) &&
-      (instituicaoAtivaId && instituicaoAtivaId !== "todas" ? prazo.instituicaoId === instituicaoAtivaId : true) &&
-      (perfilAtivo !== "contador" || prazo.moduloId === "fiscal")
-  );
 
   if (perfilAtivo === "admin") {
     return <PainelAdmin tenants={tenants} eventosRecentes={eventosRecentes} />;
@@ -199,6 +202,10 @@ export default function DashboardPage() {
         aoAcionar={precisaConcluirOnboarding ? () => router.push("/onboarding") : undefined}
       />
     );
+  }
+
+  if (perfilAtivo === "diretor") {
+    return <PainelCompliance instituicao={instituicao} periodos={periodosEscopo} />;
   }
 
   return (
@@ -322,6 +329,7 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
+      {mostrarCardsModulo ? (
       <div data-tour="dashboard-cards-modulo" className="grid gap-4 sm:grid-cols-2">
         {cardsModulo.map((periodo) => {
           const modulo = buscarModulo(periodo.moduloId);
@@ -337,8 +345,9 @@ export default function DashboardPage() {
           );
         })}
       </div>
+      ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={cn("grid gap-4", mostrarExcecoes ? "lg:grid-cols-2" : "")}>
         <div data-tour="dashboard-prazos" className="rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700">
             Próximos prazos regulatórios
@@ -363,56 +372,20 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+          {perfilAtivo && podeVerRota(perfilAtivo, "/app/calendario") ? (
+            <Link href="/app/calendario" className="mt-3 inline-block text-xs font-medium text-brand-700 hover:text-brand-800">
+              Ver calendário completo
+            </Link>
+          ) : null}
         </div>
 
+        {mostrarExcecoes ? (
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700">
-            {ehCliente ? "Pendências de fornecimento" : "Pendências e exceções"}
-            <BadgeAjuda
-              chave={ehCliente ? "nav.fornecimento" : "painel.excecoes"}
-              tamanho="sm"
-              align="end"
-            />
+            Pendências e exceções
+            <BadgeAjuda chave="painel.excecoes" tamanho="sm" align="end" />
           </h2>
-          {ehCliente ? (
-            !evidenciasHidratadas ? (
-              <div role="status" aria-label="Carregando pendências de fornecimento" className="space-y-2">
-                <Skeleton className="h-12 w-full rounded-md" />
-                <Skeleton className="h-12 w-full rounded-md" />
-              </div>
-            ) : insumosPendentes.length === 0 ? (
-              <p className="text-sm text-neutral-500">
-                Nenhum insumo pendente. Tudo o que a Videnas espera desta instituição já foi fornecido
-                e lacrado.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {insumosPendentes.slice(0, 5).map((pendencia) => (
-                  <div
-                    key={pendencia.chave}
-                    className="flex items-start justify-between gap-2 rounded-md bg-neutral-50 p-2.5 text-sm"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-mono text-xs text-neutral-500">
-                        {pendencia.moduloSigla} · {pendencia.competenciaRotulo}
-                      </p>
-                      <p className="text-neutral-700">{pendencia.rotulo}</p>
-                      <p className="text-xs text-neutral-500">{pendencia.motivo}</p>
-                    </div>
-                    <span className="status-badge status-badge-warning shrink-0">Falta fornecer</span>
-                  </div>
-                ))}
-                {insumosPendentes.length > 5 ? (
-                  <Link
-                    href="/app/fornecimento"
-                    className="inline-block text-xs font-medium text-brand-700 hover:text-brand-800"
-                  >
-                    Ver todos ({insumosPendentes.length})
-                  </Link>
-                ) : null}
-              </div>
-            )
-          ) : excecoesEscopo.length === 0 ? (
+          {excecoesEscopo.length === 0 ? (
             <p className="text-sm text-neutral-500">Nenhuma pendência aberta. Todas as exceções foram tratadas.</p>
           ) : (
             <div className="space-y-2">
@@ -440,40 +413,10 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-neutral-200 bg-white p-5">
-          <h2 className="mb-3 font-display text-base font-bold text-neutral-700">
-            Calendário regulatório · {formatarCompetencia(competenciaCorrente)}
-          </h2>
-          {prazosMesEscopo.length === 0 ? (
-            <p className="text-sm text-neutral-500">Nenhum prazo neste mês.</p>
-          ) : (
-            <ul className="space-y-1.5 text-sm">
-              {prazosMesEscopo
-                .sort((a, b) => (a.dataVencimento < b.dataVencimento ? -1 : 1))
-                .map((prazo) => (
-                  <li key={prazo.id} className="flex items-center justify-between gap-2">
-                    <span className="text-neutral-600">
-                      {formatarData(prazo.dataVencimento)} · {buscarModulo(prazo.moduloId).sigla}
-                    </span>
-                    <Link
-                      href={rotaDoPeriodo(prazo.moduloId, prazo.periodoId)}
-                      className="text-xs font-medium text-brand-700 hover:text-brand-800"
-                    >
-                      Abrir
-                    </Link>
-                  </li>
-                ))}
-            </ul>
-          )}
-          <Link href="/app/calendario" className="mt-3 inline-block text-xs font-medium text-brand-700 hover:text-brand-800">
-            Ver calendário completo
-          </Link>
-        </div>
-
-        {ehCliente ? null : (
+      {mostrarAuditoria ? (
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
           <h2 className="mb-3 font-display text-base font-bold text-neutral-700">Últimos eventos de auditoria</h2>
           {eventosRecentes.length === 0 ? (
@@ -494,8 +437,124 @@ export default function DashboardPage() {
             Ver trilha completa
           </Link>
         </div>
-        )}
+      ) : null}
+    </div>
+  );
+}
+
+function PainelCompliance({
+  instituicao,
+  periodos,
+}: {
+  instituicao: Instituicao | undefined;
+  periodos: PeriodoObrigacao[];
+}) {
+  const paraAprovar = periodos.filter((periodo) => periodo.estado === "liberado");
+  const paraRegistrar = periodos.filter((periodo) => periodo.estado === "aprovado");
+  const atrasados = periodos.filter(
+    (periodo) => periodo.estado !== "entregue" && calcularPeriodoDerivado(periodo).atrasado
+  );
+
+  function linhaAcao(periodo: PeriodoObrigacao, rotulo: string) {
+    const modulo = buscarModulo(periodo.moduloId);
+    return (
+      <li key={periodo.id}>
+        <Link
+          href={rotaPeriodo(periodo.moduloId, periodo.id)}
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md bg-neutral-50 p-3 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-medium text-neutral-700">
+              {modulo.nome} · Competência {formatarCompetenciaCurta(periodo.competencia)}
+            </span>
+            <span className="block text-xs text-neutral-500">
+              Prazo {formatarData(periodo.prazoEntrega)}
+            </span>
+          </span>
+          <span className="flex items-center gap-2">
+            <BadgeStatus estado={periodo.estado} />
+            <span className="text-xs font-medium text-brand-700">{rotulo}</span>
+          </span>
+        </Link>
+      </li>
+    );
+  }
+
+  return (
+    <div data-tour="dashboard-prazos" className="space-y-6">
+      <header>
+        <h1 className="font-display text-2xl font-bold text-neutral-700">
+          {instituicao ? `${instituicao.nomeFantasia} · ${formatarCNPJ(instituicao.cnpj)}` : "Painel da instituição"}
+        </h1>
+        <p className="text-sm text-neutral-500">
+          Sua atuação: aprovar o arquivo que a Videnas já validou e registrar a transmissão ao órgão.
+          A Videnas não envia o arquivo ao regulador.
+        </p>
+      </header>
+
+      <div
+        role="note"
+        className="rounded-lg border border-status-info-border bg-status-info-bg p-4 text-sm text-status-info-text"
+      >
+        A Videnas gera e valida o arquivo. Você, pela instituição cliente, assume a obrigação e
+        transmite fora da plataforma (Sisbacen, PSTAW10 ou o emissor de NFS-e). Depois, registra aqui
+        o protocolo recebido.
       </div>
+
+      {atrasados.length > 0 ? (
+        <div className="rounded-lg border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
+          {atrasados.length} competência{atrasados.length === 1 ? "" : "s"} fora do prazo.{" "}
+          <Link href="/app/calendario" className="font-medium underline">
+            Ver calendário
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-md border border-neutral-200 bg-white p-3">
+          <p className="text-xs text-neutral-500">Aguardando a sua aprovação</p>
+          <p className="text-xl font-bold text-neutral-700">{paraAprovar.length}</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 bg-white p-3">
+          <p className="text-xs text-neutral-500">A registrar transmissão</p>
+          <p className="text-xl font-bold text-neutral-700">{paraRegistrar.length}</p>
+        </div>
+        <div className="rounded-md border border-neutral-200 bg-white p-3">
+          <p className="text-xs text-neutral-500">Fora do prazo</p>
+          <p className="text-xl font-bold text-neutral-700">{atrasados.length}</p>
+        </div>
+      </div>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-5" aria-labelledby="compliance-aprovar">
+        <h2 id="compliance-aprovar" className="mb-3 font-display text-base font-bold text-neutral-700">
+          Aprovar o que a Videnas validou
+        </h2>
+        {paraAprovar.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nenhuma competência liberada aguardando a sua aprovação.</p>
+        ) : (
+          <ul className="space-y-2">{paraAprovar.map((periodo) => linhaAcao(periodo, "Aprovar"))}</ul>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-neutral-200 bg-white p-5" aria-labelledby="compliance-registrar">
+        <h2 id="compliance-registrar" className="mb-3 font-display text-base font-bold text-neutral-700">
+          Registrar a transmissão ao órgão
+        </h2>
+        {paraRegistrar.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            Nada a registrar. Depois de transmitir fora da Videnas, o protocolo aparece aqui.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {paraRegistrar.map((periodo) =>
+              linhaAcao(
+                periodo,
+                periodo.moduloId === "fiscal" ? "Marcar encaminhado" : "Registrar protocolo"
+              )
+            )}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
@@ -599,7 +658,7 @@ function PainelAdmin({
                       </span>
                       <span className="block text-xs text-neutral-500">
                         {tenant.statusImplantacao === "provisionado"
-                          ? "Cadastrado, mas o convite inicial ainda não foi enviado ao Diretor responsável."
+                          ? "Cadastrado, mas o convite inicial ainda não foi enviado ao Responsável de Compliance."
                           : "Suspenso: o atendimento está interrompido até a reativação."}
                       </span>
                     </span>

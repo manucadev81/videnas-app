@@ -253,8 +253,8 @@ export default function ConfiguracoesUsuariosPage() {
       {!podeEditar ? (
         <p className="flex items-center gap-2 rounded-md bg-neutral-50 px-4 py-2.5 text-xs text-neutral-500">
           <Lock className="size-3.5" aria-hidden="true" />
-          Modo somente leitura. Apenas os perfis Diretor / Compliance e Operacional / Suporte ao
-          cliente gerenciam usuários. O Administrador da Videnas cadastra a instituição e os
+          Modo somente leitura. Apenas o perfil Operacional / Suporte ao
+          cliente gerencia usuários. O Administrador da Videnas cadastra a instituição e os
           usuários iniciais no provisionamento do cliente; a gestão contínua de usuários é do
           próprio tenant.
         </p>
