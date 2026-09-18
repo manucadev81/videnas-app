@@ -109,8 +109,6 @@ export type TipoEventoAuditoria =
   | "ONBOARDING_CONCLUIDO";
 
 export type AcaoId =
-  | "subir_dados"
-  | "remover_lote"
   | "gerar"
   | "regerar"
   | "enviar_validacao"

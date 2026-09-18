@@ -36,9 +36,25 @@ import type { ModuloId, PerfilId, Usuario } from "@/lib/tipos";
 
 const PERFIS_CONVITE: PerfilId[] = ["diretor", "operacional", "contador", "cliente"];
 
+const ROTULOS_ROTA_MATRIZ: Record<string, string> = {
+  "/app": "Dashboard",
+  "/app/clientes": "Clientes",
+  "/app/fornecimento": "Fornecimento de dados",
+  "/app/acam212": "ACAM212",
+  "/app/cadoc": "Cadoc 5710/5711",
+  "/app/fiscal": "Fiscal",
+  "/app/entregas": "Arquivos entregues",
+  "/app/calendario": "Calendário",
+  "/app/auditoria": "Auditoria",
+  "/app/evidencias": "Evidências",
+  "/app/operacao": "Operação",
+  "/app/configuracoes": "Configurações",
+  "/app/configuracoes/instituicao": "Configurações · Instituição",
+  "/app/configuracoes/usuarios": "Configurações · Usuários",
+  "/app/configuracoes/dicionarios": "Configurações · Dicionários",
+};
+
 const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
-  subir_dados: "Enviar dados do período",
-  remover_lote: "Remover lote enviado",
   gerar: "Gerar arquivo",
   regerar: "Gerar novamente",
   enviar_validacao: "Enviar para validação",
@@ -350,7 +366,7 @@ export default function ConfiguracoesUsuariosPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-neutral-700">Matriz de permissões</h2>
-            <p className="text-sm text-neutral-500">Reprodução somente leitura das ações permitidas por perfil.</p>
+            <p className="text-sm text-neutral-500">Reprodução somente leitura das seções e das ações permitidas por perfil.</p>
           </div>
           <Select value={perfilFiltro} onValueChange={(valor) => setPerfilFiltro((valor as PerfilId | "todos") ?? "todos")}>
             <SelectTrigger className="w-56" aria-label="Filtrar matriz por perfil">
@@ -381,7 +397,26 @@ export default function ConfiguracoesUsuariosPage() {
                   {perfil.lado === "videnas" ? "Videnas" : "Cliente"}
                 </span>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <p className="mt-3 text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
+                Seções acessíveis
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {perfil.rotasPermitidas
+                  .filter((rota) => rota.startsWith("/app"))
+                  .map((rota) => (
+                    <span
+                      key={rota}
+                      className="rounded-md bg-status-info-bg px-2 py-1 text-[11px] text-status-info-text"
+                    >
+                      {ROTULOS_ROTA_MATRIZ[rota] ?? rota}
+                    </span>
+                  ))}
+              </div>
+
+              <p className="mt-3 text-[11px] font-semibold tracking-wide text-neutral-500 uppercase">
+                Ações permitidas
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {perfil.acoesPermitidas.map((acaoId) => (
                   <span key={acaoId} className="rounded-md bg-neutral-100 px-2 py-1 text-[11px] text-neutral-600">
                     {ROTULOS_ACAO_MATRIZ[acaoId] ?? acaoId}

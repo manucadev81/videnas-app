@@ -19,6 +19,7 @@ import {
   descreverContagemPrazo,
 } from "@/components/fornecimento/constantes";
 import { buscarInsumos, calcularCompletude, ROTULOS_STATUS_INSUMO } from "@/lib/fornecimento";
+import { podeVerRota } from "@/lib/permissoes";
 import { fornecimentosDoPeriodo, lacresDoPeriodo, useEvidenciasStore } from "@/lib/store/evidencias";
 import { usePeriodosStore, type AutorAcao } from "@/lib/store/periodos";
 import { formatarData, formatarDataHora } from "@/lib/formatadores";
@@ -88,6 +89,9 @@ export function PainelAcompanhamentoFornecimento({
         : `Cliente notificado: ${completude.pendencias.length} insumos pendentes cobrados.`
     );
   }
+
+  const podeVerFornecimento = podeVerRota(autor.perfilId, "/app/fornecimento");
+  const mostrarRodape = avaliacaoNotificar.visivel || podeVerFornecimento;
 
   const botaoNotificar = (
     <Button
@@ -218,28 +222,34 @@ export function PainelAcompanhamentoFornecimento({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-5">
-        <TooltipProvider>
-          {podeNotificar ? (
-            botaoNotificar
-          ) : (
-            <Tooltip>
-              <TooltipTrigger render={<span tabIndex={0} />}>{botaoNotificar}</TooltipTrigger>
-              <TooltipContent>{motivoDesabilitado}</TooltipContent>
-            </Tooltip>
-          )}
-        </TooltipProvider>
+      {mostrarRodape ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-5">
+          {avaliacaoNotificar.visivel ? (
+            <TooltipProvider>
+              {podeNotificar ? (
+                botaoNotificar
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger render={<span tabIndex={0} />}>{botaoNotificar}</TooltipTrigger>
+                  <TooltipContent>{motivoDesabilitado}</TooltipContent>
+                </Tooltip>
+              )}
+            </TooltipProvider>
+          ) : null}
 
-        <Button
-          render={<Link href="/app/fornecimento" />}
-          nativeButton={false}
-          variant="ghost"
-          size="sm"
-        >
-          <Eye aria-hidden="true" />
-          Ver fornecimento do cliente
-        </Button>
-      </div>
+          {podeVerFornecimento ? (
+            <Button
+              render={<Link href="/app/fornecimento" />}
+              nativeButton={false}
+              variant="ghost"
+              size="sm"
+            >
+              <Eye aria-hidden="true" />
+              Ver fornecimento do cliente
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

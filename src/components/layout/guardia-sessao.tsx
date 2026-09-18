@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buscarPerfil, podeVerRota } from "@/lib/permissoes";
 import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
 
 function EsqueletoConteudo() {
@@ -22,16 +24,30 @@ function EsqueletoConteudo() {
 
 export function GuardiaSessao({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const hidratado = useHidratarSessao();
   const autenticado = useSessaoStore((estado) => estado.autenticado);
+  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
+
+  const rotaPermitida = Boolean(perfilAtivo && podeVerRota(perfilAtivo, pathname));
 
   useEffect(() => {
-    if (hidratado && !autenticado) {
-      router.replace("/login");
+    if (!hidratado) {
+      return;
     }
-  }, [hidratado, autenticado, router]);
 
-  if (!hidratado || !autenticado) {
+    if (!autenticado) {
+      router.replace("/login");
+      return;
+    }
+
+    if (perfilAtivo && !podeVerRota(perfilAtivo, pathname)) {
+      toast.error(`Esta área não faz parte do perfil ${buscarPerfil(perfilAtivo).rotuloCompleto}.`);
+      router.replace("/app");
+    }
+  }, [hidratado, autenticado, perfilAtivo, pathname, router]);
+
+  if (!hidratado || !autenticado || !perfilAtivo || !rotaPermitida) {
     return <EsqueletoConteudo />;
   }
 

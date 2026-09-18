@@ -44,8 +44,6 @@ import type { AcaoId, CanalEnvioBcb, ValidacaoItem } from "@/lib/tipos";
 import { truncarHash } from "@/lib/formatadores";
 
 const ROTULOS_ACAO: Record<AcaoId, string> = {
-  subir_dados: "Enviar dados do período",
-  remover_lote: "Remover lote",
   gerar: "Gerar arquivo",
   regerar: "Gerar novamente",
   enviar_validacao: "Enviar para validação",
@@ -86,7 +84,6 @@ const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "gh
 };
 
 const CANDIDATOS_BARRA: AcaoId[] = [
-  "subir_dados",
   "gerar",
   "regerar",
   "enviar_validacao",
@@ -102,7 +99,6 @@ const CANDIDATOS_BARRA: AcaoId[] = [
 ];
 
 const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrutivo-suave" | "ghost">> = {
-  subir_dados: "primario",
   gerar: "primario",
   regerar: "secundario",
   enviar_validacao: "primario",
@@ -239,14 +235,6 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
 
   function acionar(acaoId: AcaoId) {
     switch (acaoId) {
-      case "subir_dados": {
-        const painel = document.getElementById("ingestao-painel");
-        if (painel) {
-          painel.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-        toast.info("Use a área de recepção de documentos, na etapa Ingestão, para enviar os arquivos.");
-        return;
-      }
       case "gerar": {
         const resultado = gerarArquivo(periodoId, autor);
         tratarResultado(resultado, "Arquivo gerado. Hash registrado na trilha de auditoria.");

@@ -22,10 +22,10 @@ import {
   useTenantsStore,
 } from "@/lib/store/tenants";
 import { buscarProtocolo, calcularPeriodoDerivado, periodosPorInstituicao } from "@/lib/mock/periodos";
-import { PERFIS_SIMULAVEIS, buscarPerfil } from "@/lib/permissoes";
+import { buscarPerfil } from "@/lib/permissoes";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
-import type { PerfilId, TipoInstituicao } from "@/lib/tipos";
+import type { TipoInstituicao } from "@/lib/tipos";
 
 const ROTULO_TIPO: Record<TipoInstituicao, string> = {
   exchange: "Exchange",
@@ -63,12 +63,10 @@ export default function SelecionarInstituicaoPage() {
   const autenticado = useSessaoStore((estado) => estado.autenticado);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
-  const definirPerfil = useSessaoStore((estado) => estado.definirPerfil);
   const definirInstituicao = useSessaoStore((estado) => estado.definirInstituicao);
 
   const usuario = usuarioId ? buscarUsuario(usuarioId) : undefined;
 
-  const [perfilEscolhido, setPerfilEscolhido] = useState<PerfilId | null>(null);
   const [instituicaoSelecionada, setInstituicaoSelecionada] = useState<string | null>(null);
   const [termoBusca, setTermoBusca] = useState("");
   const [autoSelecaoConcluida, setAutoSelecaoConcluida] = useState(false);
@@ -87,8 +85,7 @@ export default function SelecionarInstituicaoPage() {
     }
   }, [hidratado, autenticado, contextoFixo, router]);
 
-  const perfilSelecionado =
-    perfilEscolhido ?? (contextoFixo ? "operacional" : (perfilAtivo ?? "operacional"));
+  const perfilSelecionado = perfilAtivo ?? "operacional";
   const perfilMetadados = buscarPerfil(perfilSelecionado);
 
   const instituicoesDisponiveis = useMemo(() => {
@@ -145,19 +142,17 @@ export default function SelecionarInstituicaoPage() {
 
   function confirmar() {
     if (!instituicaoSelecionada) return;
-    definirPerfil(perfilSelecionado);
     definirInstituicao(instituicaoSelecionada);
     router.push("/app");
   }
 
   function abrirVisaoGlobal() {
-    definirPerfil(perfilSelecionado);
     definirInstituicao("todas");
     router.push(cartaoGlobal.destino);
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-5xl flex-1 flex-col gap-10 px-4 py-10 md:px-6">
+    <div className="mx-auto flex min-h-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10 md:px-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-neutral-700">Selecione a instituição</h1>
         <p className="mt-1 text-sm text-neutral-500">
@@ -165,57 +160,6 @@ export default function SelecionarInstituicaoPage() {
           <span className="font-medium text-brand-700">{perfilMetadados.rotuloCompleto}</span>.
         </p>
       </div>
-
-      <section aria-labelledby="perfil-titulo" className="space-y-3">
-        <h2 id="perfil-titulo" className="font-display text-lg font-bold text-neutral-700">
-          Simular perfil
-        </h2>
-        <p className="text-sm text-neutral-500">
-          Escolha o perfil para explorar a demonstração. Perfis do lado Cliente pertencem à instituição; perfis do
-          lado Videnas enxergam múltiplas instituições. Hoje o lado Videnas tem três papéis: Executor e Validador
-          operam o pipeline regulatório dos clientes; o Administrador provisiona e administra os clientes da
-          carteira e não opera o pipeline — ele não sobe dados, não gera, não valida e não libera arquivos. O
-          perfil Cliente / Fornecedor de dados não aparece aqui: ele é pré-cadastrado pelo operador do tenant, já
-          vem vinculado a uma instituição e entra direto nela, sem passar por esta tela.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {PERFIS_SIMULAVEIS.map((perfil) => {
-            const selecionado = perfil.id === perfilSelecionado;
-            return (
-              <button
-                key={perfil.id}
-                type="button"
-                onClick={() => {
-                  setPerfilEscolhido(perfil.id);
-                  setInstituicaoSelecionada(null);
-                }}
-                aria-pressed={selecionado}
-                className={cn(
-                  "flex flex-col items-start gap-1.5 rounded-lg border p-4 text-left transition-colors",
-                  selecionado
-                    ? "border-brand-700 bg-brand-50"
-                    : "border-neutral-200 bg-white hover:border-brand-300"
-                )}
-              >
-                <span className="flex w-full items-center justify-between gap-2">
-                  <span className="text-sm font-bold text-neutral-700">{perfil.rotuloCompleto}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
-                      perfil.lado === "videnas"
-                        ? "bg-status-candidate-bg text-status-candidate-text"
-                        : "bg-status-info-bg text-status-info-text"
-                    )}
-                  >
-                    {perfil.lado === "videnas" ? "Videnas" : "Cliente"}
-                  </span>
-                </span>
-                <span className="text-xs text-neutral-500">{perfil.descricao}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
       <section aria-labelledby="instituicao-titulo" className="space-y-3">
         <div className="flex items-center justify-between gap-3">

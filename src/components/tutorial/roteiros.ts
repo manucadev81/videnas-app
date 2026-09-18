@@ -84,8 +84,8 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-tabela-arquivos",
     titulo: "Histórico de arquivos recebidos",
     descricao:
-      "Esta tabela reúne os lotes que o Cliente já enviou e que foram aceitos nesta competência, além dos arquivos que não passaram na conferência automática, com o status de cada um: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado. Nas linhas não aceitas o motivo e o ajuste necessário aparecem logo abaixo do status.",
-    seletor: '[data-tour="upload-tabela-arquivos"]',
+      "Esta tabela lista somente os lotes que o Cliente enviou e que entraram nesta competência — arquivo, tamanho, data de recebimento, canal e o status Aceito. A conferência de formato e de layout acontece no ato do envio, na tela do Cliente; nada que não tenha sido aceito por ele chega até aqui. Quando a tabela está vazia, é porque o Cliente ainda não forneceu os dados desta competência.",
+    seletor: '[data-tour="recepcao-tabela-arquivos"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "top",
   },
@@ -305,7 +305,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-boas-vindas",
     titulo: "Bem-vinda, Executor Videnas",
     descricao:
-      "Você roda a ingestão e a geração dos arquivos para todas as instituições atendidas. O seletor de perfil no header alterna entre as visões desta demonstração — o seu está ativo agora.",
+      "Você roda a ingestão técnica e a geração dos arquivos para todas as instituições atendidas, sempre partindo do que o Cliente já forneceu — você nunca sobe dados em nome dele. O seletor de perfil no header alterna entre as visões desta demonstração — o seu está ativo agora.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -329,13 +329,24 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     posicao: "bottom",
   },
   {
-    id: "executor-gerar-arquivo",
-    titulo: "Rodar a ingestão e gerar o arquivo",
+    id: "executor-ingestao-fornecimento",
+    titulo: "Sua etapa Ingestão é o fornecimento do cliente",
     descricao:
-      "A Pampulha Capital tem o ACAM212 de agosto com dados recebidos e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só aparece quando há pelo menos um lote ingerido; sem dados fornecidos pelo Cliente, não há o que gerar.",
+      "Na Pampulha Capital, a etapa Ingestão do ACAM212 de agosto não tem dropzone para você: quem fornece os insumos é exclusivamente o Cliente / Fornecedor de dados, em Fornecimento de dados. Aqui você confere a completude da competência, o checklist de insumos exigidos × fornecidos e as evidências de entrada já lacradas — é o insumo do seu trabalho.",
+    seletor: '[data-tour="acompanhamento-fornecimento"]',
+    rota: "/app/acam212/per-pampulha-acam212-202608",
+    posicao: "top",
+    acaoSugerida: { seletor: '[data-tour="stepper-item-ingestao"]' },
+  },
+  {
+    id: "executor-gerar-arquivo",
+    titulo: "Gerar o arquivo a partir do que o cliente entregou",
+    descricao:
+      "A Pampulha Capital tem o ACAM212 de agosto com dados já fornecidos pelo Cliente e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só fica disponível quando o Cliente já entregou pelo menos um lote nesta competência; sem fornecimento dele, não há o que gerar e o caminho é cobrar o cliente, não subir os dados por ele.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
+    acaoSugerida: { seletor: '[data-tour="stepper-item-geracao"]' },
   },
   {
     id: "executor-hash-log",

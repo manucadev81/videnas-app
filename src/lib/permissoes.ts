@@ -14,18 +14,18 @@ export interface PerfilMetadados {
   contextoFixo: boolean;
 }
 
-const ROTAS_COMUNS = [
-  "/",
-  "/login",
-  "/selecionar-instituicao",
-  "/app",
-  "/app/fiscal",
-  "/app/calendario",
-  "/app/auditoria",
+const ROTAS_PUBLICAS = ["/", "/login"];
+
+const ROTAS_MODULOS_REGULATORIOS = ["/app/acam212", "/app/cadoc"];
+
+const ROTAS_CONFIGURACOES_TENANT = [
   "/app/configuracoes",
+  "/app/configuracoes/instituicao",
+  "/app/configuracoes/usuarios",
+  "/app/configuracoes/dicionarios",
 ];
 
-const ROTAS_REGULATORIAS = ["/app/acam212", "/app/cadoc"];
+const ROTAS_SEM_DESCENDENTES = new Set(["/", "/app", "/app/configuracoes"]);
 
 export const PERFIS: PerfilMetadados[] = [
   {
@@ -37,27 +37,31 @@ export const PERFIS: PerfilMetadados[] = [
     corBadge: "brand",
     icone: "ShieldCheck",
     rotasPermitidas: [
-      ...ROTAS_COMUNS,
-      ...ROTAS_REGULATORIAS,
+      ...ROTAS_PUBLICAS,
+      "/selecionar-instituicao",
       "/onboarding",
-      "/app/evidencias",
-      "/app/entregas",
+      "/app",
       "/app/fornecimento",
+      ...ROTAS_MODULOS_REGULATORIOS,
+      "/app/fiscal",
+      "/app/entregas",
+      "/app/calendario",
+      "/app/auditoria",
+      "/app/evidencias",
+      ...ROTAS_CONFIGURACOES_TENANT,
     ],
     acoesPermitidas: [
       "aprovar",
-      "baixar_arquivo",
       "registrar_protocolo",
       "marcar_encaminhado",
       "tratar_excecao",
       "editar_config_instituicao",
       "gerenciar_usuarios",
-      "editar_dicionarios",
       "exportar_auditoria",
-      "ver_evidencias",
-      "verificar_integridade",
+      "baixar_arquivo",
       "baixar_comprovante",
-      "notificar_cliente",
+      "verificar_integridade",
+      "ver_evidencias",
     ],
     multiTenant: false,
     contextoFixo: false,
@@ -72,11 +76,17 @@ export const PERFIS: PerfilMetadados[] = [
     corBadge: "brand",
     icone: "Boxes",
     rotasPermitidas: [
-      ...ROTAS_COMUNS,
-      ...ROTAS_REGULATORIAS,
+      ...ROTAS_PUBLICAS,
+      "/selecionar-instituicao",
       "/onboarding",
-      "/app/entregas",
+      "/app",
       "/app/fornecimento",
+      ...ROTAS_MODULOS_REGULATORIOS,
+      "/app/fiscal",
+      "/app/entregas",
+      "/app/calendario",
+      "/app/auditoria",
+      ...ROTAS_CONFIGURACOES_TENANT,
     ],
     acoesPermitidas: [
       "baixar_arquivo",
@@ -96,8 +106,15 @@ export const PERFIS: PerfilMetadados[] = [
     lado: "cliente",
     corBadge: "candidate",
     icone: "Calculator",
-    rotasPermitidas: ["/", "/login", "/selecionar-instituicao", "/app", "/app/fiscal", "/app/calendario", "/app/auditoria", "/app/configuracoes", "/onboarding"],
-    acoesPermitidas: ["validar_fiscal", "devolver_fiscal", "baixar_arquivo", "tratar_excecao", "editar_dicionarios"],
+    rotasPermitidas: [
+      ...ROTAS_PUBLICAS,
+      "/selecionar-instituicao",
+      "/onboarding",
+      "/app",
+      "/app/fiscal",
+      "/app/calendario",
+    ],
+    acoesPermitidas: ["validar_fiscal", "devolver_fiscal", "baixar_arquivo"],
     multiTenant: false,
     contextoFixo: false,
   },
@@ -111,9 +128,7 @@ export const PERFIS: PerfilMetadados[] = [
     corBadge: "brand",
     icone: "UploadCloud",
     rotasPermitidas: [
-      "/",
-      "/login",
-      "/onboarding",
+      ...ROTAS_PUBLICAS,
       "/app",
       "/app/fornecimento",
       "/app/entregas",
@@ -127,33 +142,39 @@ export const PERFIS: PerfilMetadados[] = [
     id: "executor",
     rotulo: "Executor",
     rotuloCompleto: "Executor — Videnas",
-    descricao: "Roda a ingestão e a geração dos arquivos e estruturas. Nunca libera.",
+    descricao:
+      "Parte dos dados que o Cliente já forneceu para rodar a ingestão técnica e a geração dos arquivos. Nunca fornece dados nem libera.",
     lado: "videnas",
     corBadge: "violet",
     icone: "Cog",
     rotasPermitidas: [
-      ...ROTAS_COMUNS,
-      ...ROTAS_REGULATORIAS,
-      "/onboarding",
+      ...ROTAS_PUBLICAS,
+      "/selecionar-instituicao",
+      "/app",
       "/app/operacao",
+      "/app/fornecimento",
+      ...ROTAS_MODULOS_REGULATORIOS,
+      "/app/fiscal",
+      "/app/calendario",
+      "/app/auditoria",
       "/app/evidencias",
+      "/app/configuracoes",
+      "/app/configuracoes/dicionarios",
     ],
     acoesPermitidas: [
-      "subir_dados",
-      "remover_lote",
       "gerar",
       "regerar",
       "enviar_validacao",
       "enviar_contador",
       "reabrir",
-      "baixar_arquivo",
       "tratar_excecao",
       "editar_dicionarios",
       "trocar_tenant",
       "exportar_auditoria",
-      "ver_evidencias",
-      "verificar_integridade",
+      "baixar_arquivo",
       "baixar_comprovante",
+      "verificar_integridade",
+      "ver_evidencias",
     ],
     multiTenant: true,
     contextoFixo: false,
@@ -167,25 +188,26 @@ export const PERFIS: PerfilMetadados[] = [
     corBadge: "violet",
     icone: "BadgeCheck",
     rotasPermitidas: [
-      ...ROTAS_COMUNS,
-      ...ROTAS_REGULATORIAS,
-      "/onboarding",
+      ...ROTAS_PUBLICAS,
+      "/selecionar-instituicao",
+      "/app",
       "/app/operacao",
+      ...ROTAS_MODULOS_REGULATORIOS,
+      "/app/fiscal",
+      "/app/calendario",
+      "/app/auditoria",
       "/app/evidencias",
     ],
     acoesPermitidas: [
       "executar_validacao",
       "liberar",
       "registrar_retorno",
-      "reabrir",
-      "baixar_arquivo",
-      "registrar_protocolo",
-      "tratar_excecao",
       "trocar_tenant",
       "exportar_auditoria",
-      "ver_evidencias",
-      "verificar_integridade",
+      "baixar_arquivo",
       "baixar_comprovante",
+      "verificar_integridade",
+      "ver_evidencias",
     ],
     multiTenant: true,
     contextoFixo: false,
@@ -200,8 +222,7 @@ export const PERFIS: PerfilMetadados[] = [
     corBadge: "violet",
     icone: "Building2",
     rotasPermitidas: [
-      "/",
-      "/login",
+      ...ROTAS_PUBLICAS,
       "/selecionar-instituicao",
       "/app",
       "/app/clientes",
@@ -243,12 +264,10 @@ export function podeVerRota(perfil: PerfilId, href: string): boolean {
   if (rotas.includes(href)) {
     return true;
   }
-  return rotas.some((rota) => rota !== "/" && href.startsWith(`${rota}/`));
+  return rotas.some((rota) => !ROTAS_SEM_DESCENDENTES.has(rota) && href.startsWith(`${rota}/`));
 }
 
 const ROTULOS_ACAO: Record<AcaoId, string> = {
-  subir_dados: "Enviar dados do período",
-  remover_lote: "Remover lote",
   gerar: "Gerar arquivo",
   regerar: "Gerar novamente",
   enviar_validacao: "Enviar para validação",
@@ -291,7 +310,6 @@ interface RegraAcao {
 }
 
 const REGRAS_ACAO: RegraAcao[] = [
-  { id: "subir_dados", estadosOrigem: ["aguardando_dados", "dados_ingeridos"], estadoDestino: "dados_ingeridos", variante: "primario" },
   { id: "gerar", estadosOrigem: ["dados_ingeridos"], estadoDestino: "gerado", variante: "primario" },
   { id: "regerar", estadosOrigem: ["com_excecoes"], estadoDestino: "gerado", variante: "secundario" },
   { id: "enviar_validacao", estadosOrigem: ["gerado"], estadoDestino: "em_validacao", variante: "primario", excetoFiscal: true },
@@ -383,14 +401,6 @@ export function podeExecutar(
       permitido: false,
       visivel: true,
       motivo: "Nenhum lote de dados foi recebido para esta competência.",
-    };
-  }
-
-  if (acaoId === "subir_dados" && !["aguardando_dados", "dados_ingeridos"].includes(periodo.estado)) {
-    return {
-      permitido: false,
-      visivel: true,
-      motivo: "O período já foi gerado. Peça a reabertura ao time Videnas.",
     };
   }
 

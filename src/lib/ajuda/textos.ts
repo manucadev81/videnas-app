@@ -165,13 +165,13 @@ export const TEXTOS_AJUDA = {
     titulo: "Arquivos recebidos",
     pergunta: "O que mostra a tabela Arquivos recebidos?",
     descricao:
-      "Reúne tudo que passou pela conferência desta competência: os lotes aceitos e também os arquivos recusados, com tamanho, momento da recepção e canal de origem. Apenas os lotes aceitos alimentam a geração do arquivo da obrigação.",
+      "Lista os lotes que o Cliente / Fornecedor de dados enviou e que entraram nesta competência, com tamanho, momento da recepção e canal de origem. A conferência de layout acontece no ato do envio, na tela do Cliente: o que não é aceito por ele nunca chega até aqui. São esses lotes que alimentam a geração do arquivo da obrigação.",
   },
   "recepcao.status": {
     titulo: "Coluna Status dos arquivos",
     pergunta: "O que significam os status da coluna Status?",
     descricao:
-      "Aceito é o lote conforme, sem ressalvas. Aceito com ressalvas entrou na competência mas acumulou avisos de código ING-A, que não travam o fluxo. Não conforme reúne os arquivos com não conformidades bloqueantes de código ING-E, que nunca entram na competência. Rejeitado pelo operador é o arquivo conforme que você recusou na conferência.",
+      "Aceito é o lote que passou pela conferência de layout no envio feito pelo Cliente e entrou na competência. Arquivos com não conformidades bloqueantes de código ING-E são barrados ainda na tela do Cliente e nunca chegam a esta tabela.",
   },
 
   "nav.dashboard": {
@@ -300,7 +300,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Fornecimento do cliente",
     pergunta: "O que este painel de acompanhamento mostra?",
     descricao:
-      "É a visão de suporte do Operacional sobre o que o Cliente / Fornecedor de dados já entregou nesta competência: completude, insumos pendentes, prazo e as evidências de entrada já lacradas. O envio continua sendo só do Cliente — aqui você acompanha, orienta e cobra o que falta.",
+      "É a visão de quem depende do fornecimento do Cliente / Fornecedor de dados nesta competência: completude, insumos pendentes, prazo e as evidências de entrada já lacradas. Ela aparece para o Operacional, que orienta e cobra o que falta, e para o Executor Videnas, que só consegue gerar o arquivo a partir do que o Cliente já entregou. O envio continua sendo exclusivo do Cliente.",
   },
   "fornecimento.statusCanonico": {
     titulo: "Status do lote canônico",
@@ -369,7 +369,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Configurações",
     pergunta: "O que há em Configurações?",
     descricao:
-      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. São as configurações do próprio tenant: a instituição e os usuários iniciais já foram cadastrados antes pela Videnas, no provisionamento do cliente, e aqui a gestão passa a ser do cliente. O que você consegue editar depende do seu perfil: Diretor e Operacional administram usuários e o responsável pelo envio de dados; só o Diretor edita os dados cadastrais da instituição.",
+      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. São as configurações do próprio tenant: a instituição e os usuários iniciais já foram cadastrados antes pela Videnas, no provisionamento do cliente, e aqui a gestão passa a ser do cliente. As abas visíveis dependem do seu perfil: só o Diretor edita os dados cadastrais da instituição; Diretor e Operacional administram usuários e o responsável pelo envio de dados; os dicionários são editados pelo Operacional e pelo Executor Videnas, e o Executor enxerga apenas essa aba.",
   },
 } as const satisfies Record<string, TextoAjuda>;
 

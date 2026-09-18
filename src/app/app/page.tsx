@@ -23,7 +23,7 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
 import { prazosRegulatorios } from "@/lib/mock/prazos";
-import { buscarPerfil } from "@/lib/permissoes";
+import { buscarPerfil, podeVerRota } from "@/lib/permissoes";
 import { formatarCNPJ, formatarCompetencia, formatarCompetenciaCurta, formatarData, formatarDataHora } from "@/lib/formatadores";
 import type {
   EstadoPeriodo,
@@ -182,7 +182,10 @@ export default function DashboardPage() {
     const instituicaoAtiva = tenants.find((tenant) => tenant.id === instituicaoAtivaId);
     const ladoCliente = perfilAtivo ? buscarPerfil(perfilAtivo).lado === "cliente" : false;
     const precisaConcluirOnboarding =
-      ladoCliente && Boolean(instituicaoAtiva) && instituicaoAtiva?.onboardingConcluido === false;
+      ladoCliente &&
+      Boolean(instituicaoAtiva) &&
+      instituicaoAtiva?.onboardingConcluido === false &&
+      Boolean(perfilAtivo && podeVerRota(perfilAtivo, "/onboarding"));
 
     return (
       <EstadoVazio

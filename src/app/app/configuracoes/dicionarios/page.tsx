@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
+import { buscarPerfil } from "@/lib/permissoes";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { cn } from "@/lib/utils";
 import {
@@ -46,12 +47,13 @@ function novoId(prefixo: string): string {
 export default function ConfiguracoesDicionariosPage() {
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
 
+  const podeEditarDicionarios = Boolean(
+    perfilAtivo && buscarPerfil(perfilAtivo).acoesPermitidas.includes("editar_dicionarios")
+  );
+
   function podeEditar(aba: "ativos" | "contas" | "clientes" | "fiscal" | "paises"): boolean {
     if (aba === "paises") return false;
-    if (perfilAtivo === "admin") return false;
-    if (perfilAtivo === "validador") return false;
-    if (perfilAtivo === "contador") return aba === "fiscal";
-    return true;
+    return podeEditarDicionarios;
   }
 
   return (

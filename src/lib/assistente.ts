@@ -109,7 +109,7 @@ function textoPerfis(): string {
   return [
     `A plataforma tem ${PERFIS.length} perfis, e cada um enxerga apenas as ações do seu papel:`,
     ...linhas,
-    "O lado Videnas tem três papéis, com fronteira rígida entre eles: o Executor roda a ingestão e gera os arquivos, o Validador confere o schema oficial e libera para o cliente, e o Administrador provisiona e administra os clientes da carteira — cadastra o tenant, contrata os módulos e convida os usuários iniciais — sem encostar no pipeline regulatório.",
+    "O lado Videnas tem três papéis, com fronteira rígida entre eles: o Executor roda a ingestão técnica e gera os arquivos a partir do que o Cliente já forneceu — ele nunca sobe dados em nome do cliente —, o Validador confere o schema oficial e libera para o cliente, e o Administrador provisiona e administra os clientes da carteira — cadastra o tenant, contrata os módulos e convida os usuários iniciais — sem encostar no pipeline regulatório.",
     `O perfil ativo é escolhido no seletor de perfil do header e muda a navegação, os módulos visíveis e os botões disponíveis em cada competência. O seletor cobre os ${PERFIS_SIMULAVEIS.length} perfis simuláveis: o Cliente / Fornecedor de dados não aparece ali porque é pré-cadastrado pelo operador do tenant — chega-se a ele pelo login do próprio usuário, e no header ele vê apenas a identidade estática (nome, instituição e papel).`,
   ].join("\n");
 }
@@ -261,10 +261,10 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "recepcao",
     ],
     resposta: [
-      "Quem alimenta a Ingestão é o Cliente / Fornecedor de dados, em Fornecimento de dados. O Operacional / Suporte ao cliente não sobe arquivos: ele acompanha a completude, orienta o que falta e notifica o cliente. Sem dados enviados, não há o que gerar.",
+      "Quem alimenta a Ingestão é exclusivamente o Cliente / Fornecedor de dados, em Fornecimento de dados. Nenhum outro perfil sobe arquivos: o Operacional / Suporte ao cliente acompanha a completude, orienta o que falta e notifica o cliente; o Executor Videnas parte do que já foi fornecido. Sem dados enviados pelo Cliente, não há o que gerar.",
       "O arquivo é lido no próprio navegador e conferido contra o layout da obrigação: nome do arquivo, competência, instituição, delimitador, cabeçalho, colunas obrigatórias e o tipo de cada campo.",
       "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio: você confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Assim que um lote é aceito, a competência passa de \"Aguardando dados\" para \"Dados recebidos\".",
-      "Cada arquivo fica na tabela de recebidos com um status: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado pelo operador.",
+      "Na etapa Ingestão da competência, a tabela \"Arquivos recebidos\" lista apenas os lotes aceitos pelo Cliente e que entraram na competência, com o status Aceito. O que não passa na conferência é barrado ainda na tela do Cliente e nunca chega a essa tabela.",
     ].join("\n\n"),
     relacionados: ["envio-lote", "nao-conformidades", "perfil-cliente"],
   },
@@ -559,7 +559,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     resposta: [
       "A regra de 4 olhos da Videnas é fixa e vale para todos os módulos: Executor gera, Validador libera, Diretor aprova — nunca a mesma pessoa.",
       "Se o usuário que gerou o arquivo tentar liberá-lo, o botão fica desabilitado com o aviso: \"Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória.\"",
-      "Por isso o botão \"Gerar arquivo\" nunca aparece para o Validador, e \"Liberar para o cliente\" nunca aparece para o Executor nem para o Diretor. Cada perfil só enxerga as ações do seu próprio papel.",
+      "Por isso o botão \"Gerar arquivo\" nunca aparece para o Validador, e \"Liberar para o cliente\" nunca aparece para o Executor nem para o Diretor. Pela mesma razão, o Validador não reabre período nem registra protocolo do Banco Central: reabrir e corrigir é do Executor, e responder perante o BCB é do Diretor. Cada perfil só enxerga as ações do seu próprio papel.",
       "O Administrador — Videnas fica fora dessa cadeia de propósito: ele não gera, não valida e não aprova. Provisiona o cliente, contrata os módulos, convida os usuários iniciais e sai do caminho — nenhuma ação do pipeline aparece para ele, em nenhum estado da competência.",
       "O card de segregação de funções, na etapa Auditoria, mostra quem executou cada um desses três passos.",
     ].join("\n\n"),
@@ -586,7 +586,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "Perfis do lado cliente (Diretor, Operacional e Contador) trabalham em uma única instituição, definida no cadastro do usuário.",
       "O perfil Cliente / Fornecedor de dados é pré-cadastrado pelo operador do tenant — instituição e pessoa responsável pelo envio já vêm cadastradas antes do primeiro acesso. Por isso ele entra direto na instituição dele, sem passar pela tela de seleção, e o header mostra apenas a identidade estática (nome, instituição e papel), sem seletor de instituição nem simulador de perfil.",
       "Os três perfis do lado Videnas — Executor, Validador e Administrador — são multi-tenant: atendem várias instituições e podem trocar de contexto pelo seletor de instituição do header. Executor e Validador também trocam pelos chips da fila em Operação. A troca muda toda a aplicação, inclusive a barra lateral.",
-      "A tela de seleção de instituição existe para os perfis multi-tenant e para a simulação de perfis da demonstração, e a escolha pode ser \"todas\". Para Executor e Validador, \"todas\" leva à fila de operação consolidada; para o Administrador leva à carteira de clientes, porque ele não tem fila de trabalho regulatório.",
+      "A tela de seleção de instituição existe para os perfis multi-tenant, e a escolha pode ser \"todas\". Para Executor e Validador, \"todas\" leva à fila de operação consolidada; para o Administrador leva à carteira de clientes, porque ele não tem fila de trabalho regulatório.",
       "A lista de instituições não é fixa. Meridian Digital Assets, Cofre Atlântico e Pampulha Capital são apenas a semente da demonstração: o Administrador cadastra novos clientes, e eles passam a aparecer aqui como qualquer outro, com o seu status de implantação.",
     ].join("\n\n"),
     relacionados: ["perfis", "prazos", "plataforma"],
