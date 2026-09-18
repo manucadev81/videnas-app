@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { PrevisualizacaoIngestao } from "@/components/dominio/modulo-previsualizacao-ingestao";
+import { PainelAcompanhamentoFornecimento } from "@/components/dominio/painel-acompanhamento-fornecimento";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
@@ -567,7 +568,9 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
             </div>
           )}
         </>
-      ) : null}
+      ) : (
+        <PainelAcompanhamentoFornecimento periodo={periodo} autor={autor} />
+      )}
 
       <div data-tour="upload-tabela-arquivos" className="rounded-lg border border-neutral-200 bg-white p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -588,7 +591,7 @@ export function RecepcaoDocumentos({ periodoId, className }: RecepcaoDocumentosP
           mensagemVazia={
             avaliacaoSubir.visivel
               ? "Envie um arquivo para começar a ingestão desta competência."
-              : "O time Operacional da instituição ainda não enviou os dados desta competência."
+              : "O Cliente / Fornecedor de dados da instituição ainda não enviou os dados desta competência."
           }
         />
       </div>

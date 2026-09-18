@@ -7,6 +7,7 @@ import type {
   CanalEnvioBcb,
   Excecao,
   EventoAuditoria,
+  ModuloId,
   PerfilId,
   PeriodoObrigacao,
   ProtocoloBCB,
@@ -16,6 +17,7 @@ import type {
 } from "@/lib/tipos";
 import {
   arquivos as arquivosMock,
+  HOJE_ISO,
   periodos as periodosMock,
   protocolos as protocolosMock,
   validacoes as validacoesMock,
@@ -76,9 +78,16 @@ function novoIdExcecao(): string {
   return `exc-rt-${contadorExcecaoRuntime.toString(16).padStart(4, "0")}`;
 }
 
-function construirEvento(
+interface EscopoEvento {
+  instituicaoId: string;
+  periodoId: string | null;
+  moduloId: ModuloId | null;
+  competencia: string | null;
+}
+
+function construirEventoBase(
   autor: AutorAcao,
-  periodo: PeriodoObrigacao,
+  escopo: EscopoEvento,
   tipo: TipoEventoAuditoria,
   rotuloTipo: string,
   referencia: string | null,
@@ -89,10 +98,10 @@ function construirEvento(
   return {
     id: novoEventoId(),
     ocorridoEm: new Date().toISOString(),
-    instituicaoId: periodo.instituicaoId,
-    periodoId: periodo.id,
-    moduloId: periodo.moduloId,
-    competencia: periodo.competencia,
+    instituicaoId: escopo.instituicaoId,
+    periodoId: escopo.periodoId,
+    moduloId: escopo.moduloId,
+    competencia: escopo.competencia,
     tipo,
     rotuloTipo,
     usuarioId: autor.usuarioId,
@@ -104,6 +113,81 @@ function construirEvento(
     ip: lado === "videnas" ? "10.20.4.18" : "201.17.88.203",
     userAgent: lado === "videnas" ? "Chrome 141 · Ubuntu 24.04" : "Chrome 141 · macOS 26",
   };
+}
+
+function construirEvento(
+  autor: AutorAcao,
+  periodo: PeriodoObrigacao,
+  tipo: TipoEventoAuditoria,
+  rotuloTipo: string,
+  referencia: string | null,
+  payload: Record<string, unknown>
+): EventoAuditoria {
+  return construirEventoBase(
+    autor,
+    {
+      instituicaoId: periodo.instituicaoId,
+      periodoId: periodo.id,
+      moduloId: periodo.moduloId,
+      competencia: periodo.competencia,
+    },
+    tipo,
+    rotuloTipo,
+    referencia,
+    payload
+  );
+}
+
+export interface ResultadoAberturaCompetencias {
+  sucesso: boolean;
+  motivo?: string;
+  periodosCriados: string[];
+}
+
+const MESES_COMPETENCIA = [
+  "Janeiro",
+  "Fevereiro",
+  "Março",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
+function rotuloCompetencia(competencia: string): string {
+  const [ano, mes] = competencia.split("-");
+  const nomeMes = MESES_COMPETENCIA[(Number(mes) || 1) - 1] ?? mes;
+  return `${nomeMes}/${ano}`;
+}
+
+const TOTAIS_INICIAIS: Record<ModuloId, Record<string, number>> = {
+  acam212: { operacoes: 0 },
+  cadoc5711: { datasBaseRecebidas: 0, datasBaseEsperadas: 16, clientesDistintos: 0, ativos: 0 },
+  cadoc5710: { carteiras: 0, ativos: 0, carteirasComStaking: 0 },
+  fiscal: { dps: 0, valorServicos: 0, valorIss: 0, valorRetido: 0 },
+};
+
+function prazoDaCompetencia(competencia: string, diaPrazo: number): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const mesSeguinte = mes === 12 ? 1 : mes + 1;
+  const anoPrazo = mes === 12 ? ano + 1 : ano;
+  return `${anoPrazo}-${mesSeguinte.toString().padStart(2, "0")}-${diaPrazo
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+export interface EntradaEventoAdministrativo {
+  autor: AutorAcao;
+  instituicaoId: string;
+  tipo: TipoEventoAuditoria;
+  rotuloTipo: string;
+  referencia: string | null;
+  payload: Record<string, unknown>;
 }
 
 export interface EstadoPeriodosStore {
@@ -179,6 +263,20 @@ export interface EstadoPeriodosStore {
     acao: "tratada" | "aceita_com_justificativa",
     justificativa: string
   ) => ResultadoAcao;
+
+  notificarCliente: (
+    periodoId: string,
+    autor: AutorAcao,
+    quantidadePendencias: number
+  ) => ResultadoAcao;
+
+  registrarEventoAdministrativo: (entrada: EntradaEventoAdministrativo) => void;
+
+  abrirCompetenciasIniciais: (
+    instituicaoId: string,
+    modulos: ModuloId[],
+    autor: AutorAcao
+  ) => ResultadoAberturaCompetencias;
 
   excecoesBloqueantesAbertas: (periodoId: string) => number;
 
@@ -742,6 +840,124 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
     }));
 
     return { sucesso: true };
+  },
+
+  notificarCliente: (periodoId, autor, quantidadePendencias) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+
+    const evento = construirEvento(
+      autor,
+      periodo,
+      "CLIENTE_NOTIFICADO",
+      "Cliente notificado sobre pendências",
+      null,
+      { quantidadePendencias }
+    );
+
+    set((estado) => ({
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  registrarEventoAdministrativo: ({ autor, instituicaoId, tipo, rotuloTipo, referencia, payload }) => {
+    const evento = construirEventoBase(
+      autor,
+      { instituicaoId, periodoId: null, moduloId: null, competencia: null },
+      tipo,
+      rotuloTipo,
+      referencia,
+      payload
+    );
+
+    set((estado) => ({ eventos: [...estado.eventos, evento] }));
+  },
+
+  abrirCompetenciasIniciais: (instituicaoId, modulos, autor) => {
+    if (!instituicaoId || instituicaoId === "todas") {
+      return { sucesso: false, motivo: "Instituição não identificada.", periodosCriados: [] };
+    }
+    if (modulos.length === 0) {
+      return {
+        sucesso: false,
+        motivo: "Nenhum módulo contratado para abrir competências.",
+        periodosCriados: [],
+      };
+    }
+
+    const competencia = HOJE_ISO.slice(0, 7);
+    const sufixoId = competencia.replace("-", "");
+    const slugTenant = instituicaoId.startsWith("inst-") ? instituicaoId.slice(5) : instituicaoId;
+    const agora = `${competencia}-01T00:00:00-03:00`;
+    const existentes = Object.values(get().periodos);
+
+    const novos: PeriodoObrigacao[] = [];
+
+    for (const moduloId of new Set(modulos)) {
+      const jaExiste = existentes.some(
+        (periodo) =>
+          periodo.instituicaoId === instituicaoId &&
+          periodo.moduloId === moduloId &&
+          periodo.competencia === competencia
+      );
+      if (jaExiste) {
+        continue;
+      }
+
+      const modulo = buscarModulo(moduloId);
+
+      novos.push({
+        id: `per-${slugTenant}-${moduloId}-${sufixoId}`,
+        instituicaoId,
+        moduloId,
+        competencia,
+        competenciaRotulo: rotuloCompetencia(competencia),
+        estado: "aguardando_dados",
+        prazoEntrega: prazoDaCompetencia(competencia, modulo.diaPrazo),
+        dataAbertura: agora,
+        lotes: [],
+        arquivoCorrenteId: null,
+        arquivoIds: [],
+        validacaoId: null,
+        protocoloId: null,
+        excecaoIds: [],
+        totaisResumo: { ...TOTAIS_INICIAIS[moduloId] },
+        geradoPorUsuarioId: null,
+        geradoEm: null,
+        liberadoPorUsuarioId: null,
+        liberadoEm: null,
+        aprovadoPorUsuarioId: null,
+        aprovadoEm: null,
+        entregueEm: null,
+        contadorStatus: "nao_aplicavel",
+        contadorUsuarioId: null,
+        contadorConfirmadoEm: null,
+      });
+    }
+
+    if (novos.length === 0) {
+      return { sucesso: true, periodosCriados: [] };
+    }
+
+    const eventos = novos.map((periodo) =>
+      construirEvento(autor, periodo, "PERIODO_CRIADO", "Período criado", null, {
+        competencia: periodo.competencia,
+        moduloId: periodo.moduloId,
+        prazoEntrega: periodo.prazoEntrega,
+      })
+    );
+
+    set((estado) => ({
+      periodos: {
+        ...estado.periodos,
+        ...paraRecord(novos, (periodo) => periodo.id),
+      },
+      eventos: [...estado.eventos, ...eventos],
+    }));
+
+    return { sucesso: true, periodosCriados: novos.map((periodo) => periodo.id) };
   },
 
   excecoesBloqueantesAbertas: (periodoId) => {

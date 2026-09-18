@@ -49,9 +49,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-meridian-acam212-202607",
     insumoId: "acam212-operacoes-periodo",
     seladoEm: "2026-08-03T09:42:18-03:00",
-    seladoPorUsuarioId: "usr-paula",
-    seladoPorNome: "Paula Arantes",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-natalia",
+    seladoPorNome: "Natália Queiroz",
+    perfilId: "cliente",
     origemNome: "acam212_meridian_202607.csv",
     tamanhoBytes: 486_113,
     resumoConteudo:
@@ -67,9 +67,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-meridian-acam212-202607",
     insumoId: "acam212-operacoes-periodo",
     seladoEm: "2026-08-04T15:07:53-03:00",
-    seladoPorUsuarioId: "usr-paula",
-    seladoPorNome: "Paula Arantes",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-natalia",
+    seladoPorNome: "Natália Queiroz",
+    perfilId: "cliente",
     origemNome: "acam212_meridian_202607_retificado.csv",
     tamanhoBytes: 489_620,
     resumoConteudo:
@@ -103,9 +103,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-meridian-cadoc5711-202607",
     insumoId: "cadoc5711-posicoes-clientes",
     seladoEm: "2026-08-05T08:31:47-03:00",
-    seladoPorUsuarioId: "usr-paula",
-    seladoPorNome: "Paula Arantes",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-natalia",
+    seladoPorNome: "Natália Queiroz",
+    perfilId: "cliente",
     origemNome: "cadoc5711_meridian_202607.csv",
     tamanhoBytes: 1_284_902,
     resumoConteudo:
@@ -139,9 +139,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-meridian-cadoc5710-202607",
     insumoId: "cadoc5710-ativos-posicoes",
     seladoEm: "2026-08-06T10:04:09-03:00",
-    seladoPorUsuarioId: "usr-paula",
-    seladoPorNome: "Paula Arantes",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-natalia",
+    seladoPorNome: "Natália Queiroz",
+    perfilId: "cliente",
     origemNome: "cadoc5710_meridian_202607.csv",
     tamanhoBytes: 342_770,
     resumoConteudo:
@@ -175,9 +175,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-cofre-atlantico-cadoc5711-202605",
     insumoId: "cadoc5711-posicoes-clientes",
     seladoEm: "2026-06-04T14:19:02-03:00",
-    seladoPorUsuarioId: "usr-wesley",
-    seladoPorNome: "Wesley Prado",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-diego",
+    seladoPorNome: "Diego Vasconcelos",
+    perfilId: "cliente",
     origemNome: "cadoc5711_cofre-atlantico_202605.csv",
     tamanhoBytes: 2_118_446,
     resumoConteudo:
@@ -211,9 +211,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-cofre-atlantico-cadoc5710-202606",
     insumoId: "cadoc5710-carteiras",
     seladoEm: "2026-07-06T09:12:40-03:00",
-    seladoPorUsuarioId: "usr-wesley",
-    seladoPorNome: "Wesley Prado",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-diego",
+    seladoPorNome: "Diego Vasconcelos",
+    perfilId: "cliente",
     origemNome: "cadoc5710_carteiras_cofre-atlantico_202606.csv",
     tamanhoBytes: 88_402,
     resumoConteudo:
@@ -229,9 +229,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-cofre-atlantico-cadoc5710-202606",
     insumoId: "cadoc5710-carteiras",
     seladoEm: "2026-07-08T11:38:15-03:00",
-    seladoPorUsuarioId: "usr-wesley",
-    seladoPorNome: "Wesley Prado",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-diego",
+    seladoPorNome: "Diego Vasconcelos",
+    perfilId: "cliente",
     origemNome: "cadoc5710_carteiras_cofre-atlantico_202606_v2.csv",
     tamanhoBytes: 91_775,
     resumoConteudo:
@@ -265,9 +265,9 @@ const SEMENTES: SementeLacre[] = [
     periodoId: "per-pampulha-acam212-202606",
     insumoId: "acam212-operacoes-periodo",
     seladoEm: "2026-07-02T16:48:31-03:00",
-    seladoPorUsuarioId: "usr-amanda",
-    seladoPorNome: "Amanda Rios",
-    perfilId: "operacional",
+    seladoPorUsuarioId: "usr-camila",
+    seladoPorNome: "Camila Andrade",
+    perfilId: "cliente",
     origemNome: "acam212_pampulha_202606.csv",
     tamanhoBytes: 137_905,
     resumoConteudo:
@@ -378,7 +378,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
       74_311,
       412,
       "2026-08-03T09:20:44-03:00",
-      "usr-paula",
+      "usr-natalia",
       null
     ),
     "acam212-operacoes-periodo": fornecimentoArquivo(
@@ -388,7 +388,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
       489_620,
       1_842,
       "2026-08-04T15:07:53-03:00",
-      "usr-paula",
+      "usr-natalia",
       "LCR-ENT-ACAM212-202607-0002"
     ),
     "acam212-saldos-encerramento": fornecimentoArquivo(
@@ -398,7 +398,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
       18_442,
       36,
       "2026-08-03T09:31:02-03:00",
-      "usr-paula",
+      "usr-natalia",
       null
     ),
     "acam212-parametros-competencia": fornecimentoFormulario(
@@ -411,7 +411,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
         observacao: "Nove operações de julho foram retificadas na taxa de câmbio antes do envio final.",
       },
       "2026-08-04T15:12:30-03:00",
-      "usr-paula"
+      "usr-natalia"
     ),
   },
   "per-meridian-cadoc5711-202608": {
@@ -424,7 +424,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
         dias_uteis_competencia: "21",
       },
       "2026-09-04T08:55:12-03:00",
-      "usr-paula"
+      "usr-natalia"
     ),
     "cadoc5711-posicoes-clientes": fornecimentoArquivo(
       "per-meridian-cadoc5711-202608",
@@ -433,7 +433,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
       1_402_886,
       6_930,
       "2026-09-04T09:07:41-03:00",
-      "usr-paula",
+      "usr-natalia",
       null
     ),
     "cadoc5711-conciliacao-custodia": fornecimentoFormulario(
@@ -445,7 +445,7 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
         conciliacao_conferida: "sim",
       },
       "2026-09-04T09:12:08-03:00",
-      "usr-paula"
+      "usr-natalia"
     ),
   },
   "per-meridian-acam212-202609": {

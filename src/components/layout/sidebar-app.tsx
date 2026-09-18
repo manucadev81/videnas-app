@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   Calendar,
   FileLock2,
   History,
@@ -42,6 +43,7 @@ interface ItemNavegacao {
 
 const ITENS_NAVEGACAO: ItemNavegacao[] = [
   { href: "/app", rotulo: "Dashboard", icone: LayoutDashboard, chaveAjuda: "nav.dashboard" },
+  { href: "/app/clientes", rotulo: "Clientes", icone: Building2, chaveAjuda: "nav.clientes" },
   {
     href: "/app/fornecimento",
     rotulo: "Fornecimento de dados",

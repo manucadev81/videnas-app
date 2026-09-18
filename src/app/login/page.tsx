@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSessaoStore } from "@/lib/store/sessao";
+import { useHidratarTenants } from "@/lib/store/tenants";
 import { cn } from "@/lib/utils";
 
 interface AtalhoDemo {
@@ -26,7 +27,7 @@ const ATALHOS: AtalhoDemo[] = [
   },
   {
     email: "paula.arantes@meridiandigital.com.br",
-    rotulo: "Operacional / Backoffice",
+    rotulo: "Operacional / Suporte ao cliente",
     instituicao: "Meridian Digital Assets",
   },
   {
@@ -37,7 +38,7 @@ const ATALHOS: AtalhoDemo[] = [
   {
     email: "joao.beraldo@contabilberaldo.com.br",
     rotulo: "Contador / Fiscal",
-    instituicao: "Atende os 3 tenants",
+    instituicao: "Atende todos os tenants",
   },
   {
     email: "t.nakamura@videnas.com.br",
@@ -49,17 +50,27 @@ const ATALHOS: AtalhoDemo[] = [
     rotulo: "Validador",
     instituicao: "Videnas",
   },
+  {
+    email: "m.fontes@videnas.com.br",
+    rotulo: "Administrador",
+    instituicao: "Videnas",
+  },
 ];
 
 export default function LoginPage() {
   const router = useRouter();
   const entrar = useSessaoStore((estado) => estado.entrar);
+  const tenantsHidratados = useHidratarTenants();
 
   const [email, setEmail] = useState(ATALHOS[0].email);
   const [senha, setSenha] = useState("demonstracao");
   const [erroEmail, setErroEmail] = useState<string | null>(null);
 
   function autenticar(emailInformado: string) {
+    if (!tenantsHidratados) {
+      return;
+    }
+
     const emailNormalizado = emailInformado.trim();
     if (!emailNormalizado) {
       setErroEmail("Informe um e-mail para continuar.");
@@ -70,7 +81,7 @@ export default function LoginPage() {
     const resultado = entrar(emailNormalizado);
 
     if (!resultado.reconhecido) {
-      toast.info("Usuário não reconhecido na demonstração. Entrando como Operacional / Backoffice.");
+      toast.info("Usuário não reconhecido na demonstração. Entrando como Operacional / Suporte ao cliente.");
     } else if (resultado.contextoFixo) {
       toast.success("Login simulado realizado. Entrando direto na instituição vinculada ao seu cadastro.");
     } else {
@@ -175,7 +186,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={!tenantsHidratados}>
               <LogIn className="size-4" aria-hidden="true" />
               Entrar
             </Button>
@@ -188,9 +199,12 @@ export default function LoginPage() {
                 <button
                   key={atalho.email}
                   type="button"
+                  disabled={!tenantsHidratados}
                   onClick={() => aoClicarAtalho(atalho)}
                   className={cn(
-                    "flex flex-col items-start rounded-md border border-neutral-200 px-3 py-2 text-left text-xs transition-colors hover:border-brand-300 hover:bg-brand-50"
+                    "flex flex-col items-start rounded-md border border-neutral-200 px-3 py-2 text-left text-xs transition-colors hover:border-brand-300 hover:bg-brand-50",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700",
+                    "disabled:cursor-not-allowed disabled:opacity-60"
                   )}
                 >
                   <span className="font-medium text-neutral-700">{atalho.rotulo}</span>

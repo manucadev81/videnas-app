@@ -1,6 +1,12 @@
 import type { Usuario } from "@/lib/tipos";
+import {
+  definirRegistroUsuarios,
+  encontrarUsuarioRegistrado,
+  encontrarUsuarioRegistradoPorEmail,
+  listarUsuariosRegistrados,
+} from "@/lib/tenants/registro";
 
-export const usuarios: Usuario[] = [
+export const usuariosSemente: Usuario[] = [
   {
     id: "usr-ricardo",
     nome: "Ricardo Menezes",
@@ -181,10 +187,49 @@ export const usuarios: Usuario[] = [
     ultimoAcesso: "2026-09-15T14:41:06-03:00",
     avatarIniciais: "DV",
   },
+  {
+    id: "usr-camila",
+    nome: "Camila Andrade",
+    email: "camila.andrade@pampulhacapital.com.br",
+    cpf: "384.520.671-09",
+    perfilId: "cliente",
+    lado: "cliente",
+    instituicaoIds: ["inst-pampulha"],
+    moduloIds: ["acam212", "fiscal"],
+    cargo: "Analista de Dados Regulatórios",
+    registroProfissional: null,
+    situacao: "ativo",
+    ultimoAcesso: "2026-09-14T11:22:53-03:00",
+    avatarIniciais: "CA",
+  },
+  {
+    id: "usr-marina",
+    nome: "Marina Fontes",
+    email: "m.fontes@videnas.com.br",
+    cpf: "146.705.382-90",
+    perfilId: "admin",
+    lado: "videnas",
+    instituicaoIds: ["inst-meridian", "inst-cofre-atlantico", "inst-pampulha"],
+    moduloIds: ["acam212", "cadoc5711", "cadoc5710", "fiscal"],
+    cargo: "Administradora da Plataforma",
+    registroProfissional: null,
+    situacao: "ativo",
+    ultimoAcesso: "2026-09-16T09:47:18-03:00",
+    avatarIniciais: "MF",
+  },
 ];
 
+definirRegistroUsuarios(usuariosSemente);
+
+export function listarUsuarios(): Usuario[] {
+  const registrados = listarUsuariosRegistrados();
+  return registrados.length > 0 ? registrados : usuariosSemente;
+}
+
 export function buscarUsuario(id: string): Usuario | undefined {
-  return usuarios.find((usuario) => usuario.id === id);
+  return (
+    encontrarUsuarioRegistrado(id) ?? usuariosSemente.find((usuario) => usuario.id === id)
+  );
 }
 
 export const usuariosPorEmail: Record<string, string> = {
@@ -195,4 +240,26 @@ export const usuariosPorEmail: Record<string, string> = {
   "c.veloso@videnas.com.br": "usr-clarice",
   "natalia.queiroz@meridiandigital.com.br": "usr-natalia",
   "diego.vasconcelos@cofreatlantico.com.br": "usr-diego",
+  "m.fontes@videnas.com.br": "usr-marina",
 };
+
+export function buscarUsuarioPorEmail(email: string): Usuario | undefined {
+  const emailNormalizado = email.trim().toLowerCase();
+  if (!emailNormalizado) {
+    return undefined;
+  }
+
+  const registrado = encontrarUsuarioRegistradoPorEmail(emailNormalizado);
+  if (registrado) {
+    return registrado;
+  }
+
+  const idMapeado = usuariosPorEmail[emailNormalizado];
+  if (idMapeado) {
+    return usuariosSemente.find((usuario) => usuario.id === idMapeado);
+  }
+
+  return usuariosSemente.find(
+    (usuario) => usuario.email.trim().toLowerCase() === emailNormalizado
+  );
+}

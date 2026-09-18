@@ -70,6 +70,12 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
   baixar_comprovante: "Baixar comprovante lacrado",
   verificar_integridade: "Verificar integridade do arquivo",
   ver_evidencias: "Ver cadeia de custódia",
+  notificar_cliente: "Notificar cliente do que falta",
+  provisionar_tenant: "Cadastrar novo cliente",
+  gerenciar_clientes: "Administrar carteira de clientes",
+  convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
+  suspender_tenant: "Suspender / reativar cliente",
+  alterar_modulos_contratados: "Alterar módulos contratados",
 };
 
 const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "ghost"> = {

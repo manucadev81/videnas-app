@@ -14,7 +14,7 @@ export function FabAjuda() {
   const [painelAberto, setPainelAberto] = useState(false);
   const gatilhoRef = useRef<HTMLButtonElement>(null);
 
-  const { ativo, iniciar } = useTour();
+  const { ativo, iniciar, temRoteiro } = useTour();
 
   const hidratado = useSessaoStore((estado) => estado.hidratado);
   const autenticado = useSessaoStore((estado) => estado.autenticado);
@@ -67,16 +67,18 @@ export function FabAjuda() {
             <button
               type="button"
               onClick={abrirTutorial}
-              disabled={!perfilAtivo}
+              disabled={!perfilAtivo || !temRoteiro}
               className="flex min-h-11 w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:pointer-events-none disabled:opacity-50"
             >
               <GraduationCap className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
               <span className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-neutral-700">Ver tutorial</span>
                 <span className="text-xs leading-relaxed text-neutral-500">
-                  {rotuloPerfil
-                    ? `Refaz o tour guiado do perfil ${rotuloPerfil}.`
-                    : "Disponível assim que um perfil estiver ativo."}
+                  {!rotuloPerfil
+                    ? "Disponível assim que um perfil estiver ativo."
+                    : temRoteiro
+                      ? `Refaz o tour guiado do perfil ${rotuloPerfil}.`
+                      : `O perfil ${rotuloPerfil} ainda não tem tutorial guiado.`}
                 </span>
               </span>
             </button>

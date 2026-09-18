@@ -4,7 +4,7 @@ import {
   listarExtensoes,
 } from "@/lib/ingestao/especificacoes";
 import { buscarModulo, modulos } from "@/lib/mock/modulos";
-import { PERFIS } from "@/lib/permissoes";
+import { PERFIS, PERFIS_SIMULAVEIS } from "@/lib/permissoes";
 import type { EtapaId, ModuloId } from "@/lib/tipos";
 
 export type ConfiancaResposta = "alta" | "media" | "baixa";
@@ -107,9 +107,10 @@ function textoPerfis(): string {
   });
 
   return [
-    "A plataforma tem 6 perfis, e cada um enxerga apenas as ações do seu papel:",
+    `A plataforma tem ${PERFIS.length} perfis, e cada um enxerga apenas as ações do seu papel:`,
     ...linhas,
-    "O perfil ativo é escolhido no seletor de perfil do header e muda a navegação, os módulos visíveis e os botões disponíveis em cada competência. O seletor cobre os 5 perfis simuláveis: o Cliente / Fornecedor de dados não aparece ali porque é pré-cadastrado pelo operador do tenant — chega-se a ele pelo login do próprio usuário, e no header ele vê apenas a identidade estática (nome, instituição e papel).",
+    "O lado Videnas tem três papéis, com fronteira rígida entre eles: o Executor roda a ingestão e gera os arquivos, o Validador confere o schema oficial e libera para o cliente, e o Administrador provisiona e administra os clientes da carteira — cadastra o tenant, contrata os módulos e convida os usuários iniciais — sem encostar no pipeline regulatório.",
+    `O perfil ativo é escolhido no seletor de perfil do header e muda a navegação, os módulos visíveis e os botões disponíveis em cada competência. O seletor cobre os ${PERFIS_SIMULAVEIS.length} perfis simuláveis: o Cliente / Fornecedor de dados não aparece ali porque é pré-cadastrado pelo operador do tenant — chega-se a ele pelo login do próprio usuário, e no header ele vê apenas a identidade estática (nome, instituição e papel).`,
   ].join("\n");
 }
 
@@ -260,7 +261,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "recepcao",
     ],
     resposta: [
-      "A Ingestão é a única etapa em que o Operacional / Backoffice atua. Sem dados enviados, não há o que gerar.",
+      "Quem alimenta a Ingestão é o Cliente / Fornecedor de dados, em Fornecimento de dados. O Operacional / Suporte ao cliente não sobe arquivos: ele acompanha a completude, orienta o que falta e notifica o cliente. Sem dados enviados, não há o que gerar.",
       "O arquivo é lido no próprio navegador e conferido contra o layout da obrigação: nome do arquivo, competência, instituição, delimitador, cabeçalho, colunas obrigatórias e o tipo de cada campo.",
       "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio: você confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Assim que um lote é aceito, a competência passa de \"Aguardando dados\" para \"Dados recebidos\".",
       "Cada arquivo fica na tabela de recebidos com um status: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado pelo operador.",
@@ -527,12 +528,19 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "fornecedor de dados",
       "executor",
       "validador",
+      "administrador",
+      "admin",
       "permissao",
       "permissoes",
       "acesso",
     ],
     resposta: textoPerfis(),
-    relacionados: ["perfil-cliente", "segregacao-funcoes", "selecao-instituicao"],
+    relacionados: [
+      "perfil-cliente",
+      "perfil-administrador",
+      "segregacao-funcoes",
+      "selecao-instituicao",
+    ],
   },
   {
     id: "segregacao-funcoes",
@@ -552,6 +560,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "A regra de 4 olhos da Videnas é fixa e vale para todos os módulos: Executor gera, Validador libera, Diretor aprova — nunca a mesma pessoa.",
       "Se o usuário que gerou o arquivo tentar liberá-lo, o botão fica desabilitado com o aviso: \"Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória.\"",
       "Por isso o botão \"Gerar arquivo\" nunca aparece para o Validador, e \"Liberar para o cliente\" nunca aparece para o Executor nem para o Diretor. Cada perfil só enxerga as ações do seu próprio papel.",
+      "O Administrador — Videnas fica fora dessa cadeia de propósito: ele não gera, não valida e não aprova. Provisiona o cliente, contrata os módulos, convida os usuários iniciais e sai do caminho — nenhuma ação do pipeline aparece para ele, em nenhum estado da competência.",
       "O card de segregação de funções, na etapa Auditoria, mostra quem executou cada um desses três passos.",
     ].join("\n\n"),
     relacionados: ["perfis", "etapa-auditoria", "etapa-validacao"],
@@ -576,8 +585,9 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     resposta: [
       "Perfis do lado cliente (Diretor, Operacional e Contador) trabalham em uma única instituição, definida no cadastro do usuário.",
       "O perfil Cliente / Fornecedor de dados é pré-cadastrado pelo operador do tenant — instituição e pessoa responsável pelo envio já vêm cadastradas antes do primeiro acesso. Por isso ele entra direto na instituição dele, sem passar pela tela de seleção, e o header mostra apenas a identidade estática (nome, instituição e papel), sem seletor de instituição nem simulador de perfil.",
-      "Perfis do lado Videnas (Executor e Validador) são multi-tenant: atendem várias instituições e podem trocar de contexto pelo seletor de instituição do header ou pelos chips da fila em Operação. A troca muda toda a aplicação, inclusive a barra lateral.",
-      "A tela de seleção de instituição existe para os perfis multi-tenant e para a simulação de perfis da demonstração, e a escolha pode ser \"todas\" para ver a fila consolidada.",
+      "Os três perfis do lado Videnas — Executor, Validador e Administrador — são multi-tenant: atendem várias instituições e podem trocar de contexto pelo seletor de instituição do header. Executor e Validador também trocam pelos chips da fila em Operação. A troca muda toda a aplicação, inclusive a barra lateral.",
+      "A tela de seleção de instituição existe para os perfis multi-tenant e para a simulação de perfis da demonstração, e a escolha pode ser \"todas\". Para Executor e Validador, \"todas\" leva à fila de operação consolidada; para o Administrador leva à carteira de clientes, porque ele não tem fila de trabalho regulatório.",
+      "A lista de instituições não é fixa. Meridian Digital Assets, Cofre Atlântico e Pampulha Capital são apenas a semente da demonstração: o Administrador cadastra novos clientes, e eles passam a aparecer aqui como qualquer outro, com o seu status de implantação.",
     ].join("\n\n"),
     relacionados: ["perfis", "prazos", "plataforma"],
   },
@@ -600,7 +610,8 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     resposta: [
       "Cada ação relevante grava um evento na trilha: ARQUIVO_GERADO, PERIODO_LIBERADO, aprovação, registro de protocolo, tratamento de exceção, reabertura e troca de perfil.",
       "Os eventos guardam autor, cargo, data/hora e, quando aplicável, o hash SHA-256 do arquivo, o schema e a versão. Versões substituídas não são apagadas: permanecem na trilha marcadas como substituídas.",
-      "Diretor, Executor e Validador podem exportar a trilha em CSV pela ação \"Exportar trilha (CSV)\".",
+      "A trilha também registra os eventos administrativos do Administrador — Videnas: cliente provisionado, convite inicial enviado, módulos contratados alterados, onboarding concluído, cliente suspenso e cliente reativado. Eles aparecem na mesma trilha de Auditoria, sem período, módulo ou competência associados, porque dizem respeito ao tenant inteiro e não a uma obrigação.",
+      "Diretor, Executor, Validador e Administrador podem exportar a trilha em CSV pela ação \"Exportar trilha (CSV)\".",
     ].join("\n\n"),
     relacionados: ["etapa-auditoria", "cadeia-custodia", "segregacao-funcoes"],
   },
@@ -623,13 +634,73 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     ],
     resposta: [
       "O Cliente / Fornecedor de dados é quem FORNECE os dados de origem de cada obrigação. Ele abre a competência em Fornecimento de dados, vê o checklist de insumos obrigatórios, envia arquivos e preenche os formulários curtos — e é só isso que ele faz.",
-      "O Operacional / Backoffice é outro papel: ele OPERA o pipeline do lado da instituição — ingestão dentro dos módulos, tratamento de exceções e dicionários. Os dois são do lado cliente, mas não se confundem: o Cliente alimenta, o Operacional conduz.",
+      "O Operacional / Suporte ao cliente é outro papel, e é só isso mesmo: suporte. Ele NÃO sobe dados em nome do cliente — acompanha a completude do fornecimento, orienta o que falta, cobra prazos, trata exceções e dicionários, e cuida do cadastro do responsável pelo envio de dados. Os dois são do lado cliente, mas não se confundem: o Cliente fornece, o Operacional apoia.",
       "Por isso a superfície do Cliente é reduzida de propósito: ele acessa apenas o painel, Fornecimento de dados, Arquivos entregues e Calendário. Não há módulos, auditoria, configurações nem fila de operação para esse perfil. As ações liberadas são fornecer dados, baixar comprovante, baixar arquivo e verificar integridade.",
-      "A tela de Fornecimento de dados abre em modo consulta para os demais perfis: eles acompanham o andamento, mas o envio é sempre do Cliente.",
+      "A tela de Fornecimento de dados abre em modo consulta para os demais perfis, incluindo o Operacional: eles acompanham o andamento e podem notificar o cliente do que falta, mas o envio é sempre do Cliente.",
+      "Antes de tudo isso existe um passo anterior: a própria instituição é cadastrada pela Videnas. A cadeia completa é Administrador — Videnas provisiona a instituição, contrata os módulos e convida o Diretor responsável; o Diretor entra com o e-mail cadastrado e conclui a configuração guiada, o que ativa o tenant e abre as competências; e então o operador do tenant designa o responsável pelo envio de dados.",
       "O Cliente é pré-cadastrado pelo operador do tenant em Configurações > Usuários e papéis, na seção \"Responsáveis pelo envio de dados\": instituição e pessoa responsável já existem antes do primeiro acesso. Por isso ele entra direto na instituição dele e não aparece no simulador de perfil.",
       "Na demonstração, o Cliente é Natália Queiroz (natalia.queiroz@meridiandigital.com.br), analista de dados regulatórios da Meridian Digital Assets; no Cofre Atlântico, o responsável é Diego Vasconcelos (diego.vasconcelos@cofreatlantico.com.br).",
     ].join("\n\n"),
     relacionados: ["insumos-obrigacao", "completude-faltantes", "perfis"],
+  },
+  {
+    id: "perfil-administrador",
+    titulo: "Perfil Administrador — Videnas",
+    categoria: "Perfis",
+    perguntaExemplo: "O que o perfil Administrador faz?",
+    palavrasChave: [
+      "administrador",
+      "admin",
+      "perfil administrador",
+      "carteira de clientes",
+      "administrar clientes",
+      "suspender cliente",
+      "reativar cliente",
+      "modulos contratados",
+      "quem cadastra o cliente",
+      "marina",
+      "marina fontes",
+    ],
+    resposta: [
+      "O Administrador é o terceiro papel do lado Videnas, ao lado do Executor e do Validador, e cuida da carteira de clientes: cadastra a instituição, define os módulos contratados, convida os usuários iniciais, acompanha em que ponto da implantação cada cliente está, altera os módulos contratados e suspende ou reativa o atendimento.",
+      "O que ele deliberadamente não faz: não sobe dados, não gera arquivo, não executa validação de schema, não libera para o cliente e não aprova competência. Ele fica fora da cadeia de 4 olhos — provisiona o cliente e sai do caminho.",
+      "As rotas dele são poucas e propositais: o painel da carteira, a carteira de clientes (com o cadastro de cliente novo e a ficha de cada um), a trilha de auditoria e a cadeia de custódia em Evidências. Módulos, calendário, fornecimento, fila de operação e configurações do tenant não aparecem para ele.",
+      "Ele é multi-tenant porque administra todos os clientes da Videnas, e não um deles. Por isso, na tela de seleção de instituição, escolher \"todas\" leva o Administrador à carteira de clientes, e não à fila de operação.",
+      "Na demonstração, o Administrador é Marina Fontes (m.fontes@videnas.com.br), com atalho próprio na tela de login.",
+    ].join("\n\n"),
+    relacionados: ["provisionamento-cliente", "perfis", "segregacao-funcoes"],
+  },
+  {
+    id: "provisionamento-cliente",
+    titulo: "Como nasce um cliente novo",
+    categoria: "Plataforma",
+    perguntaExemplo: "Como um cliente novo é cadastrado na Videnas?",
+    palavrasChave: [
+      "provisionamento",
+      "provisionar",
+      "provisionar tenant",
+      "cadastrar cliente",
+      "cliente novo",
+      "novo tenant",
+      "implantacao",
+      "status de implantacao",
+      "provisionado",
+      "onboarding em andamento",
+      "suspenso",
+      "convite inicial",
+      "enviar convite",
+      "ativar cliente",
+      "abrir competencias",
+    ],
+    resposta: [
+      "Nenhuma instituição se autocadastra. Quem cria um cliente é o Administrador da Videnas, no cadastro de cliente novo da carteira. O formulário tem três blocos: dados da instituição (razão social, nome fantasia, CNPJ, tipo, município, UF e CEP), módulos contratados — pelo menos um, porque são eles que definem quais competências serão abertas — e usuários iniciais, com o Diretor responsável obrigatório e o responsável pelo envio de dados opcional.",
+      "O CNPJ é único na plataforma, e cada e-mail também: repetir um CNPJ já cadastrado ou um e-mail já em uso é recusado, com o motivo na tela.",
+      "São quatro status de implantação, e cada transição tem um gatilho único:",
+      "• Provisionado — o cadastro foi concluído e o convite inicial ainda não saiu; ninguém do lado do cliente consegue configurar nada.\n• Onboarding em andamento — o Administrador clicou em \"Enviar convite\" na ficha do cliente, e o Diretor responsável passa a poder entrar com o e-mail cadastrado.\n• Ativo — o Diretor concluiu a configuração guiada do ambiente; nesse momento as competências da competência corrente dos módulos contratados são abertas e o cliente opera normalmente.\n• Suspenso — o Administrador interrompeu o atendimento com um motivo escrito; nada é apagado, o histórico continua visível e apenas a abertura de novas competências para. Reativar devolve o cliente ao status Ativo.",
+      "Depois disso a cadeia continua dentro do tenant: o operador da instituição designa o responsável pelo envio de dados em Configurações > Usuários e papéis, e é esse Cliente / Fornecedor de dados que passa a alimentar as competências.",
+      "Cada passo grava um evento na trilha de auditoria: cliente provisionado, convite inicial enviado, módulos contratados alterados, onboarding concluído, cliente suspenso e cliente reativado.",
+    ].join("\n\n"),
+    relacionados: ["perfil-administrador", "perfil-cliente", "trilha-auditoria"],
   },
   {
     id: "insumos-obrigacao",
@@ -882,6 +953,7 @@ const IDS_PERGUNTAS_RAPIDAS = [
   "envio-lote",
   "prazos",
   "perfis",
+  "provisionamento-cliente",
   "nao-conformidades",
   "modulo-fiscal",
   "completude-faltantes",
@@ -1009,7 +1081,7 @@ const PONTUACAO_ALTA_CONFIANCA = 8;
 
 const TEXTO_SEM_RESPOSTA = [
   "Não encontrei isso na minha base de conhecimento.",
-  "Esta demonstração cobre os módulos ACAM212, Cadoc 5711, Cadoc 5710 e Fiscal/DPS, as etapas Ingestão > Geração > Validação > Auditoria > Entrega, prazos regulatórios, envio de lote e não conformidades, pendências e exceções, perfis de usuário e seleção de instituição, o fornecimento de dados por checklist de insumos (completude, status canônico do lote) e a cadeia de custódia criptográfica (lacre, prova de envio, prova de entrega e verificação de integridade).",
+  "Esta demonstração cobre os módulos ACAM212, Cadoc 5711, Cadoc 5710 e Fiscal/DPS, as etapas Ingestão > Geração > Validação > Auditoria > Entrega, prazos regulatórios, envio de lote e não conformidades, pendências e exceções, perfis de usuário, seleção de instituição e provisionamento de clientes pelo Administrador, o fornecimento de dados por checklist de insumos (completude, status canônico do lote) e a cadeia de custódia criptográfica (lacre, prova de envio, prova de entrega e verificação de integridade).",
   "Tente reformular com uma dessas palavras, ou escolha uma das perguntas sugeridas abaixo.",
 ].join("\n\n");
 

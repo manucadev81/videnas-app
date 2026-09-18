@@ -4,7 +4,7 @@ Mockup de front-end (Next.js 16 + React 19) da Videnas, uma RegTech de conformid
 
 **Este projeto é 100% mockado**: não há backend, API routes, autenticação real, `fetch` de rede ou banco de dados. Todo o estado (sessão, perfil ativo, períodos regulatórios, arquivos, validações, exceções, trilha de auditoria, fornecimentos e lacres criptográficos) vive em stores Zustand no navegador.
 
-Dois recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload: a sessão (`videnas-sessao`) e as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`). O restante (períodos, eventos, exceções) vive em memória e volta à semente a cada reload. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
+Três recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload: a sessão (`videnas-sessao`), as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`) — e a carteira de clientes provisionados pelo Administrador, com os usuários iniciais criados junto (`videnas-tenants`). O restante (períodos, eventos, exceções) vive em memória e volta à semente a cada reload. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
 
 ## Stack
 
@@ -30,10 +30,10 @@ pnpm lint     # eslint
 |---|---|
 | `/` | Landing institucional pública |
 | `/login` | Login mockado (qualquer credencial é aceita) |
-| `/selecionar-instituicao` | Escolha de instituição (tenant) e simulação de perfil — **não se aplica ao perfil Cliente / Fornecedor de dados**, que entra direto em `/app` |
-| `/onboarding` | Wizard guiado de configuração do ambiente (7 etapas) |
+| `/selecionar-instituicao` | Escolha de instituição (tenant) e simulação de perfil — **não se aplica ao perfil Cliente / Fornecedor de dados**, que entra direto em `/app`. O cartão tracejado "todas" muda por perfil: Executor e Validador vão para a fila de operação; o **Administrador** vai para a carteira de clientes |
+| `/onboarding` | **Configuração guiada de um tenant que a Videnas já cadastrou** (7 etapas), conduzida pelo Diretor responsável que recebeu o convite inicial. Concluí-la ativa o tenant (status **Ativo**) e abre as competências da competência corrente dos módulos contratados |
 | `/app` | Dashboard — visão consolidada por perfil |
-| `/app/fornecimento` | Fornecimento de dados por checklist de insumos — **Cliente** envia; Diretor, Operacional, Executor e Validador entram em modo consulta |
+| `/app/fornecimento` | Fornecimento de dados por checklist de insumos — **Cliente** envia; Diretor e Operacional entram em modo consulta (podem notificar o cliente do que falta); Executor e Validador não têm acesso a esta rota |
 | `/app/entregas` | Arquivos entregues pela Videnas, com hash, download do arquivo lacrado e verificação de integridade — Cliente, Diretor, Operacional, Executor e Validador |
 | `/app/evidencias` | Cadeia de custódia completa (entrada e saída) — Diretor/Compliance, Executor e Validador |
 | `/app/acam212` e `/app/acam212/[periodoId]` | Lista e detalhe de competências ACAM212 |
@@ -42,37 +42,41 @@ pnpm lint     # eslint
 | `/app/calendario` | Calendário regulatório |
 | `/app/auditoria` | Trilha de auditoria transversal |
 | `/app/operacao` | Fila de trabalho multi-tenant (Executor/Validador) |
+| `/app/clientes` | Carteira de clientes da Videnas, com contadores por status de implantação, busca, filtros e o botão de reinício da demonstração — **exclusiva do Administrador** |
+| `/app/clientes/novo` | Provisionamento de um cliente novo: dados da instituição, módulos contratados e usuários iniciais — **exclusiva do Administrador** |
+| `/app/clientes/[id]` | Ficha do cliente: cadastro, módulos contratados, usuários, competências correntes, evidências recentes e as ações de convite, suspensão e reativação — **exclusiva do Administrador** |
 | `/app/configuracoes/instituicao` | Dados cadastrais e módulos contratados |
 | `/app/configuracoes/usuarios` | Usuários, papéis e matriz de permissões |
 | `/app/configuracoes/dicionarios` | Dicionários de ativos, contas/carteiras, KYC, fiscal e países |
 
 ## Perfis
 
-São **6 perfis**, três deles com papéis facilmente confundíveis entre si. A definição canônica está em `src/lib/permissoes.ts` (`PERFIS`), com rotas e ações permitidas por perfil.
+São **7 perfis**, três deles com papéis facilmente confundíveis entre si. A definição canônica está em `src/lib/permissoes.ts` (`PERFIS`), com rotas e ações permitidas por perfil.
 
 | Perfil | Lado | O que faz | Multi-tenant |
 |---|---|---|---|
 | **Diretor / Compliance Responsável** (`diretor`) | Cliente | Aprova a competência, assume a responsabilidade perante o BCB, revisa exceções e acessa a cadeia de custódia | Não |
-| **Operacional / Backoffice** (`operacional`) | Cliente | **Opera o pipeline** do lado da instituição: ingestão dentro dos módulos, tratamento de exceções, dicionários | Não |
+| **Operacional / Suporte ao cliente** (`operacional`) | Cliente | **Apoia o cliente**: acompanha a completude do fornecimento, orienta pendências, cobra prazos, trata exceções e dicionários, e cuida do cadastro do responsável pelo envio de dados. Não sobe dados em nome do cliente | Não |
 | **Cliente / Fornecedor de dados** (`cliente`) | Cliente | **Fornece os dados de origem** por checklist de insumos e retira os arquivos lacrados | Não |
 | **Contador / Fiscal** (`contador`) | Cliente | Confirma alíquota de ISS, retenção e enquadramento tributário — só no módulo Fiscal | Não |
 | **Executor — Videnas** (`executor`) | Videnas | Roda a ingestão e gera os arquivos. Nunca libera | Sim |
 | **Validador — Videnas** (`validador`) | Videnas | Valida o schema e libera para o cliente. Nunca gera | Sim |
+| **Administrador — Videnas** (`admin`) | Videnas | **Provisiona e administra os clientes**: cadastra o tenant, contrata os módulos, convida os usuários iniciais, suspende e reativa. Não opera o pipeline regulatório | Sim |
 
 ### Cliente ≠ Operacional
 
-Essa distinção é deliberada e é a decisão de produto mais importante do fluxo novo:
+Essa distinção é deliberada e é a decisão de produto mais importante do fluxo novo: **o Cliente fornece e o Operacional apoia.**
 
-- O **Cliente / Fornecedor de dados** é quem **fornece** os insumos brutos. Ele entra em `/app/fornecimento`, vê o checklist de insumos obrigatórios da competência, envia arquivos, preenche formulários curtos e baixa comprovantes. É só isso.
-- O **Operacional / Backoffice** é quem **opera** o pipeline do lado da instituição: ingestão dentro do detalhe de cada módulo, tratamento de exceções e manutenção dos dicionários.
+- O **Cliente / Fornecedor de dados** é quem **fornece** os insumos brutos, com exclusividade. Ele entra em `/app/fornecimento`, vê o checklist de insumos obrigatórios da competência, envia arquivos, preenche formulários curtos e baixa comprovantes. É só isso.
+- O **Operacional / Suporte ao cliente** é suporte, não fornecedor: ele **não sobe dados em nome do cliente**. Acompanha a completude do fornecimento (painel dedicado na etapa Ingestão de cada módulo e em `/app/fornecimento`, em modo consulta), orienta o que falta, cobra prazos com a ação **"Notificar cliente do que falta"** (`notificar_cliente`, registrada na trilha de auditoria), trata exceções, mantém os dicionários e cuida do cadastro do responsável pelo envio de dados em `/app/configuracoes/usuarios`.
 
 Por isso a superfície do Cliente é **reduzida de propósito**: `/app`, `/app/fornecimento`, `/app/entregas` e `/app/calendario`. Sem módulos, sem auditoria, sem configurações, sem fila de operação. As ações liberadas são `fornecer_dados`, `baixar_comprovante`, `baixar_arquivo` e `verificar_integridade`.
 
-`/app/fornecimento` abre em **modo consulta** para os demais perfis: eles acompanham a completude e o histórico, mas o envio é sempre do Cliente.
+`/app/fornecimento` abre em **modo consulta** para os demais perfis com acesso à rota (Diretor e Operacional): um aviso "Modo consulta" explica que só o Cliente fornece os dados, e eles acompanham a completude e o histórico e podem notificar o cliente do que falta, mas o envio é sempre do Cliente.
 
 ### O Cliente é pré-cadastrado pelo operador do tenant
 
-O Cliente / Fornecedor de dados não se autocadastra e não escolhe onde trabalhar. A instituição e a **pessoa responsável pelo envio de dados** são cadastradas antes, pelo operador do tenant, em `/app/configuracoes/usuarios` (seção **"Responsáveis pelo envio de dados"**, botão "Designar responsável"). O vínculo aparece em somente leitura em `/app/configuracoes/instituicao`, na seção "Responsável pelo envio de dados".
+O Cliente / Fornecedor de dados não se autocadastra e não escolhe onde trabalhar. A instituição e a **pessoa responsável pelo envio de dados** são cadastradas antes, pelo operador do tenant (perfis Diretor e Operacional, ambos com a ação `gerenciar_usuarios`), em `/app/configuracoes/usuarios` (seção **"Responsáveis pelo envio de dados"**, botão "Designar responsável"). O vínculo aparece em somente leitura em `/app/configuracoes/instituicao`, na seção "Responsável pelo envio de dados".
 
 Consequências no produto:
 
@@ -80,25 +84,56 @@ Consequências no produto:
 - O header dele **não tem seletor de instituição nem simulador de perfil**: mostra uma **identidade estática** (`src/components/dominio/identidade-usuario.tsx`) no formato nome · instituição · papel — por exemplo "Natália Queiroz · Meridian Digital Assets · Cliente / Fornecedor de dados" — além do botão Sair.
 - O Cliente **não aparece no simulador de perfis** (`PERFIS_SIMULAVEIS`, em `src/lib/permissoes.ts`, filtra os perfis com `contextoFixo`), justamente para ninguém cair nesse perfil por simulação e ficar sem saída.
 
+### O Administrador provisiona os clientes
+
+O tenant também não se autocadastra. Antes de qualquer coisa, a instituição é cadastrada **pela Videnas**, pelo perfil **Administrador — Videnas** (`admin`), em `/app/clientes/novo`. A cadeia completa tem quatro elos, e cada um só existe porque o anterior aconteceu:
+
+**Administrador (Videnas)** provisiona a instituição, contrata os módulos e convida o Diretor responsável → **Diretor (cliente)** entra com o e-mail cadastrado e conclui a configuração guiada em `/onboarding`, o que ativa o tenant e abre as competências → **operador do tenant** (Diretor ou Operacional, ambos com `gerenciar_usuarios`) designa o responsável pelo envio de dados em `/app/configuracoes/usuarios` → **Cliente / Fornecedor de dados** alimenta as competências em `/app/fornecimento`.
+
+O que o Administrador pode: `provisionar_tenant`, `gerenciar_clientes`, `convidar_usuario_inicial`, `suspender_tenant`, `alterar_modulos_contratados`, `trocar_tenant`, `exportar_auditoria`, `ver_evidencias` e `verificar_integridade`.
+
+O que ele **deliberadamente não pode**: subir dados, gerar arquivo, executar validação de schema, liberar para o cliente, aprovar competência, registrar protocolo, tratar exceção ou editar dicionários. As rotas dele são apenas `/app`, `/app/clientes` (e filhas), `/app/auditoria` e `/app/evidencias` — sem módulos, sem calendário, sem fornecimento, sem fila de operação e sem as configurações do tenant.
+
+Por que ele fica fora da segregação de funções: a regra de 4 olhos é **Executor gera → Validador libera → Diretor aprova**. Quem decide quais clientes existem e quais módulos eles contratam não pode ter mão em nenhum desses três passos, senão a mesma pessoa poderia criar o tenant, gerar o arquivo e liberá-lo. O Administrador provisiona o cliente e sai do caminho; o painel dele nem mostra prazos regulatórios, e sim a carteira.
+
+O Administrador é **multi-tenant**, mas por um motivo diferente do Executor e do Validador: ele não atende várias instituições, ele **administra todas**. Por isso, em `/selecionar-instituicao`, o cartão tracejado "todas" o leva para `/app/clientes` e não para `/app/operacao`.
+
+## Como nasce um cliente novo
+
+Passo a passo clicável, de ponta a ponta, do cadastro à primeira competência aberta:
+
+1. **Entrar como Administrador** — em `/login`, atalho "Administrador" (`m.fontes@videnas.com.br`, Marina Fontes, `usr-marina`). O painel em `/app` mostra a carteira: quantos clientes existem, quantos estão ativos, quantos em implantação e quantos suspensos, mais a lista dos que precisam de atenção.
+2. **Cadastrar o cliente** — em `/app/clientes`, botão **"Cadastrar novo cliente"** (`/app/clientes/novo`). São três blocos: dados da instituição (razão social, nome fantasia, CNPJ, tipo, município, UF, CEP), **módulos contratados** (pelo menos um — são eles que definem quais competências serão abertas) e **usuários iniciais**, com o **Diretor responsável obrigatório** e o responsável pelo envio de dados **opcional**. O CNPJ é único na plataforma e cada e-mail também.
+3. **Status Provisionado** — cadastrado, o cliente entra na carteira como **Provisionado**: o convite ainda não saiu e ninguém do lado do cliente consegue configurar nada. Evento `TENANT_PROVISIONADO` na trilha.
+4. **Enviar o convite** — na ficha do cliente (`/app/clientes/[id]`), botão **"Enviar convite"**. O status passa a **Onboarding em andamento** e o evento `CONVITE_INICIAL_ENVIADO` é gravado. O envio é simulado: nenhum e-mail sai da máquina.
+5. **Entrar como o Diretor recém-cadastrado** — saia (botão "Sair") e entre em `/login` com **o e-mail que você digitou** no cadastro do Diretor. Ele é reconhecido como qualquer usuário da semente, porque o registro em memória (`src/lib/tenants/registro.ts`) é mantido em sincronia com o store de tenants.
+6. **Concluir a configuração guiada** — o Diretor percorre as 7 etapas de `/onboarding`. Ao concluir, o tenant vira **Ativo**, o evento `ONBOARDING_CONCLUIDO` é gravado e as competências da competência corrente dos módulos contratados são abertas (`abrirCompetenciasIniciais`, em `src/lib/store/periodos.ts`).
+7. **Designar quem fornece os dados** — se o responsável pelo envio não foi cadastrado no passo 2, o operador do tenant o designa em `/app/configuracoes/usuarios`, seção "Responsáveis pelo envio de dados". A partir daí o fluxo é o de sempre: o Cliente fornece, o Executor gera, o Validador libera, o Diretor aprova.
+
+Na ficha do cliente o Administrador ainda pode **alterar os módulos contratados** (`MODULOS_CONTRATADOS_ALTERADOS`) e **suspender/reativar** o atendimento (`TENANT_SUSPENSO` / `TENANT_REATIVADO`, a suspensão exigindo um motivo escrito de pelo menos 10 caracteres). Todos esses eventos aparecem na mesma trilha de `/app/auditoria`, sem período, módulo nem competência associados, porque valem para o tenant inteiro.
+
+**Persistência e reinício**: os tenants provisionados e os usuários iniciais criados junto ficam em `localStorage`, sob a chave `videnas-tenants`. Consequência prática: **um CNPJ já cadastrado bloqueia o recadastro enquanto o storage não for limpo** — e o mesmo vale para os e-mails. Para voltar à semente sem abrir o DevTools, use o botão **"Reiniciar dados da demonstração"**, no rodapé de `/app/clientes` (só o Administrador o vê): um diálogo de confirmação explica que os clientes cadastrados na sessão serão descartados e que Meridian Digital Assets, Cofre Atlântico e Pampulha Capital voltam ao estado original. Em código, a ação equivalente é `useTenantsStore.getState().reiniciarTenants()`.
+
 ## Como trocar de perfil e de instituição no mock
 
 Não existe autenticação real: qualquer e-mail e senha entram no ambiente de demonstração.
 
-1. Em `/login`, use um dos **6 atalhos de demonstração** (ou digite qualquer e-mail — cai automaticamente no perfil Operacional/Backoffice da Meridian Digital Assets, com um toast avisando que o e-mail não foi reconhecido):
+1. Em `/login`, use um dos **7 atalhos de demonstração** (ou digite qualquer e-mail — cai automaticamente no perfil Operacional/Suporte ao cliente da Meridian Digital Assets, com um toast avisando que o e-mail não foi reconhecido):
 
    | Atalho | E-mail | Instituição |
    |---|---|---|
    | Diretor / Compliance | `ricardo.menezes@meridiandigital.com.br` | Meridian Digital Assets |
-   | Operacional / Backoffice | `paula.arantes@meridiandigital.com.br` | Meridian Digital Assets |
+   | Operacional / Suporte ao cliente | `paula.arantes@meridiandigital.com.br` | Meridian Digital Assets |
    | **Cliente / Fornecedor de dados** | `natalia.queiroz@meridiandigital.com.br` | Meridian Digital Assets |
-   | Contador / Fiscal | `joao.beraldo@contabilberaldo.com.br` | Atende os 3 tenants |
+   | Contador / Fiscal | `joao.beraldo@contabilberaldo.com.br` | Atende todos os tenants |
    | Executor | `t.nakamura@videnas.com.br` | Videnas |
    | Validador | `c.veloso@videnas.com.br` | Videnas |
+   | **Administrador** | `m.fontes@videnas.com.br` | Videnas |
 
-   O usuário do perfil Cliente é **Natália Queiroz**, analista de dados regulatórios da Meridian Digital Assets (`usr-natalia`, em `src/lib/mock/usuarios.ts`).
+   O usuário do perfil Cliente é **Natália Queiroz**, analista de dados regulatórios da Meridian Digital Assets (`usr-natalia`, em `src/lib/mock/usuarios.ts`). O do perfil Administrador é **Marina Fontes** (`usr-marina`), do lado Videnas. Diretores cadastrados pelo Administrador durante a demonstração também entram por este mesmo formulário, com o e-mail que foi digitado no cadastro.
 
-2. Em `/selecionar-instituicao`, é possível **simular os 5 perfis simuláveis** (Diretor/Compliance, Operacional/Backoffice e Contador/Fiscal — lado cliente; Executor e Validador — lado Videnas) e escolher a instituição de trabalho entre as 3 do mock: Meridian Digital Assets (exchange), Cofre Atlântico (custodiante) e Pampulha Capital (mesa OTC, com onboarding incompleto). O **Cliente / Fornecedor de dados não está nessa lista**: por ser pré-cadastrado pelo operador do tenant, só se chega a ele pelo atalho de login próprio — `natalia.queiroz@meridiandigital.com.br` (Meridian Digital Assets) ou `diego.vasconcelos@cofreatlantico.com.br` (Cofre Atlântico, `usr-diego`), que entram direto em `/app`.
-3. Depois de entrar em `/app`, o **header** expõe os dois seletores (instituição e perfil) para trocar de contexto sem precisar sair da aplicação — exceto para o Cliente, que vê apenas a identidade estática (nome · instituição · papel). Perfis do lado cliente veem só a própria instituição; Executor e Validador podem alternar entre as 3 ou escolher "Todas as instituições" (que leva à fila de operação em `/app/operacao`).
+2. Em `/selecionar-instituicao`, é possível **simular os 6 perfis simuláveis** (Diretor/Compliance, Operacional/Suporte ao cliente e Contador/Fiscal — lado cliente; Executor, Validador e Administrador — lado Videnas) e escolher a instituição de trabalho. A **semente** traz três instituições — Meridian Digital Assets (exchange), Cofre Atlântico (custodiante) e Pampulha Capital (mesa OTC, ainda em *Onboarding em andamento*) —, mas a lista **não é fixa**: todo cliente cadastrado pelo Administrador em `/app/clientes/novo` passa a aparecer aqui, com o seu status de implantação no cartão. O **Cliente / Fornecedor de dados não está nessa lista**: por ser pré-cadastrado pelo operador do tenant, só se chega a ele pelo atalho de login próprio — `natalia.queiroz@meridiandigital.com.br` (Meridian Digital Assets) ou `diego.vasconcelos@cofreatlantico.com.br` (Cofre Atlântico, `usr-diego`), que entram direto em `/app`.
+3. Depois de entrar em `/app`, o **header** expõe os dois seletores (instituição e perfil) para trocar de contexto sem precisar sair da aplicação — exceto para o Cliente, que vê apenas a identidade estática (nome · instituição · papel). Perfis do lado cliente veem só a própria instituição; os três perfis do lado Videnas alternam entre todas as instituições cadastradas ou escolhem o cartão "todas" — que leva Executor e Validador à fila de operação em `/app/operacao` e o Administrador à carteira de clientes em `/app/clientes`.
 
 Trocar de perfil **não recarrega dados** — apenas reavalia permissões e re-renderiza as ações disponíveis em cada tela, o que é a base para demonstrar a segregação de funções abaixo.
 
@@ -148,9 +183,11 @@ Assim que a competência fica completa, a plataforma mostra a **pré-visualizaç
 
 Todo envio aceito gera um **lacre** e um **comprovante de envio em JSON**, com o identificador do lacre, o hash SHA-256, o algoritmo, o momento do selo e o responsável. Detalhes na seção [Prova de envio e prova de entrega](#prova-de-envio-e-prova-de-entrega-cadeia-de-custódia).
 
-### Fluxo antigo: ingestão dentro do módulo (perfil Operacional)
+### Ingestão dentro do módulo: painel de acompanhamento (perfil Operacional)
 
-O perfil **Operacional / Backoffice** continua com a ação `subir_dados` na etapa **Ingestão** do detalhe de cada competência (`/app/acam212/[periodoId]`, `/app/cadoc/[periodoId]`, `/app/fiscal/[periodoId]`), pelo componente `RecepcaoDocumentos` (`src/components/dominio/modulo-recepcao-documentos.tsx`). Ali o operador baixa o modelo CSV, arrasta os arquivos, confere a pré-visualização e aceita lote a lote. Os códigos de não conformidade (`ING-E001`…`ING-E024` bloqueantes, `ING-A001`…`ING-A007` avisos) são os mesmos nos dois caminhos e são **determinísticos**, de propósito, para a demo ser sempre reprodutível.
+A etapa **Ingestão** do detalhe de cada competência (`/app/acam212/[periodoId]`, `/app/cadoc/[periodoId]`, `/app/fiscal/[periodoId]`), pelo componente `RecepcaoDocumentos` (`src/components/dominio/modulo-recepcao-documentos.tsx`), continua mostrando a dropzone de upload para quem tem a ação `subir_dados` (hoje, o **Executor — Videnas**, no fluxo antigo de ingestão direta). Para o perfil **Operacional / Suporte ao cliente** — que não tem mais `subir_dados` nem `remover_lote` —, a mesma aba renderiza, no lugar da dropzone, o `PainelAcompanhamentoFornecimento` (`src/components/dominio/painel-acompanhamento-fornecimento.tsx`): completude da competência, checklist de insumos exigidos × fornecidos, o que ainda falta, as evidências de entrada já lacradas pelo Cliente e o botão **"Notificar cliente do que falta"**, que registra um evento `CLIENTE_NOTIFICADO` na trilha de auditoria (ação `notificar_cliente`, concedida a Operacional e Diretor). A tabela "Arquivos recebidos" permanece visível para todos, como histórico do que o Cliente já enviou.
+
+Os códigos de não conformidade (`ING-E001`…`ING-E024` bloqueantes, `ING-A001`…`ING-A007` avisos) são os mesmos em `/app/fornecimento` e nesta aba, e são **determinísticos**, de propósito, para a demo ser sempre reprodutível.
 
 A Videnas recebe e estrutura esses dados para o módulo regulatório correspondente, mas a transmissão ao órgão (BCB, prefeitura/Receita) e a responsabilidade pela obrigação continuam sendo da instituição cliente — ver [Posicionamento](#posicionamento).
 
@@ -217,7 +254,7 @@ O mock já vem semeado com uma competência propositalmente incompleta: **`per-m
 8. **Voltar como Cliente, baixar e verificar** — o Cliente não está no seletor de perfil do header, então é preciso **sair** (botão "Sair") e **entrar de novo** com `natalia.queiroz@meridiandigital.com.br`, que cai direto em `/app`. Em `/app/entregas`, o arquivo lacrado aparece com hash, data e quem liberou. Clique em **"Baixar arquivo"** e depois em **"Verificar integridade"**, selecionando o arquivo que acabou de baixar: o hash recalculado bate com o do lacre e o resultado é **Confere**. Abra o arquivo, mude um caractere, salve e repita: o resultado vira "não confere".
 9. **Conferir a cadeia inteira** — troque para **Diretor / Compliance** (ou Executor/Validador) e abra `/app/evidencias`: entrada e saída lado a lado, com filtros, badge de sentido, detalhe do lacre (hash completo, algoritmo, identificador da chave, autor) e a linha do tempo do encadeamento por `hashAnterior`.
 
-**Reiniciar o mock**: não há botão de reset na interface. Como fornecimentos, lacres e verificações são persistidos, apague as chaves `videnas-evidencias` e `videnas-sessao` do `localStorage` (DevTools → Application → Local Storage) e recarregue — tudo volta à semente. Em código, a ação equivalente é `useEvidenciasStore.getState().reiniciarEvidencias()`.
+**Reiniciar o mock**: a carteira de clientes tem botão de reset próprio — **"Reiniciar dados da demonstração"**, no rodapé de `/app/clientes`, visível só para o Administrador. Para o resto, como fornecimentos, lacres e verificações são persistidos, apague as chaves `videnas-evidencias`, `videnas-sessao` e `videnas-tenants` do `localStorage` (DevTools → Application → Local Storage) e recarregue — tudo volta à semente. Em código, as ações equivalentes são `useEvidenciasStore.getState().reiniciarEvidencias()` e `useTenantsStore.getState().reiniciarTenants()`.
 
 ## Como testar o fluxo de 4 olhos (segregação de funções)
 
@@ -239,7 +276,7 @@ Esse disclaimer aparece no rodapé de todas as telas autenticadas e da landing, 
 
 ## Tutorial interativo
 
-Cada um dos 6 perfis tem um roteiro guiado próprio (`src/components/tutorial/roteiros.ts`), com passos que apontam para elementos reais da tela (`data-tour="..."`) e destacam um deles por vez com um recorte (spotlight) sobre um card explicativo.
+Cada um dos 7 perfis tem um roteiro guiado próprio (`src/components/tutorial/roteiros.ts`), com passos que apontam para elementos reais da tela (`data-tour="..."`) e destacam um deles por vez com um recorte (spotlight) sobre um card explicativo.
 
 - **Disparo automático**: na primeira vez que um perfil fica ativo dentro da sessão (assim que `/app` termina de carregar), o tour correspondente abre sozinho. A marca de "já visto" fica em `sessionStorage`, então recarregar a página não repete o tour, mas uma nova aba/sessão volta a oferecê-lo.
 - **Reabrir manualmente**: o ícone de ajuda (**Tutorial**) no header, ao lado do seletor de perfil, reinicia a qualquer momento o roteiro do perfil ativo no momento.
@@ -251,12 +288,13 @@ Roteiros cobertos:
 
 | Perfil | O que o tour ensina |
 |---|---|
-| **Operacional/Backoffice** (9 passos) | Onde ver pendências no dashboard → navegar ao módulo → abrir período `aguardando_dados` → entender o stepper de 5 etapas → baixar o modelo CSV → área de upload e pré-validação → tabela de arquivos recebidos → confirmar o envio dos dados |
+| **Operacional/Suporte ao cliente** (8 passos) | Onde ver pendências no dashboard → navegar ao módulo → abrir período `aguardando_dados` → entender o stepper de 5 etapas → painel de acompanhamento do fornecimento do cliente → notificar o cliente do que falta → histórico de arquivos recebidos |
 | **Diretor/Compliance** (8 passos) | Prazos e pendências no dashboard → abrir o detalhe de uma competência com exceções → conferir o arquivo gerado (hash SHA-256, schema) → segregação de funções na auditoria → aprovar e assumir responsabilidade → registrar o protocolo do BCB na entrega → calendário regulatório |
 | **Contador/Fiscal** (6 passos) | Por que só o Fiscal aparece para esse perfil → selo "Candidato" e o limite de que a Videnas não emite NFS-e → DPS aguardando validação → conferir alíquota, retenção e enquadramento → confirmar ou devolver |
 | **Cliente / Fornecedor de dados** (8 passos) | Identidade estática no header (nome · instituição · papel), o pré-cadastro pelo operador do tenant e por que a superfície desse perfil é reduzida → card "Dados a fornecer" no dashboard → item de menu Fornecimento de dados e o distintivo de pendências → painel de completude e status canônico → painel "O que ainda falta" → checklist de insumos e o lacre de cada envio → arquivos entregues com hash → verificar integridade antes de encaminhar ao regulador |
 | **Executor (Videnas)** (7 passos) | Fila multi-tenant em `/app/operacao` → troca de instituição sem sair da tela → rodar a ingestão e gerar o arquivo → hash e log de geração → enviar para validação → por que o botão "Liberar" nunca aparece para esse perfil |
 | **Validador (Videnas)** (7 passos) | Fila multi-tenant → executar a validação de schema → ler erros/avisos com código → liberar para o cliente → a trava de segregação de funções (quem gerou não libera) → por que "Gerar" nunca aparece para esse perfil |
+| **Administrador (Videnas)** (10 passos) | O que o perfil faz e o que deliberadamente não faz (não sobe dados, não gera, não valida, não libera) → painel da carteira em vez de prazos regulatórios → o menu Clientes, exclusivo desse perfil → os quatro status de implantação e o que dispara cada transição → Diretor e responsável pelo envio como colunas da carteira → cadastrar um cliente novo → o que o formulário exige (CNPJ único, ao menos um módulo, Diretor obrigatório) → a ficha do cliente (identificação, CNPJ, status de implantação, entrada na carteira) → usuários e papéis do tenant e o limite do Administrador (só reenvia convites) → suspender preservando a trilha |
 
 ## Design system
 

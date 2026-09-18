@@ -73,7 +73,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Aguardando dados",
     pergunta: "O que significa o status Aguardando dados?",
     descricao:
-      "Nenhum lote foi aceito nesta competência ainda. O time Operacional da instituição precisa enviar os arquivos de origem para que a obrigação avance. Enquanto isso, a geração do arquivo fica indisponível.",
+      "Nenhum lote foi aceito nesta competência ainda. O Cliente / Fornecedor de dados da instituição precisa enviar os arquivos de origem para que a obrigação avance; o Operacional acompanha a completude e cobra o que falta. Enquanto isso, a geração do arquivo fica indisponível.",
   },
   "estado.dados_ingeridos": {
     titulo: "Dados recebidos",
@@ -208,13 +208,13 @@ export const TEXTOS_AJUDA = {
     titulo: "Auditoria",
     pergunta: "O que há na Auditoria?",
     descricao:
-      "Trilha completa de eventos da plataforma: quem fez o quê, com qual perfil, em qual período e quando. Serve como evidência de conformidade e pode ser exportada em CSV.",
+      "Trilha completa de eventos da plataforma: quem fez o quê, com qual perfil, em qual período e quando. Além dos eventos das competências, ela registra os eventos administrativos da carteira — cliente provisionado, convite inicial enviado, módulos contratados alterados, onboarding concluído, suspensão e reativação —, que valem para o tenant inteiro e por isso não têm período, módulo nem competência associados. Serve como evidência de conformidade e pode ser exportada em CSV.",
   },
   "nav.operacao": {
     titulo: "Operação",
     pergunta: "O que há na área Operação?",
     descricao:
-      "Fila de trabalho dos perfis Videnas, visível apenas para Executor e Validador. Reúne os períodos de todas as instituições atendidas que aguardam geração, validação ou liberação.",
+      "Fila de trabalho do pipeline regulatório da Videnas, visível apenas para Executor e Validador. Reúne os períodos de todas as instituições atendidas que aguardam geração, validação ou liberação. O Administrador não aparece aqui: ele provisiona e administra os clientes, mas não opera competências.",
   },
   "nav.fornecimento": {
     titulo: "Fornecimento de dados",
@@ -232,7 +232,26 @@ export const TEXTOS_AJUDA = {
     titulo: "Evidências",
     pergunta: "O que há em Evidências?",
     descricao:
-      "A cadeia de custódia completa da operação: todos os lacres de entrada e de saída, por instituição, obrigação e competência. É a área usada pelos times Videnas e pelo Diretor da instituição para responder a qualquer questionamento sobre o que foi enviado e o que foi devolvido.",
+      "A cadeia de custódia completa da operação: todos os lacres de entrada e de saída, por instituição, obrigação e competência. É a área usada pelos perfis Videnas — Executor, Validador e Administrador — e pelo Diretor da instituição para responder a qualquer questionamento sobre o que foi enviado e o que foi devolvido.",
+  },
+  "nav.clientes": {
+    titulo: "Clientes",
+    pergunta: "O que é a carteira de clientes?",
+    descricao:
+      "A relação de todas as instituições que a Videnas atende, exclusiva do perfil Administrador. É daqui que se cadastra um cliente novo, se acompanha em que ponto da implantação cada um está, se altera os módulos contratados e se suspende ou reativa um tenant. O Administrador não opera o pipeline regulatório: ele não sobe dados, não gera, não valida e não libera arquivos.",
+  },
+
+  "cliente.status-implantacao": {
+    titulo: "Status de implantação",
+    pergunta: "O que significa cada status de implantação?",
+    descricao:
+      "Provisionado: o Administrador cadastrou a instituição e os usuários iniciais, mas o convite ainda não saiu — ninguém do cliente consegue configurar nada. Onboarding em andamento: o convite inicial foi enviado ao Diretor responsável, que ainda não terminou a configuração guiada do ambiente. Ativo: o Diretor concluiu a configuração guiada e as competências dos módulos contratados foram abertas — o cliente opera normalmente. Suspenso: o Administrador interrompeu o atendimento com um motivo registrado; o histórico e a trilha de auditoria continuam visíveis, mas novas competências deixam de ser abertas. Reativar devolve o cliente ao status Ativo.",
+  },
+  "cliente.usuarios-iniciais": {
+    titulo: "Usuários iniciais do cliente",
+    pergunta: "Por que só o Diretor é obrigatório no cadastro?",
+    descricao:
+      "O Diretor responsável é obrigatório porque ele é o destinatário do convite inicial e a única pessoa que conclui a configuração guiada do ambiente: sem ele, o tenant fica parado em Provisionado e nenhuma competência é aberta. Ele também é quem responde pela instituição perante o Banco Central. O responsável pelo envio de dados é opcional nesse momento porque nem sempre a Videnas sabe, no fechamento do contrato, quem vai operacionalizar o fornecimento; o próprio cliente designa essa pessoa depois, em Configurações → Usuários e papéis. Cada e-mail é único na plataforma e é exatamente o e-mail digitado aqui que serve para entrar na demonstração.",
   },
 
   "fornecimento.checklist": {
@@ -276,6 +295,12 @@ export const TEXTOS_AJUDA = {
     pergunta: "O que é a modelagem canônica?",
     descricao:
       "É a tradução dos seus arquivos e formulários para o modelo de dados único da Videnas: colunas com nomes estáveis, tipos normalizados e chave por registro. É esse modelo canônico — e não o arquivo bruto — que alimenta a geração no schema oficial de cada obrigação.",
+  },
+  "fornecimento.acompanhamento": {
+    titulo: "Fornecimento do cliente",
+    pergunta: "O que este painel de acompanhamento mostra?",
+    descricao:
+      "É a visão de suporte do Operacional sobre o que o Cliente / Fornecedor de dados já entregou nesta competência: completude, insumos pendentes, prazo e as evidências de entrada já lacradas. O envio continua sendo só do Cliente — aqui você acompanha, orienta e cobra o que falta.",
   },
   "fornecimento.statusCanonico": {
     titulo: "Status do lote canônico",
@@ -344,7 +369,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Configurações",
     pergunta: "O que há em Configurações?",
     descricao:
-      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. O que você consegue editar depende do seu perfil: só o Diretor administra instituição e usuários.",
+      "Dados da instituição, usuários e dicionários usados na ingestão e na geração dos arquivos. São as configurações do próprio tenant: a instituição e os usuários iniciais já foram cadastrados antes pela Videnas, no provisionamento do cliente, e aqui a gestão passa a ser do cliente. O que você consegue editar depende do seu perfil: Diretor e Operacional administram usuários e o responsável pelo envio de dados; só o Diretor edita os dados cadastrais da instituição.",
   },
 } as const satisfies Record<string, TextoAjuda>;
 

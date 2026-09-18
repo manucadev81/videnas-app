@@ -12,7 +12,7 @@ import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
-import { usuarios } from "@/lib/mock/usuarios";
+import { responsavelEnvioDoTenant, useTenantsStore } from "@/lib/store/tenants";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
@@ -27,13 +27,12 @@ export default function ConfiguracoesInstituicaoPage() {
   const instituicao =
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
 
+  const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
   const podeEditar = perfilAtivo === "diretor";
   const [modulosAtivos, setModulosAtivos] = useState<ModuloId[]>(instituicao?.modulosContratados ?? []);
 
   const responsavelEnvio = instituicao
-    ? usuarios.find(
-        (usuario) => usuario.perfilId === "cliente" && usuario.instituicaoIds.includes(instituicao.id)
-      )
+    ? responsavelEnvioDoTenant(usuariosProvisionados, instituicao.id)
     : undefined;
 
   if (!instituicao) {

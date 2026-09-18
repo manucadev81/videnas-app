@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { PerfilId } from "@/lib/tipos";
-import { buscarUsuario, usuariosPorEmail } from "@/lib/mock/usuarios";
+import { buscarUsuario, buscarUsuarioPorEmail } from "@/lib/mock/usuarios";
 import { PERFIS } from "@/lib/permissoes";
 
 export interface EstadoSessao {
@@ -74,9 +74,10 @@ export const useSessaoStore = create<EstadoSessao>()(
       instituicaoAtivaId: null,
       entrar: (email: string) => {
         const emailNormalizado = email.trim().toLowerCase();
-        const usuarioId = usuariosPorEmail[emailNormalizado] ?? USUARIO_PADRAO_NAO_RECONHECIDO;
-        const reconhecido = emailNormalizado in usuariosPorEmail;
-        const usuario = buscarUsuario(usuarioId);
+        const usuarioEncontrado = buscarUsuarioPorEmail(emailNormalizado);
+        const reconhecido = Boolean(usuarioEncontrado);
+        const usuarioId = usuarioEncontrado?.id ?? USUARIO_PADRAO_NAO_RECONHECIDO;
+        const usuario = usuarioEncontrado ?? buscarUsuario(usuarioId);
 
         const perfilAtivo = usuario?.perfilId ?? "operacional";
 

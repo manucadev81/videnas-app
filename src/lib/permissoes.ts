@@ -42,6 +42,7 @@ export const PERFIS: PerfilMetadados[] = [
       "/onboarding",
       "/app/evidencias",
       "/app/entregas",
+      "/app/fornecimento",
     ],
     acoesPermitidas: [
       "aprovar",
@@ -56,6 +57,7 @@ export const PERFIS: PerfilMetadados[] = [
       "ver_evidencias",
       "verificar_integridade",
       "baixar_comprovante",
+      "notificar_cliente",
     ],
     multiTenant: false,
     contextoFixo: false,
@@ -63,13 +65,26 @@ export const PERFIS: PerfilMetadados[] = [
   {
     id: "operacional",
     rotulo: "Operacional",
-    rotuloCompleto: "Operacional / Backoffice",
-    descricao: "Alimenta os dados do dia a dia e sobe os arquivos de origem.",
+    rotuloCompleto: "Operacional / Suporte ao cliente",
+    descricao:
+      "Apoia o cliente no fornecimento: acompanha o que já foi entregue, orienta pendências, cobra prazos e trata exceções. Não sobe dados em nome do cliente.",
     lado: "cliente",
     corBadge: "brand",
     icone: "Boxes",
-    rotasPermitidas: [...ROTAS_COMUNS, ...ROTAS_REGULATORIAS, "/onboarding", "/app/entregas"],
-    acoesPermitidas: ["subir_dados", "remover_lote", "baixar_arquivo", "tratar_excecao", "editar_dicionarios"],
+    rotasPermitidas: [
+      ...ROTAS_COMUNS,
+      ...ROTAS_REGULATORIAS,
+      "/onboarding",
+      "/app/entregas",
+      "/app/fornecimento",
+    ],
+    acoesPermitidas: [
+      "baixar_arquivo",
+      "tratar_excecao",
+      "editar_dicionarios",
+      "notificar_cliente",
+      "gerenciar_usuarios",
+    ],
     multiTenant: false,
     contextoFixo: false,
   },
@@ -175,6 +190,38 @@ export const PERFIS: PerfilMetadados[] = [
     multiTenant: true,
     contextoFixo: false,
   },
+  {
+    id: "admin",
+    rotulo: "Administrador",
+    rotuloCompleto: "Administrador — Videnas",
+    descricao:
+      "Provisiona e administra os clientes da Videnas: cadastra o tenant, contrata módulos e convida os usuários iniciais. Não opera o pipeline regulatório.",
+    lado: "videnas",
+    corBadge: "violet",
+    icone: "Building2",
+    rotasPermitidas: [
+      "/",
+      "/login",
+      "/selecionar-instituicao",
+      "/app",
+      "/app/clientes",
+      "/app/auditoria",
+      "/app/evidencias",
+    ],
+    acoesPermitidas: [
+      "provisionar_tenant",
+      "gerenciar_clientes",
+      "convidar_usuario_inicial",
+      "suspender_tenant",
+      "alterar_modulos_contratados",
+      "trocar_tenant",
+      "exportar_auditoria",
+      "ver_evidencias",
+      "verificar_integridade",
+    ],
+    multiTenant: true,
+    contextoFixo: false,
+  },
 ];
 
 export const PERFIS_SIMULAVEIS: PerfilMetadados[] = PERFIS.filter((perfil) => !perfil.contextoFixo);
@@ -226,6 +273,12 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
   baixar_comprovante: "Baixar comprovante lacrado",
   verificar_integridade: "Verificar integridade do arquivo",
   ver_evidencias: "Ver cadeia de custódia",
+  notificar_cliente: "Notificar cliente do que falta",
+  provisionar_tenant: "Cadastrar novo cliente",
+  gerenciar_clientes: "Administrar carteira de clientes",
+  convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
+  suspender_tenant: "Suspender / reativar cliente",
+  alterar_modulos_contratados: "Alterar módulos contratados",
 };
 
 interface RegraAcao {
@@ -259,6 +312,7 @@ const REGRAS_ACAO: RegraAcao[] = [
   { id: "baixar_comprovante", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
   { id: "verificar_integridade", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
   { id: "ver_evidencias", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "notificar_cliente", estadosOrigem: ["aguardando_dados", "dados_ingeridos"], estadoDestino: null, variante: "secundario" },
 ];
 
 export function acoesDisponiveis(perfil: PerfilId, periodo: PeriodoObrigacao): Acao[] {

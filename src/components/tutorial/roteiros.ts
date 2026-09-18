@@ -19,9 +19,9 @@ export interface PassoTour {
 const PASSOS_OPERACIONAL: PassoTour[] = [
   {
     id: "operacional-boas-vindas",
-    titulo: "Bem-vinda, Operacional / Backoffice",
+    titulo: "Bem-vinda, Operacional / Suporte ao cliente",
     descricao:
-      "Este tour mostra a jornada de quem alimenta os dados das competências. A qualquer momento você pode trocar de visão pelo seletor de perfil aqui no header — hoje ele está fixado em Operacional / Backoffice para esta demonstração.",
+      "Este tour mostra a jornada de quem apoia o cliente no fornecimento das competências. Quem sobe os dados é sempre o Cliente / Fornecedor de dados — você acompanha, orienta e cobra. A qualquer momento você pode trocar de visão pelo seletor de perfil aqui no header — hoje ele está fixado em Operacional / Suporte ao cliente para esta demonstração.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -48,7 +48,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-periodo-aguardando",
     titulo: "Competência aguardando dados",
     descricao:
-      "Setembro/2026 do ACAM212 ainda está em branco — nenhum lote foi recebido. É aqui que o time Operacional entra: sem dados enviados, o Executor da Videnas não tem o que gerar.",
+      "Setembro/2026 do ACAM212 ainda está em branco — o Cliente ainda não forneceu nenhum insumo. Sem dados fornecidos por ele, o Executor da Videnas não tem o que gerar; seu papel aqui é acompanhar esse fornecimento e cobrar o cliente quando algo atrasar.",
     seletor: '[data-tour="periodo-cabecalho"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
@@ -57,44 +57,35 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-stepper",
     titulo: "As 5 etapas da obrigação",
     descricao:
-      "Ingestão → Geração → Validação → Auditoria → Entrega. Você só atua na primeira etapa; as demais são conduzidas pelo time da Videnas e ficam visíveis aqui para acompanhamento.",
+      "Ingestão → Geração → Validação → Auditoria → Entrega. Quem alimenta a Ingestão é sempre o Cliente / Fornecedor de dados; você acompanha esse fornecimento e trata as exceções que aparecerem. As demais etapas são conduzidas pelo time da Videnas e ficam visíveis aqui para acompanhamento.",
     seletor: '[data-tour="stepper-etapas"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
   },
   {
-    id: "operacional-modelo-csv",
-    titulo: "Baixe o modelo antes de enviar",
+    id: "operacional-acompanhamento",
+    titulo: "Acompanhe o fornecimento do cliente",
     descricao:
-      "O botão \"Baixar modelo (CSV)\" gera um arquivo já com o nome no padrão exigido (acam212_meridian_202609.csv), o cabeçalho completo e um exemplo de linha. Preencher a partir dele evita a maior parte das não conformidades.",
-    seletor: '[data-tour="upload-baixar-modelo"]',
+      "Como você não sobe dados em nome do cliente, esta é a sua tela na etapa Ingestão: completude da competência, o checklist de insumos exigidos × já fornecidos, o que ainda falta e as evidências de entrada já lacradas por quem enviou.",
+    seletor: '[data-tour="acompanhamento-fornecimento"]',
+    rota: "/app/acam212/per-meridian-acam212-202609",
+    posicao: "top",
+  },
+  {
+    id: "operacional-notificar-cliente",
+    titulo: "Cobre o que falta",
+    descricao:
+      "O botão \"Notificar cliente do que falta\" registra um evento na trilha de auditoria — é o seu jeito de cobrar prazo sem precisar sair da plataforma nem subir nada em nome do cliente. Ele fica desabilitado quando não há pendência para cobrar.",
+    seletor: '[data-tour="acompanhamento-notificar-cliente"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "bottom",
   },
   {
-    id: "operacional-upload",
-    titulo: "Área de upload e pré-validação",
-    descricao:
-      "Arraste o arquivo aqui, ou clique para selecionar. O conteúdo é lido no próprio navegador e conferido contra o layout da obrigação: nome do arquivo, competência, cabeçalho, colunas obrigatórias e o tipo de cada campo. Cada não conformidade recebe um código, como ING-E003 (coluna obrigatória ausente) ou ING-E010 (nome fora do padrão).",
-    seletor: '[data-tour="upload-dropzone"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
-    posicao: "top",
-  },
-  {
     id: "operacional-tabela-arquivos",
-    titulo: "Arquivos recebidos",
+    titulo: "Histórico de arquivos recebidos",
     descricao:
-      "Esta tabela reúne os lotes já aceitos e os arquivos que não passaram na conferência, com o status de cada um: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado pelo operador. Nas linhas não aceitas o motivo e o ajuste necessário aparecem logo abaixo do status.",
+      "Esta tabela reúne os lotes que o Cliente já enviou e que foram aceitos nesta competência, além dos arquivos que não passaram na conferência automática, com o status de cada um: Aceito, Aceito com ressalvas, Não conforme ou Rejeitado. Nas linhas não aceitas o motivo e o ajuste necessário aparecem logo abaixo do status.",
     seletor: '[data-tour="upload-tabela-arquivos"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
-    posicao: "top",
-  },
-  {
-    id: "operacional-confirmar-envio",
-    titulo: "Resumo da conferência",
-    descricao:
-      "O aceite acontece arquivo a arquivo, na pré-visualização que abre no ato do envio: você confere a amostra dos registros e as não conformidades antes de clicar em \"Aceitar lote\". Não existe confirmação adicional — assim que um lote é aceito, a competência muda de \"Aguardando dados\" para \"Dados recebidos\" e fica disponível para o Executor gerar o arquivo. Este card consolida o que foi aceito, o que ficou não conforme e o que você rejeitou.",
-    seletor: '[data-tour="upload-confirmar-envio"]',
     rota: "/app/acam212/per-meridian-acam212-202609",
     posicao: "top",
   },
@@ -105,7 +96,7 @@ const PASSOS_CLIENTE: PassoTour[] = [
     id: "cliente-boas-vindas",
     titulo: "Bem-vinda, Cliente / Fornecedora de dados",
     descricao:
-      "Aqui no topo fica a sua identidade: nome, instituição e papel. Você foi cadastrada previamente pelo operador do tenant, já vinculada a esta instituição — por isso entra direto nela, sem tela de seleção. Seu papel é fornecer os dados de origem de cada obrigação, o combustível de todo o resto: você não opera o pipeline nem gera arquivos, isso é do time Operacional e da Videnas. Por isso sua superfície é enxuta de propósito — fornecer, acompanhar o que falta e retirar os arquivos lacrados.",
+      "Aqui no topo fica a sua identidade: nome, instituição e papel. Você foi cadastrada previamente pelo operador do tenant, já vinculada a esta instituição — por isso entra direto nela, sem tela de seleção. Seu papel é fornecer os dados de origem de cada obrigação, o combustível de todo o resto: você não gera nem valida arquivos, isso é da Videnas. O Operacional da sua instituição não sobe dados por você — ele só acompanha o que você já forneceu e cobra o que falta. Por isso sua superfície é enxuta de propósito — fornecer, acompanhar o que falta e retirar os arquivos lacrados.",
     seletor: '[data-tour="identidade-usuario"]',
     rota: "/app",
     posicao: "bottom",
@@ -180,7 +171,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-boas-vindas",
     titulo: "Bem-vindo, Diretor / Compliance",
     descricao:
-      "Este tour segue o caminho de quem aprova e responde pela obrigação perante o Banco Central. O seletor de perfil aqui no header é como este mock alterna entre as 5 visões do produto.",
+      "Este tour segue o caminho de quem aprova e responde pela obrigação perante o Banco Central. O seletor de perfil aqui no header é como este mock alterna entre as visões do produto.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -257,7 +248,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-boas-vindas",
     titulo: "Bem-vindo, Contador / Fiscal",
     descricao:
-      "Seu acesso é o mais restrito dos 5 perfis: você só trabalha no módulo Fiscal. O seletor de perfil no header é como esta demonstração alterna entre as visões — o seu está ativo agora.",
+      "Seu acesso é o mais restrito dos perfis do lado cliente: você só trabalha no módulo Fiscal. O seletor de perfil no header é como esta demonstração alterna entre as visões — o seu está ativo agora.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -314,7 +305,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-boas-vindas",
     titulo: "Bem-vinda, Executor Videnas",
     descricao:
-      "Você roda a ingestão e a geração dos arquivos para todas as instituições atendidas. O seletor de perfil no header alterna entre as 5 visões desta demonstração — o seu está ativo agora.",
+      "Você roda a ingestão e a geração dos arquivos para todas as instituições atendidas. O seletor de perfil no header alterna entre as visões desta demonstração — o seu está ativo agora.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -341,7 +332,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-gerar-arquivo",
     titulo: "Rodar a ingestão e gerar o arquivo",
     descricao:
-      "A Pampulha Capital tem o ACAM212 de agosto com dados recebidos e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só aparece quando há pelo menos um lote ingerido; sem dados enviados pelo Operacional, não há o que gerar.",
+      "A Pampulha Capital tem o ACAM212 de agosto com dados recebidos e 6 dias de atraso — prioridade máxima na fila. O botão \"Gerar arquivo\" só aparece quando há pelo menos um lote ingerido; sem dados fornecidos pelo Cliente, não há o que gerar.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
@@ -380,7 +371,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-boas-vindas",
     titulo: "Bem-vinda, Validadora Videnas",
     descricao:
-      "Você confere a validação de schema e libera as competências para os clientes — nunca gera arquivos. O seletor de perfil no header alterna entre as 5 visões desta demonstração.",
+      "Você confere a validação de schema e libera as competências para os clientes — nunca gera arquivos. O seletor de perfil no header alterna entre as visões desta demonstração.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -441,6 +432,99 @@ const PASSOS_VALIDADOR: PassoTour[] = [
   },
 ];
 
+const PASSOS_ADMIN: PassoTour[] = [
+  {
+    id: "admin-boas-vindas",
+    titulo: "Bem-vinda, Administradora Videnas",
+    descricao:
+      "Você é o lado comercial e de implantação da Videnas: cadastra os clientes, contrata os módulos de cada um e convida os usuários iniciais. O que você não faz é operar o pipeline regulatório — não sobe dados, não gera, não valida e não libera arquivos. Esses papéis são do Executor, do Validador e do próprio cliente. O seletor de perfil aqui no header alterna entre as visões desta demonstração.",
+    seletor: '[data-tour="seletor-perfil"]',
+    rota: "/app",
+    posicao: "bottom",
+  },
+  {
+    id: "admin-dashboard",
+    titulo: "A carteira em uma tela",
+    descricao:
+      "Seu painel não mostra prazos regulatórios nem fila de trabalho: mostra a carteira. Os quatro tiles somam quantos clientes existem, quantos já estão ativos, quantos ainda estão em implantação e quantos foram suspensos. Logo abaixo, a lista de clientes que precisam de atenção separa os dois casos que travam a operação: o cliente cadastrado cujo convite ainda não saiu e o cliente suspenso.",
+    seletor: '[data-tour="dashboard-admin"]',
+    rota: "/app",
+    posicao: "top",
+  },
+  {
+    id: "admin-menu-clientes",
+    titulo: "O menu Clientes",
+    descricao:
+      "Este item só existe para o Administrador — os demais perfis nem o enxergam na barra lateral, porque a rota é bloqueada pela matriz de permissões. É daqui que se chega à carteira completa, com busca, filtros e a ficha de cada cliente.",
+    seletor: '[data-tour="nav-clientes"]',
+    rota: "/app",
+    posicao: "right",
+  },
+  {
+    id: "admin-contadores",
+    titulo: "Os quatro status de implantação",
+    descricao:
+      "Provisionado: cadastrado, mas o convite inicial ainda não foi enviado. Onboarding em andamento: o Diretor recebeu o convite e ainda não terminou a configuração guiada. Ativo: a configuração guiada foi concluída e as competências dos módulos contratados foram abertas. Suspenso: o atendimento está interrompido, com motivo registrado na trilha. Clicar em um tile filtra a tabela por aquele status.",
+    seletor: '[data-tour="clientes-contadores"]',
+    rota: "/app/clientes",
+    posicao: "bottom",
+  },
+  {
+    id: "admin-tabela",
+    titulo: "Diretor e responsável pelo envio como colunas",
+    descricao:
+      "A tabela traz, além dos dados cadastrais e dos módulos contratados, as duas pessoas que determinam se o cliente sai do papel: o Diretor responsável, que conclui a configuração guiada, e o responsável pelo envio de dados, que alimenta as competências. Quando a segunda coluna mostra \"Não designado\", o cliente ainda não tem quem forneça os dados — e nenhuma obrigação avança sem isso.",
+    seletor: '[data-tour="clientes-tabela"]',
+    rota: "/app/clientes",
+    posicao: "top",
+  },
+  {
+    id: "admin-cadastrar",
+    titulo: "Cadastrar um cliente novo",
+    descricao:
+      "É por aqui que um tenant nasce. O cadastro cria a instituição, os módulos contratados e os usuários iniciais em um único passo — nada disso depende do cliente, que só entra na história depois de receber o convite.",
+    seletor: '[data-tour="clientes-novo"]',
+    rota: "/app/clientes",
+    posicao: "left",
+  },
+  {
+    id: "admin-formulario",
+    titulo: "O que o formulário exige",
+    descricao:
+      "Três blocos: dados da instituição, com CNPJ único na plataforma — cadastrar o mesmo CNPJ duas vezes é recusado; módulos contratados, com pelo menos um obrigatório, porque são eles que definem quais competências serão abertas; e usuários iniciais, onde o Diretor responsável é obrigatório e o responsável pelo envio de dados é opcional, já que o próprio cliente pode designá-lo depois em Configurações → Usuários e papéis. Cadastrado o cliente, o botão \"Enviar convite\" leva o status de Provisionado para Onboarding em andamento.",
+    seletor: '[data-tour="cliente-novo-formulario"]',
+    rota: "/app/clientes/novo",
+    posicao: "top",
+  },
+  {
+    id: "admin-ficha-cliente",
+    titulo: "A ficha de um cliente",
+    descricao:
+      "Abrir um cliente da carteira leva à visão consolidada que antecede qualquer decisão administrativa. O cabeçalho identifica a instituição pelo nome fantasia e pela razão social, mostra o CNPJ, o badge com o status de implantação e a data de entrada na carteira. A Pampulha Capital está em Onboarding em andamento: o convite já saiu, mas o Diretor ainda não terminou a configuração guiada. Todo o resto da ficha — dados cadastrais, módulos contratados, usuários, obrigações da competência — se lê a partir do que este cabeçalho declara.",
+    seletor: '[data-tour="cliente-detalhe-cabecalho"]',
+    rota: "/app/clientes/inst-pampulha",
+    posicao: "bottom",
+  },
+  {
+    id: "admin-usuarios-tenant",
+    titulo: "Quem existe do lado do cliente",
+    descricao:
+      "Esta tabela lista os usuários do lado Cliente vinculados ao tenant. Na implantação, dois nomes decidem se o cliente sai do papel: o Diretor responsável, único que pode concluir a configuração guiada, e o responsável pelo envio de dados, sem o qual nenhuma competência recebe insumo. O Administrador da Videnas atua aqui apenas reenviando convites; incluir usuários, trocar perfis e desativar acessos é responsabilidade contínua do próprio cliente, em Configurações → Usuários e papéis.",
+    seletor: '[data-tour="cliente-detalhe-usuarios"]',
+    rota: "/app/clientes/inst-pampulha",
+    posicao: "top",
+  },
+  {
+    id: "admin-acoes-administrativas",
+    titulo: "Suspender preserva a trilha",
+    descricao:
+      "No rodapé da ficha ficam as ações que mudam o estado da implantação, e elas variam conforme o status. Para um cliente em implantação como a Pampulha Capital aparecem duas: \"Reenviar convite inicial\", que dispara de novo o convite ao Diretor responsável enquanto ele não concluiu a configuração guiada, e \"Suspender cliente\". Suspender exige um motivo escrito e não apaga nada — o cliente continua visível para a operação e toda a trilha de auditoria é preservada; o que muda é que novas competências deixam de ser abertas. Quando o cliente já está suspenso, \"Reativar cliente\" ocupa o lugar de \"Suspender cliente\" e o devolve ao status Ativo. Cada uma dessas ações grava um evento na trilha com o seu nome e o horário.",
+    seletor: '[data-tour="cliente-detalhe-acoes"]',
+    rota: "/app/clientes/inst-pampulha",
+    posicao: "top",
+  },
+];
+
 export const ROTEIROS: Record<PerfilId, PassoTour[]> = {
   operacional: PASSOS_OPERACIONAL,
   diretor: PASSOS_DIRETOR,
@@ -448,4 +532,5 @@ export const ROTEIROS: Record<PerfilId, PassoTour[]> = {
   cliente: PASSOS_CLIENTE,
   executor: PASSOS_EXECUTOR,
   validador: PASSOS_VALIDADOR,
+  admin: PASSOS_ADMIN,
 };

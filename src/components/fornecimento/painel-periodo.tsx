@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ShieldAlert } from "lucide-react";
+import { Lock, ShieldAlert } from "lucide-react";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { BadgeStatus } from "@/components/dominio/badge-status";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
@@ -91,6 +91,7 @@ export function PainelPeriodo({
 
   const avaliacao = podeExecutar(perfilAtivo, "fornecer_dados", periodo.id, usuarioId);
   const podeFornecer = avaliacao.permitido && criptoDisponivel;
+  const modoConsulta = perfilAtivo !== "cliente";
 
   const motivoBloqueio = !criptoDisponivel
     ? MOTIVO_SEM_CRIPTOGRAFIA
@@ -145,6 +146,25 @@ export function PainelPeriodo({
           </div>
         </div>
       )}
+
+      {modoConsulta ? (
+        <div
+          role="note"
+          className="flex gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-600"
+        >
+          <Lock className="mt-0.5 size-4 shrink-0 text-neutral-500" aria-hidden="true" />
+          <div className="min-w-0 leading-relaxed">
+            <p className="flex items-center gap-1.5 font-medium text-neutral-700">
+              Modo consulta
+              <BadgeAjuda chave="fornecimento.acompanhamento" tamanho="xs" side="top" />
+            </p>
+            <p className="mt-1">
+              Apenas o Cliente fornece os dados. Use &quot;Notificar cliente&quot; no período da
+              obrigação para cobrar o que falta.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <PainelCompletude
         completude={completude}

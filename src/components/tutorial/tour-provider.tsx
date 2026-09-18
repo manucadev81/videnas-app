@@ -50,6 +50,7 @@ export interface EstadoTour {
   indiceAtual: number;
   passoAtual: PassoTour | null;
   totalPassos: number;
+  temRoteiro: boolean;
   iniciar: (perfilId: PerfilId) => void;
   proximo: () => void;
   anterior: () => void;
@@ -60,6 +61,10 @@ export interface EstadoTour {
 const ContextoTour = createContext<EstadoTour | null>(null);
 
 const PASSOS_VAZIOS: PassoTour[] = [];
+
+function perfilTemRoteiro(perfilId: PerfilId | null): boolean {
+  return perfilId ? ROTEIROS[perfilId].length > 0 : false;
+}
 
 export function useTour(): EstadoTour {
   const contexto = useContext(ContextoTour);
@@ -83,6 +88,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const passos = perfilTour ? ROTEIROS[perfilTour] : PASSOS_VAZIOS;
 
   const iniciar = useCallback((perfilId: PerfilId) => {
+    if (!perfilTemRoteiro(perfilId)) {
+      return;
+    }
     if (typeof document !== "undefined") {
       elementoFocoAnteriorRef.current = document.activeElement as HTMLElement | null;
     }
@@ -132,6 +140,10 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const trocouPerfil = !primeiraVezNaSessao && perfilAnteriorRef.current !== perfilSessao;
     perfilAnteriorRef.current = perfilSessao;
 
+    if (!perfilTemRoteiro(perfilSessao)) {
+      return;
+    }
+
     if (trocouPerfil) {
       const vistos = lerPerfisVistos();
       const perfilParaOferecer = perfilSessao;
@@ -175,13 +187,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
       indiceAtual,
       passoAtual: passos[indiceAtual] ?? null,
       totalPassos: passos.length,
+      temRoteiro: perfilTemRoteiro(perfilSessao),
       iniciar,
       proximo,
       anterior,
       encerrar,
       pularPasso,
     }),
-    [perfilTour, passos, indiceAtual, iniciar, proximo, anterior, encerrar, pularPasso]
+    [perfilTour, perfilSessao, passos, indiceAtual, iniciar, proximo, anterior, encerrar, pularPasso]
   );
 
   return <ContextoTour.Provider value={valor}>{children}</ContextoTour.Provider>;

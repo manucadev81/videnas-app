@@ -21,6 +21,7 @@ export interface StepperEtapasProps {
   etapaSelecionadaId?: EtapaId;
   comAjuda?: boolean;
   className?: string;
+  variante?: "completo" | "compacto";
 }
 
 const CLASSES_CIRCULO: Record<EstadoEtapa, string> = {
@@ -30,13 +31,102 @@ const CLASSES_CIRCULO: Record<EstadoEtapa, string> = {
   erro: "bg-status-error-bg text-status-error-text border-2 border-status-error-border",
 };
 
+const CLASSES_LABEL_COMPACTO: Record<EstadoEtapa, string> = {
+  concluida: "text-neutral-600",
+  atual: "text-neutral-700 font-medium",
+  bloqueada: "text-neutral-400",
+  erro: "text-neutral-600",
+};
+
+function descreverEtapaCompacta(etapa: EtapaStepperItem): string {
+  if (etapa.estado === "concluida") {
+    const quando = etapa.concluidaEm ? `: concluída em ${formatarDataHora(etapa.concluidaEm)}` : ": concluída";
+    const responsavel = etapa.responsavelNome ? ` · ${etapa.responsavelNome}` : "";
+    return `${etapa.rotulo}${quando}${responsavel}`;
+  }
+  if (etapa.estado === "bloqueada") {
+    return `${etapa.rotulo}: aguardando etapas anteriores`;
+  }
+  if (etapa.estado === "erro") {
+    return `${etapa.rotulo}: com exceções, necessita atenção`;
+  }
+  return `${etapa.rotulo}: etapa atual`;
+}
+
 export function StepperEtapas({
   etapas,
   aoSelecionar,
   etapaSelecionadaId,
   comAjuda = false,
   className,
+  variante = "completo",
 }: StepperEtapasProps) {
+  const interativo = Boolean(aoSelecionar);
+
+  if (variante === "compacto") {
+    return (
+      <ol
+        data-tour="stepper-etapas"
+        className={cn(
+          "flex max-w-xl items-start gap-0 overflow-x-auto -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          className
+        )}
+        aria-label="Etapas da obrigação regulatória"
+      >
+        {etapas.map((etapa, indice) => {
+          const selecionada = etapaSelecionadaId === etapa.id;
+          const ultima = indice === etapas.length - 1;
+          const descricao = descreverEtapaCompacta(etapa);
+
+          return (
+            <li key={etapa.id} className="flex items-start">
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!interativo}
+                  onClick={() => aoSelecionar?.(etapa.id)}
+                  aria-current={selecionada ? "step" : undefined}
+                  title={descricao}
+                  aria-label={descricao}
+                  data-tour={`stepper-item-${etapa.id}`}
+                  className={cn(
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                    CLASSES_CIRCULO[etapa.estado],
+                    interativo && "cursor-pointer",
+                    !interativo && "cursor-default",
+                    selecionada && "ring-2 ring-brand-700 ring-offset-2"
+                  )}
+                >
+                  {etapa.estado === "concluida" && <Check className="size-3.5" aria-hidden="true" />}
+                  {etapa.estado === "bloqueada" && <Lock className="size-3" aria-hidden="true" />}
+                  {etapa.estado === "erro" && <TriangleAlert className="size-3.5" aria-hidden="true" />}
+                  {etapa.estado === "atual" && <span>{indice + 1}</span>}
+                </button>
+                <p
+                  className={cn(
+                    "w-16 text-center text-[11px] leading-tight",
+                    CLASSES_LABEL_COMPACTO[etapa.estado]
+                  )}
+                >
+                  {etapa.rotulo}
+                </p>
+              </div>
+              {!ultima ? (
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-3.5 h-px min-w-6 flex-1",
+                    etapa.estado === "concluida" ? "bg-brand-700" : "bg-neutral-200"
+                  )}
+                />
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+
   return (
     <ol
       data-tour="stepper-etapas"
@@ -47,7 +137,6 @@ export function StepperEtapas({
       aria-label="Etapas da obrigação regulatória"
     >
       {etapas.map((etapa, indice) => {
-        const interativo = Boolean(aoSelecionar);
         const selecionada = etapaSelecionadaId === etapa.id;
 
         return (

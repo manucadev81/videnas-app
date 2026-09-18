@@ -26,26 +26,15 @@ import {
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { useSessaoStore } from "@/lib/store/sessao";
-import { usuarios as usuariosMock } from "@/lib/mock/usuarios";
+import { usuariosDoTenant, useTenantsStore } from "@/lib/store/tenants";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { PERFIS, buscarPerfil } from "@/lib/permissoes";
+import { CLASSE_SITUACAO, ROTULO_SITUACAO } from "@/lib/usuarios/rotulos";
 import { formatarDataHora } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
-import type { ModuloId, PerfilId, SituacaoUsuario, Usuario } from "@/lib/tipos";
+import type { ModuloId, PerfilId, Usuario } from "@/lib/tipos";
 
 const PERFIS_CONVITE: PerfilId[] = ["diretor", "operacional", "contador", "cliente"];
-
-const ROTULO_SITUACAO: Record<SituacaoUsuario, string> = {
-  ativo: "Ativo",
-  convite_pendente: "Convite pendente",
-  desativado: "Desativado",
-};
-
-const CLASSE_SITUACAO: Record<SituacaoUsuario, string> = {
-  ativo: "status-badge-success",
-  convite_pendente: "status-badge-warning",
-  desativado: "status-badge-neutral",
-};
 
 const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
   subir_dados: "Enviar dados do período",
@@ -74,6 +63,12 @@ const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
   baixar_comprovante: "Baixar comprovante lacrado",
   verificar_integridade: "Verificar integridade do arquivo",
   ver_evidencias: "Ver cadeia de custódia",
+  notificar_cliente: "Notificar cliente do que falta",
+  provisionar_tenant: "Cadastrar novo cliente",
+  gerenciar_clientes: "Administrar carteira de clientes",
+  convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
+  suspender_tenant: "Suspender / reativar cliente",
+  alterar_modulos_contratados: "Alterar módulos contratados",
 };
 
 export default function ConfiguracoesUsuariosPage() {
@@ -82,14 +77,13 @@ export default function ConfiguracoesUsuariosPage() {
   const instituicao =
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
 
-  const podeEditar = perfilAtivo === "diretor";
+  const podeEditar = Boolean(perfilAtivo && buscarPerfil(perfilAtivo).acoesPermitidas.includes("gerenciar_usuarios"));
+
+  const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
 
   const usuariosInstituicao = useMemo(
-    () =>
-      instituicao
-        ? usuariosMock.filter((usuario) => usuario.lado === "cliente" && usuario.instituicaoIds.includes(instituicao.id))
-        : [],
-    [instituicao]
+    () => (instituicao ? usuariosDoTenant(usuariosProvisionados, instituicao.id) : []),
+    [instituicao, usuariosProvisionados]
   );
 
   const [usuariosExtras, setUsuariosExtras] = useState<Usuario[]>([]);
@@ -243,7 +237,10 @@ export default function ConfiguracoesUsuariosPage() {
       {!podeEditar ? (
         <p className="flex items-center gap-2 rounded-md bg-neutral-50 px-4 py-2.5 text-xs text-neutral-500">
           <Lock className="size-3.5" aria-hidden="true" />
-          Modo somente leitura. Apenas o perfil Diretor / Compliance gerencia usuários.
+          Modo somente leitura. Apenas os perfis Diretor / Compliance e Operacional / Suporte ao
+          cliente gerenciam usuários. O Administrador da Videnas cadastra a instituição e os
+          usuários iniciais no provisionamento do cliente; a gestão contínua de usuários é do
+          próprio tenant.
         </p>
       ) : null}
 
@@ -396,7 +393,8 @@ export default function ConfiguracoesUsuariosPage() {
         </div>
 
         <p className="mt-4 rounded-md bg-status-warning-bg px-4 py-2.5 text-xs text-status-warning-text">
-          Executor e Validador são papéis da Videnas e não podem ser atribuídos a usuários da instituição.
+          Executor, Validador e Administrador são papéis da Videnas e não podem ser atribuídos a usuários da
+          instituição.
         </p>
       </section>
     </div>

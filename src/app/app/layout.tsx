@@ -6,18 +6,22 @@ import { GuardiaSessao } from "@/components/layout/guardia-sessao";
 import { TourProvider } from "@/components/tutorial/tour-provider";
 import { FabAjuda } from "@/components/ajuda/fab-ajuda";
 import { HidratacaoEvidencias } from "@/components/evidencias/hidratacao-evidencias";
+import { HidratacaoTenants } from "@/components/tenants/hidratacao-tenants";
 import { TourOverlay } from "@/components/tutorial/tour-overlay";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <TourProvider>
       <HidratacaoEvidencias />
+      <HidratacaoTenants />
       <div className="flex min-h-full flex-1">
         <SidebarApp />
         <div className="flex min-w-0 flex-1 flex-col">
           <HeaderApp />
           <main className="flex-1 px-4 py-6 md:px-6">
-            <GuardiaSessao>{children}</GuardiaSessao>
+            <div className="mx-auto w-full max-w-[1600px]">
+              <GuardiaSessao>{children}</GuardiaSessao>
+            </div>
           </main>
           <div className="[&>footer]:pr-20 md:[&>footer]:pr-24">
             <RodapeDisclaimer />

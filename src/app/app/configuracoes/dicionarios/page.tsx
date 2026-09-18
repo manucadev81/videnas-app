@@ -48,6 +48,7 @@ export default function ConfiguracoesDicionariosPage() {
 
   function podeEditar(aba: "ativos" | "contas" | "clientes" | "fiscal" | "paises"): boolean {
     if (aba === "paises") return false;
+    if (perfilAtivo === "admin") return false;
     if (perfilAtivo === "validador") return false;
     if (perfilAtivo === "contador") return aba === "fiscal";
     return true;

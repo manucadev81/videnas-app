@@ -15,7 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
-import { instituicoes, buscarInstituicao } from "@/lib/mock/instituicoes";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { useTenantsStore } from "@/lib/store/tenants";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
@@ -35,6 +36,7 @@ export default function OperacaoPage() {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const definirInstituicao = useSessaoStore((estado) => estado.definirInstituicao);
   const mapaPeriodos = usePeriodosStore((estado) => estado.periodos);
+  const tenants = useTenantsStore((estado) => estado.tenants);
   const todosPeriodos = useMemo(() => Object.values(mapaPeriodos), [mapaPeriodos]);
 
   const [filtroModulo, setFiltroModulo] = useState<ModuloId | "todos">("todos");
@@ -62,7 +64,7 @@ export default function OperacaoPage() {
   const aValidar = filaBase.filter((periodo) => periodo.estado === "em_validacao" || periodo.estado === "com_excecoes");
   const aLiberar = filaBase.filter((periodo) => periodo.estado === "validado");
 
-  const contadorPorInstituicao = instituicoes.map((instituicao) => ({
+  const contadorPorInstituicao = tenants.map((instituicao) => ({
     instituicao,
     total: todosPeriodos.filter(
       (periodo) =>

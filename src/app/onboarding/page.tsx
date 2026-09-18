@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   SkipForward,
   Trash2,
-  UploadCloud,
   Users,
   Wallet,
 } from "lucide-react";
@@ -37,6 +36,9 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
+import { useHidratarTenants, useTenantsStore } from "@/lib/store/tenants";
+import { usePeriodosStore } from "@/lib/store/periodos";
+import { ItemModuloContratado } from "@/components/dominio/item-modulo-contratado";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { formatarCNPJ } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
@@ -52,7 +54,7 @@ const ROTULO_TIPO_INSTITUICAO: Record<TipoInstituicao, string> = {
 
 const PERFIS_CLIENTE: { id: PerfilId; rotulo: string }[] = [
   { id: "diretor", rotulo: "Diretor / Compliance Responsável" },
-  { id: "operacional", rotulo: "Operacional / Backoffice" },
+  { id: "operacional", rotulo: "Operacional / Suporte ao cliente" },
   { id: "contador", rotulo: "Contador / Fiscal" },
 ];
 
@@ -192,8 +194,9 @@ function EsqueletoOnboarding() {
 
 export default function OnboardingPage() {
   const hidratado = useHidratarSessao();
+  const tenantsHidratados = useHidratarTenants();
 
-  if (!hidratado) {
+  if (!hidratado || !tenantsHidratados) {
     return <EsqueletoOnboarding />;
   }
 
@@ -203,6 +206,11 @@ export default function OnboardingPage() {
 function OnboardingWizard() {
   const router = useRouter();
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
+  const usuarioId = useSessaoStore((estado) => estado.usuarioId);
+  const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
+  const concluirOnboardingTenant = useTenantsStore((estado) => estado.concluirOnboarding);
+  const alterarModulosContratados = useTenantsStore((estado) => estado.alterarModulosContratados);
+  const abrirCompetenciasIniciais = usePeriodosStore((estado) => estado.abrirCompetenciasIniciais);
   const instituicaoAtiva =
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
 
@@ -300,7 +308,7 @@ function OnboardingWizard() {
       const temOperacional = usuarios.some((usuario) => usuario.perfil === "operacional");
       const temContador = usuarios.some((usuario) => usuario.perfil === "contador");
       if (!temDiretor) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Diretor / Compliance.";
-      else if (!temOperacional) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Operacional / Backoffice.";
+      else if (!temOperacional) novosErros.usuarios = "É necessário ao menos 1 usuário com o perfil Operacional / Suporte ao cliente.";
       else if (modulosForm.fiscal && !temContador)
         novosErros.usuarios = "O módulo Fiscal está ativo: é necessário ao menos 1 usuário com o perfil Contador / Fiscal.";
     }
@@ -394,6 +402,25 @@ function OnboardingWizard() {
   }
 
   function concluir() {
+    if (!instituicaoAtivaId || instituicaoAtivaId === "todas") {
+      router.push("/app");
+      return;
+    }
+
+    const autor = {
+      usuarioId: usuarioId ?? "usr-ricardo",
+      perfilId: perfilAtivo ?? "diretor",
+    };
+
+    const resultadoModulos = alterarModulosContratados(instituicaoAtivaId, modulosSelecionados, autor);
+    if (!resultadoModulos.sucesso) {
+      toast.error(resultadoModulos.motivo);
+      return;
+    }
+
+    concluirOnboardingTenant(instituicaoAtivaId, autor);
+    abrirCompetenciasIniciais(instituicaoAtivaId, modulosSelecionados, autor);
+
     toast.success("Ambiente configurado. Você já pode acompanhar seus prazos regulatórios.");
     router.push("/app");
   }
@@ -414,7 +441,11 @@ function OnboardingWizard() {
     <div className="mx-auto flex min-h-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 md:px-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-neutral-700">Configuração guiada do ambiente</h1>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-2 rounded-md border border-status-info-border bg-status-info-bg px-4 py-3 text-sm leading-relaxed text-status-info-text">
+          Esta instituição já foi cadastrada pela Videnas. Aqui você confirma os dados, ajusta os
+          módulos contratados e configura o ambiente.
+        </p>
+        <p className="mt-2 text-sm text-neutral-500">
           {passosConcluidos.size} de {TOTAL_PASSOS} concluídas · {progresso}%
         </p>
         <Progress value={progresso} className="mt-3" aria-label="Progresso do onboarding" />
@@ -459,8 +490,13 @@ function OnboardingWizard() {
           {passoAtual === 1 ? (
             <div className="space-y-6">
               <div>
-                <h2 className="font-display text-lg font-bold text-neutral-700">Dados da instituição</h2>
-                <p className="text-sm text-neutral-500">Identificação cadastral e responsável perante o Banco Central.</p>
+                <h2 className="font-display text-lg font-bold text-neutral-700">
+                  Revisão dos dados da instituição
+                </h2>
+                <p className="text-sm text-neutral-500">
+                  Os campos abaixo vêm pré-preenchidos com o cadastro feito pela Videnas. Revise a
+                  identificação cadastral e complete os dados do responsável perante o Banco Central.
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -633,28 +669,35 @@ function OnboardingWizard() {
               </div>
 
               <div className="space-y-3">
-                <ItemModulo
+                <ItemModuloContratado
+                  moduloId="acam212"
                   titulo="ACAM212"
                   descricao="Declaração mensal ao Banco Central das operações de câmbio com ativos virtuais."
+                  idPrefixo="onboarding-modulo"
                   checked={modulosForm.acam212}
                   onCheckedChange={(valor) => setModulosForm((atual) => ({ ...atual, acam212: valor }))}
                 />
-                <ItemModulo
+                <ItemModuloContratado
+                  moduloId="cadoc5711"
                   titulo="Cadoc 5711"
                   descricao="Posição de custódia diária por cliente, consolidada e enviada mensalmente."
+                  idPrefixo="onboarding-modulo"
                   checked={modulosForm.cadoc5711}
                   onCheckedChange={(valor) => setModulosForm((atual) => ({ ...atual, cadoc5711: valor }))}
                 />
-                <ItemModulo
+                <ItemModuloContratado
+                  moduloId="cadoc5710"
                   titulo="Cadoc 5710"
                   descricao="Posição de custódia mensal agregada por carteira, incluindo saldo em staking."
+                  idPrefixo="onboarding-modulo"
                   checked={modulosForm.cadoc5710}
                   onCheckedChange={(valor) => setModulosForm((atual) => ({ ...atual, cadoc5710: valor }))}
                 />
-                <ItemModulo
+                <ItemModuloContratado
+                  moduloId="fiscal"
                   titulo="Fiscal (NFS-e / DPS)"
                   descricao="Estruturação da DPS para validação do contador responsável."
-                  candidato
+                  idPrefixo="onboarding-modulo"
                   checked={modulosForm.fiscal}
                   onCheckedChange={(valor) => setModulosForm((atual) => ({ ...atual, fiscal: valor, cienciaFiscal: valor ? atual.cienciaFiscal : false }))}
                 />
@@ -685,8 +728,8 @@ function OnboardingWizard() {
                 <h2 className="font-display text-lg font-bold text-neutral-700">Usuários e papéis</h2>
                 <p className="text-sm text-neutral-500">
                   Adicione ao menos 1 usuário Diretor e 1 Operacional
-                  {modulosForm.fiscal ? " e 1 Contador, já que o módulo Fiscal está ativo" : ""}. Executor e Validador são
-                  papéis exclusivos da Videnas.
+                  {modulosForm.fiscal ? " e 1 Contador, já que o módulo Fiscal está ativo" : ""}. Executor, Validador e
+                  Administrador são papéis exclusivos da Videnas.
                 </p>
               </div>
 
@@ -971,41 +1014,6 @@ function Campo({
         : children}
       {erro ? <p className="text-xs text-status-error-text">{erro}</p> : null}
     </div>
-  );
-}
-
-function ItemModulo({
-  titulo,
-  descricao,
-  checked,
-  onCheckedChange,
-  candidato,
-}: {
-  titulo: string;
-  descricao: string;
-  checked: boolean;
-  onCheckedChange: (valor: boolean) => void;
-  candidato?: boolean;
-}) {
-  return (
-    <label
-      className={cn(
-        "flex items-start justify-between gap-4 rounded-lg border p-4 transition-colors",
-        checked ? "border-brand-700 bg-brand-50" : "border-neutral-200 bg-white"
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <UploadCloud className="mt-0.5 size-5 shrink-0 text-brand-700" aria-hidden="true" />
-        <div>
-          <p className="flex items-center gap-2 text-sm font-bold text-neutral-700">
-            {titulo}
-            {candidato ? <span className="status-badge status-badge-candidate text-[11px]">Candidato</span> : null}
-          </p>
-          <p className="text-xs text-neutral-500">{descricao}</p>
-        </div>
-      </div>
-      <Checkbox checked={checked} onCheckedChange={(valor) => onCheckedChange(valor === true)} aria-label={`Ativar módulo ${titulo}`} />
-    </label>
   );
 }
 

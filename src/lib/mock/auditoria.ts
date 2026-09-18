@@ -37,6 +37,13 @@ const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   ENTREGA_DISPONIBILIZADA: "Entrega disponibilizada ao cliente",
   LACRE_VERIFICADO: "Integridade do lacre verificada",
   COMPROVANTE_EMITIDO: "Comprovante emitido",
+  CLIENTE_NOTIFICADO: "Cliente notificado sobre pendências",
+  TENANT_PROVISIONADO: "Cliente provisionado",
+  CONVITE_INICIAL_ENVIADO: "Convite inicial enviado",
+  TENANT_SUSPENSO: "Cliente suspenso",
+  TENANT_REATIVADO: "Cliente reativado",
+  MODULOS_CONTRATADOS_ALTERADOS: "Módulos contratados alterados",
+  ONBOARDING_CONCLUIDO: "Onboarding concluído",
 };
 
 function redeAcesso(lado: "cliente" | "videnas"): { ip: string; userAgent: string } {

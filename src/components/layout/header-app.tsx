@@ -17,6 +17,7 @@ import { SeletorInstituicao } from "@/components/dominio/seletor-instituicao";
 import { IdentidadeUsuario } from "@/components/dominio/identidade-usuario";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
+import { buscarTenant, useTenantsStore } from "@/lib/store/tenants";
 
 const ROTULOS_SEGMENTO: Record<string, string> = {
   app: "Painel",
@@ -27,6 +28,8 @@ const ROTULOS_SEGMENTO: Record<string, string> = {
   auditoria: "Auditoria",
   configuracoes: "Configurações",
   operacao: "Operação",
+  clientes: "Clientes",
+  novo: "Novo cliente",
 };
 
 function rotuloSegmento(segmento: string): string {
@@ -37,8 +40,14 @@ export function HeaderApp() {
   const pathname = usePathname();
   const aoSair = useLogout();
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
+  const tenants = useTenantsStore((estado) => estado.tenants);
   const contextoFixo = perfilTemContextoFixo(perfilAtivo);
   const segmentos = pathname.split("/").filter(Boolean);
+
+  function rotularSegmento(segmento: string): string {
+    const tenant = buscarTenant(tenants, segmento);
+    return tenant ? tenant.nomeFantasia : rotuloSegmento(segmento);
+  }
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 md:px-6">
@@ -53,9 +62,9 @@ export function HeaderApp() {
                 {indice > 0 && <BreadcrumbSeparator />}
                 <BreadcrumbItem>
                   {ultimo ? (
-                    <BreadcrumbPage>{rotuloSegmento(segmento)}</BreadcrumbPage>
+                    <BreadcrumbPage>{rotularSegmento(segmento)}</BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink href={caminho}>{rotuloSegmento(segmento)}</BreadcrumbLink>
+                    <BreadcrumbLink href={caminho}>{rotularSegmento(segmento)}</BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
               </span>

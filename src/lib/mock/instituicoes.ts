@@ -1,6 +1,11 @@
 import type { Instituicao } from "@/lib/tipos";
+import {
+  definirRegistroInstituicoes,
+  encontrarInstituicaoRegistrada,
+  listarInstituicoesRegistradas,
+} from "@/lib/tenants/registro";
 
-export const instituicoes: Instituicao[] = [
+export const instituicoesSemente: Instituicao[] = [
   {
     id: "inst-meridian",
     razaoSocial: "Meridian Digital Assets Ltda",
@@ -24,6 +29,7 @@ export const instituicoes: Instituicao[] = [
     onboardingConcluido: true,
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-11T14:22:00-03:00",
+    statusImplantacao: "ativo",
   },
   {
     id: "inst-cofre-atlantico",
@@ -48,6 +54,7 @@ export const instituicoes: Instituicao[] = [
     onboardingConcluido: true,
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-18T09:40:00-03:00",
+    statusImplantacao: "ativo",
   },
   {
     id: "inst-pampulha",
@@ -72,9 +79,20 @@ export const instituicoes: Instituicao[] = [
     onboardingConcluido: false,
     etapaOnboardingAtual: 4,
     criadoEm: "2026-08-25T11:05:00-03:00",
+    statusImplantacao: "onboarding_em_andamento",
   },
 ];
 
+definirRegistroInstituicoes(instituicoesSemente);
+
+export function listarInstituicoes(): Instituicao[] {
+  const registradas = listarInstituicoesRegistradas();
+  return registradas.length > 0 ? registradas : instituicoesSemente;
+}
+
 export function buscarInstituicao(id: string): Instituicao | undefined {
-  return instituicoes.find((instituicao) => instituicao.id === id);
+  return (
+    encontrarInstituicaoRegistrada(id) ??
+    instituicoesSemente.find((instituicao) => instituicao.id === id)
+  );
 }

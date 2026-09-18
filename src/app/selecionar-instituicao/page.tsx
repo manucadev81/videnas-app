@@ -15,7 +15,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { useHidratarSessao, useSessaoStore, perfilTemContextoFixo } from "@/lib/store/sessao";
 import { buscarUsuario } from "@/lib/mock/usuarios";
-import { instituicoes } from "@/lib/mock/instituicoes";
+import {
+  CLASSE_STATUS_IMPLANTACAO,
+  ROTULO_STATUS_IMPLANTACAO,
+  useHidratarTenants,
+  useTenantsStore,
+} from "@/lib/store/tenants";
 import { buscarProtocolo, calcularPeriodoDerivado, periodosPorInstituicao } from "@/lib/mock/periodos";
 import { PERFIS_SIMULAVEIS, buscarPerfil } from "@/lib/permissoes";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
@@ -53,6 +58,8 @@ function resumoInstituicao(instituicaoId: string) {
 export default function SelecionarInstituicaoPage() {
   const router = useRouter();
   const hidratado = useHidratarSessao();
+  const tenantsHidratados = useHidratarTenants();
+  const tenants = useTenantsStore((estado) => estado.tenants);
   const autenticado = useSessaoStore((estado) => estado.autenticado);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
@@ -86,11 +93,11 @@ export default function SelecionarInstituicaoPage() {
 
   const instituicoesDisponiveis = useMemo(() => {
     if (perfilMetadados.multiTenant) {
-      return instituicoes;
+      return tenants;
     }
     if (!usuario) return [];
-    return instituicoes.filter((instituicao) => usuario.instituicaoIds.includes(instituicao.id));
-  }, [perfilMetadados.multiTenant, usuario]);
+    return tenants.filter((instituicao) => usuario.instituicaoIds.includes(instituicao.id));
+  }, [perfilMetadados.multiTenant, tenants, usuario]);
 
   const instituicoesFiltradas = useMemo(() => {
     if (!termoBusca.trim()) return instituicoesDisponiveis;
@@ -105,6 +112,23 @@ export default function SelecionarInstituicaoPage() {
 
   const carregandoAutoSelecao = instituicoesDisponiveis.length === 1 && !autoSelecaoConcluida;
 
+  const cartaoGlobal =
+    perfilSelecionado === "admin"
+      ? {
+          titulo: "Carteira de clientes",
+          descricao: "Cadastre e administre os clientes da Videnas.",
+          rotuloAcao: "Abrir carteira",
+          icone: Building2,
+          destino: "/app/clientes",
+        }
+      : {
+          titulo: "Todas as instituições",
+          descricao: "Visão de operação, com fila de trabalho multi-tenant.",
+          rotuloAcao: "Abrir operação",
+          icone: Workflow,
+          destino: "/app/operacao",
+        };
+
   useEffect(() => {
     if (instituicoesDisponiveis.length === 1 && !autoSelecaoConcluida) {
       const temporizador = setTimeout(() => {
@@ -115,7 +139,7 @@ export default function SelecionarInstituicaoPage() {
     }
   }, [instituicoesDisponiveis, autoSelecaoConcluida]);
 
-  if (!hidratado || !usuario || contextoFixo) {
+  if (!hidratado || !tenantsHidratados || !usuario || contextoFixo) {
     return null;
   }
 
@@ -126,10 +150,10 @@ export default function SelecionarInstituicaoPage() {
     router.push("/app");
   }
 
-  function abrirOperacao() {
+  function abrirVisaoGlobal() {
     definirPerfil(perfilSelecionado);
     definirInstituicao("todas");
-    router.push("/app/operacao");
+    router.push(cartaoGlobal.destino);
   }
 
   return (
@@ -148,9 +172,11 @@ export default function SelecionarInstituicaoPage() {
         </h2>
         <p className="text-sm text-neutral-500">
           Escolha o perfil para explorar a demonstração. Perfis do lado Cliente pertencem à instituição; perfis do
-          lado Videnas enxergam múltiplas instituições. O perfil Cliente / Fornecedor de dados não aparece aqui:
-          ele é pré-cadastrado pelo operador do tenant, já vem vinculado a uma instituição e entra direto nela,
-          sem passar por esta tela.
+          lado Videnas enxergam múltiplas instituições. Hoje o lado Videnas tem três papéis: Executor e Validador
+          operam o pipeline regulatório dos clientes; o Administrador provisiona e administra os clientes da
+          carteira e não opera o pipeline — ele não sobe dados, não gera, não valida e não libera arquivos. O
+          perfil Cliente / Fornecedor de dados não aparece aqui: ele é pré-cadastrado pelo operador do tenant, já
+          vem vinculado a uma instituição e entra direto nela, sem passar por esta tela.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {PERFIS_SIMULAVEIS.map((perfil) => {
@@ -252,8 +278,18 @@ export default function SelecionarInstituicaoPage() {
 
                     <p className="text-xs text-neutral-500">{formatarCNPJ(instituicao.cnpj)}</p>
 
-                    <span className="w-fit rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
-                      {ROTULO_TIPO[instituicao.tipo]}
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="w-fit rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
+                        {ROTULO_TIPO[instituicao.tipo]}
+                      </span>
+                      <span
+                        className={cn(
+                          "status-badge",
+                          CLASSE_STATUS_IMPLANTACAO[instituicao.statusImplantacao]
+                        )}
+                      >
+                        {ROTULO_STATUS_IMPLANTACAO[instituicao.statusImplantacao]}
+                      </span>
                     </span>
 
                     <div className="flex flex-wrap gap-1.5">
@@ -284,14 +320,14 @@ export default function SelecionarInstituicaoPage() {
             {perfilMetadados.multiTenant ? (
               <button
                 type="button"
-                onClick={abrirOperacao}
+                onClick={abrirVisaoGlobal}
                 className="flex flex-col items-start justify-center gap-2 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 p-5 text-left transition-colors hover:border-brand-700"
               >
-                <Workflow className="size-6 text-brand-700" aria-hidden="true" />
-                <p className="font-display text-base font-bold text-brand-700">Todas as instituições</p>
-                <p className="text-xs text-brand-700/80">Visão de operação, com fila de trabalho multi-tenant.</p>
+                <cartaoGlobal.icone className="size-6 text-brand-700" aria-hidden="true" />
+                <p className="font-display text-base font-bold text-brand-700">{cartaoGlobal.titulo}</p>
+                <p className="text-xs text-brand-700/80">{cartaoGlobal.descricao}</p>
                 <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700">
-                  Abrir operação
+                  {cartaoGlobal.rotuloAcao}
                   <ChevronRight className="size-3.5" aria-hidden="true" />
                 </span>
               </button>

@@ -4,7 +4,8 @@ export type PerfilId =
   | "contador"
   | "cliente"
   | "executor"
-  | "validador";
+  | "validador"
+  | "admin";
 
 export type LadoId = "cliente" | "videnas";
 
@@ -63,6 +64,8 @@ export type StatusExcecao = "aberta" | "em_tratamento" | "tratada" | "aceita_com
 
 export type CriticidadePrazo = "alta" | "media";
 
+export type StatusImplantacao = "provisionado" | "onboarding_em_andamento" | "ativo" | "suspenso";
+
 export type TipoEventoAuditoria =
   | "PERIODO_CRIADO"
   | "INGESTAO_CONCLUIDA"
@@ -96,7 +99,14 @@ export type TipoEventoAuditoria =
   | "LOTE_SELADO"
   | "ENTREGA_DISPONIBILIZADA"
   | "LACRE_VERIFICADO"
-  | "COMPROVANTE_EMITIDO";
+  | "COMPROVANTE_EMITIDO"
+  | "CLIENTE_NOTIFICADO"
+  | "TENANT_PROVISIONADO"
+  | "CONVITE_INICIAL_ENVIADO"
+  | "TENANT_SUSPENSO"
+  | "TENANT_REATIVADO"
+  | "MODULOS_CONTRATADOS_ALTERADOS"
+  | "ONBOARDING_CONCLUIDO";
 
 export type AcaoId =
   | "subir_dados"
@@ -124,7 +134,13 @@ export type AcaoId =
   | "fornecer_dados"
   | "baixar_comprovante"
   | "verificar_integridade"
-  | "ver_evidencias";
+  | "ver_evidencias"
+  | "notificar_cliente"
+  | "provisionar_tenant"
+  | "gerenciar_clientes"
+  | "convidar_usuario_inicial"
+  | "suspender_tenant"
+  | "alterar_modulos_contratados";
 
 export interface ResponsavelBcb {
   nome: string;
@@ -151,6 +167,7 @@ export interface Instituicao {
   onboardingConcluido: boolean;
   etapaOnboardingAtual: number;
   criadoEm: string;
+  statusImplantacao: StatusImplantacao;
 }
 
 export interface Usuario {

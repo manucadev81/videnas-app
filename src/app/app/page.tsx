@@ -1,28 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { UploadCloud } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
-import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { CardPrazo } from "@/components/dominio/card-prazo";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
-import { SeloCandidato } from "@/components/dominio/selo-candidato";
-import { construirEtapasStepper } from "@/components/dominio/modulo-etapas";
+import { CardModuloDashboard } from "@/components/dominio/card-modulo-dashboard";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
-import { chaveAjudaModulo } from "@/lib/ajuda/textos";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
+import {
+  CLASSE_STATUS_IMPLANTACAO,
+  ROTULO_STATUS_IMPLANTACAO,
+  useTenantsStore,
+} from "@/lib/store/tenants";
 import { fornecimentosDoPeriodo, useEvidenciasStore } from "@/lib/store/evidencias";
 import { calcularCompletude } from "@/lib/fornecimento";
 import { descreverContagemPrazo } from "@/components/fornecimento/constantes";
-import { buscarInstituicao, instituicoes } from "@/lib/mock/instituicoes";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
 import { prazosRegulatorios } from "@/lib/mock/prazos";
-import { formatarBRL, formatarCNPJ, formatarCompetencia, formatarCompetenciaCurta, formatarData, formatarDataHora } from "@/lib/formatadores";
-import type { EstadoPeriodo, ModuloId, PeriodoObrigacao } from "@/lib/tipos";
+import { buscarPerfil } from "@/lib/permissoes";
+import { formatarCNPJ, formatarCompetencia, formatarCompetenciaCurta, formatarData, formatarDataHora } from "@/lib/formatadores";
+import type {
+  EstadoPeriodo,
+  EventoAuditoria,
+  Instituicao,
+  ModuloId,
+  PeriodoObrigacao,
+  StatusImplantacao,
+} from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
 const ROTULOS_ESTADO: Record<EstadoPeriodo, string> = {
@@ -50,7 +60,7 @@ function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao):
     return "Fornecer dados";
   }
   if (perfil === "operacional" && (periodo.estado === "aguardando_dados" || periodo.estado === "dados_ingeridos")) {
-    return "Enviar dados";
+    return "Acompanhar fornecimento";
   }
   if (perfil === "executor" && periodo.estado === "dados_ingeridos") {
     return "Gerar arquivo";
@@ -64,20 +74,8 @@ function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao):
   return "Abrir período";
 }
 
-function metricasModulo(periodo: PeriodoObrigacao): string {
-  if (periodo.moduloId === "acam212") {
-    return `${periodo.totaisResumo.operacoes ?? 0} operações`;
-  }
-  if (periodo.moduloId === "cadoc5711") {
-    return `${periodo.totaisResumo.datasBaseRecebidas ?? 0}/${periodo.totaisResumo.datasBaseEsperadas ?? 0} datas-base · ${periodo.totaisResumo.clientesDistintos ?? 0} clientes`;
-  }
-  if (periodo.moduloId === "cadoc5710") {
-    return `${periodo.totaisResumo.carteiras ?? 0} carteiras · ${periodo.totaisResumo.ativos ?? 0} ativos`;
-  }
-  return `${periodo.totaisResumo.dps ?? 0} DPS estruturadas · ${formatarBRL(Number(periodo.totaisResumo.valorServicos ?? 0))}`;
-}
-
 export default function DashboardPage() {
+  const router = useRouter();
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const periodosStore = usePeriodosStore((estado) => estado.periodos);
@@ -85,6 +83,7 @@ export default function DashboardPage() {
   const excecoesStore = usePeriodosStore((estado) => estado.excecoes);
   const evidenciasHidratadas = useEvidenciasStore((estado) => estado.hidratado);
   const fornecimentosStore = useEvidenciasStore((estado) => estado.fornecimentos);
+  const tenants = useTenantsStore((estado) => estado.tenants);
 
   const todosPeriodos = Object.values(periodosStore);
   const instituicao =
@@ -158,7 +157,7 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   const filaPorInstituicao = ehOperacao
-    ? instituicoes.map((inst) => ({
+    ? tenants.map((inst) => ({
         instituicao: inst,
         total: todosPeriodos.filter(
           (periodo) =>
@@ -175,11 +174,26 @@ export default function DashboardPage() {
       (perfilAtivo !== "contador" || prazo.moduloId === "fiscal")
   );
 
+  if (perfilAtivo === "admin") {
+    return <PainelAdmin tenants={tenants} eventosRecentes={eventosRecentes} />;
+  }
+
   if (periodosEscopo.length === 0) {
+    const instituicaoAtiva = tenants.find((tenant) => tenant.id === instituicaoAtivaId);
+    const ladoCliente = perfilAtivo ? buscarPerfil(perfilAtivo).lado === "cliente" : false;
+    const precisaConcluirOnboarding =
+      ladoCliente && Boolean(instituicaoAtiva) && instituicaoAtiva?.onboardingConcluido === false;
+
     return (
       <EstadoVazio
         titulo="Nenhuma obrigação configurada ainda"
-        mensagem="Conclua o onboarding para começar a acompanhar seus prazos regulatórios."
+        mensagem={
+          precisaConcluirOnboarding
+            ? "A Videnas já cadastrou a sua instituição. Conclua a configuração guiada para abrir as primeiras competências."
+            : "Conclua o onboarding para começar a acompanhar seus prazos regulatórios."
+        }
+        rotuloAcao={precisaConcluirOnboarding ? "Concluir configuração guiada" : undefined}
+        aoAcionar={precisaConcluirOnboarding ? () => router.push("/onboarding") : undefined}
       />
     );
   }
@@ -310,33 +324,13 @@ export default function DashboardPage() {
           const modulo = buscarModulo(periodo.moduloId);
           const derivado = calcularPeriodoDerivado(periodo);
           return (
-            <div key={periodo.id} className="rounded-lg border border-neutral-200 bg-white p-5 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="flex flex-wrap items-center gap-x-1.5 font-display text-lg font-bold text-neutral-700">
-                    {modulo.nome}
-                    <span className="text-sm font-normal text-neutral-400">{modulo.sigla}</span>
-                    <BadgeAjuda chave={chaveAjudaModulo(periodo.moduloId)} tamanho="xs" />
-                  </h3>
-                  <p className="text-xs text-neutral-500">Competência {periodo.competenciaRotulo}</p>
-                </div>
-                {modulo.candidato ? <SeloCandidato tamanho="sm" /> : null}
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <BadgeStatus estado={periodo.estado} />
-                <BadgeAtrasado dias={derivado.diasDeAtraso} />
-              </div>
-              <p className="mt-2 text-sm text-neutral-600">
-                {metricasModulo(periodo)} · Prazo: {formatarData(periodo.prazoEntrega)}
-              </p>
-              <StepperEtapas
-                etapas={construirEtapasStepper(modulo.etapas, derivado.etapaAtual, periodo.estado, {})}
-                className="mt-3 border-0 px-0 py-0"
-              />
-              <Button render={<Link href={rotaDoPeriodo(periodo.moduloId, periodo.id)} />} nativeButton={false} className="mt-3 w-full" size="sm">
-                {rotuloAcaoContextual(perfilAtivo, periodo)}
-              </Button>
-            </div>
+            <CardModuloDashboard
+              key={periodo.id}
+              modulo={modulo}
+              derivado={derivado}
+              rotuloAcao={rotuloAcaoContextual(perfilAtivo, periodo)}
+              href={rotaDoPeriodo(periodo.moduloId, periodo.id)}
+            />
           );
         })}
       </div>
@@ -499,6 +493,206 @@ export default function DashboardPage() {
         </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PainelAdmin({
+  tenants,
+  eventosRecentes,
+}: {
+  tenants: Instituicao[];
+  eventosRecentes: EventoAuditoria[];
+}) {
+  const contagem: Record<StatusImplantacao, number> = {
+    provisionado: 0,
+    onboarding_em_andamento: 0,
+    ativo: 0,
+    suspenso: 0,
+  };
+  for (const tenant of tenants) {
+    contagem[tenant.statusImplantacao] += 1;
+  }
+
+  const emImplantacao = contagem.provisionado + contagem.onboarding_em_andamento;
+
+  const precisamAtencao = tenants.filter(
+    (tenant) =>
+      tenant.statusImplantacao === "provisionado" || tenant.statusImplantacao === "suspenso"
+  );
+
+  const ultimosProvisionados = [...tenants]
+    .sort((a, b) => (a.criadoEm < b.criadoEm ? 1 : -1))
+    .slice(0, 5);
+
+  const tiles: { rotulo: string; valor: number }[] = [
+    { rotulo: "Total de clientes", valor: tenants.length },
+    { rotulo: "Ativos", valor: contagem.ativo },
+    { rotulo: "Em implantação", valor: emImplantacao },
+    { rotulo: "Suspensos", valor: contagem.suspenso },
+  ];
+
+  return (
+    <div data-tour="dashboard-admin" className="space-y-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-neutral-700">
+            Carteira de clientes · Videnas
+          </h1>
+          <p className="text-sm text-neutral-500">
+            Data de referência: {formatarData(HOJE_ISO)}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button render={<Link href="/app/clientes/novo" />} nativeButton={false}>
+            <Plus className="size-4" aria-hidden="true" />
+            Cadastrar novo cliente
+          </Button>
+          <Link
+            href="/app/clientes"
+            className="rounded-sm text-sm font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+          >
+            Ver carteira completa
+          </Link>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {tiles.map((tile) => (
+          <div key={tile.rotulo} className="rounded-md border border-neutral-200 bg-white p-3">
+            <p className="text-xs text-neutral-500">{tile.rotulo}</p>
+            <p className="text-xl font-bold text-neutral-700">{tile.valor}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section
+          aria-labelledby="admin-atencao-titulo"
+          className="rounded-lg border border-neutral-200 bg-white p-5"
+        >
+          <h2
+            id="admin-atencao-titulo"
+            className="mb-3 flex items-center gap-1.5 font-display text-base font-bold text-neutral-700"
+          >
+            Clientes que precisam de atenção
+            <BadgeAjuda chave="cliente.status-implantacao" tamanho="sm" />
+          </h2>
+          {precisamAtencao.length === 0 ? (
+            <p className="text-sm text-neutral-500">
+              Nenhum cliente parado. Todos já receberam o convite inicial e nenhum está suspenso.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {precisamAtencao.map((tenant) => (
+                <li key={tenant.id}>
+                  <Link
+                    href={`/app/clientes/${tenant.id}`}
+                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md bg-neutral-50 p-3 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-neutral-700">
+                        {tenant.nomeFantasia}
+                      </span>
+                      <span className="block text-xs text-neutral-500">
+                        {tenant.statusImplantacao === "provisionado"
+                          ? "Cadastrado, mas o convite inicial ainda não foi enviado ao Diretor responsável."
+                          : "Suspenso: o atendimento está interrompido até a reativação."}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "status-badge shrink-0",
+                        CLASSE_STATUS_IMPLANTACAO[tenant.statusImplantacao]
+                      )}
+                    >
+                      {ROTULO_STATUS_IMPLANTACAO[tenant.statusImplantacao]}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section
+          aria-labelledby="admin-recentes-titulo"
+          className="rounded-lg border border-neutral-200 bg-white p-5"
+        >
+          <h2
+            id="admin-recentes-titulo"
+            className="mb-3 font-display text-base font-bold text-neutral-700"
+          >
+            Últimos clientes provisionados
+          </h2>
+          {ultimosProvisionados.length === 0 ? (
+            <p className="text-sm text-neutral-500">Nenhum cliente cadastrado ainda.</p>
+          ) : (
+            <ul className="space-y-2">
+              {ultimosProvisionados.map((tenant) => (
+                <li key={tenant.id}>
+                  <Link
+                    href={`/app/clientes/${tenant.id}`}
+                    className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-md bg-neutral-50 p-3 transition-colors hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-neutral-700">
+                        {tenant.nomeFantasia}
+                      </span>
+                      <span className="block text-xs text-neutral-500">
+                        Entrada em {formatarData(tenant.criadoEm.slice(0, 10))} ·{" "}
+                        {formatarCNPJ(tenant.cnpj)}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "status-badge shrink-0",
+                        CLASSE_STATUS_IMPLANTACAO[tenant.statusImplantacao]
+                      )}
+                    >
+                      {ROTULO_STATUS_IMPLANTACAO[tenant.statusImplantacao]}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <section
+        aria-labelledby="admin-auditoria-titulo"
+        className="rounded-lg border border-neutral-200 bg-white p-5"
+      >
+        <h2
+          id="admin-auditoria-titulo"
+          className="mb-3 font-display text-base font-bold text-neutral-700"
+        >
+          Últimos eventos de auditoria
+        </h2>
+        {eventosRecentes.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nenhum evento registrado ainda.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {eventosRecentes.map((evento) => (
+              <li key={evento.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="font-mono text-xs text-neutral-500">
+                  {formatarDataHora(evento.ocorridoEm)}
+                </span>
+                <span className="text-neutral-700">{evento.usuarioNome}</span>
+                <span className="text-xs text-neutral-500">({evento.perfilId})</span>
+                <span className="text-neutral-600">{evento.rotuloTipo}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link
+          href="/app/auditoria"
+          className="mt-3 inline-block rounded-sm text-xs font-medium text-brand-700 hover:text-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+        >
+          Ver trilha completa
+        </Link>
+      </section>
     </div>
   );
 }

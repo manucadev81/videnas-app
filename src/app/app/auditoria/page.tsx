@@ -33,6 +33,7 @@ const ROTULOS_PERFIL: Record<PerfilId, string> = {
   cliente: "Cliente",
   executor: "Executor",
   validador: "Validador",
+  admin: "Administrador",
 };
 
 export default function AuditoriaPage() {

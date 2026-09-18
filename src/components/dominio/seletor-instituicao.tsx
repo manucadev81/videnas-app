@@ -9,7 +9,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { perfilEhMultiTenant, useSessaoStore } from "@/lib/store/sessao";
-import { instituicoes, buscarInstituicao } from "@/lib/mock/instituicoes";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { useTenantsStore } from "@/lib/store/tenants";
 import { formatarCNPJ } from "@/lib/formatadores";
 
 export interface SeletorInstituicaoProps {
@@ -20,6 +21,7 @@ export function SeletorInstituicao({ className }: SeletorInstituicaoProps) {
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const definirInstituicao = useSessaoStore((estado) => estado.definirInstituicao);
+  const tenants = useTenantsStore((estado) => estado.tenants);
 
   const multiTenant = perfilEhMultiTenant(perfilAtivo);
 
@@ -51,7 +53,7 @@ export function SeletorInstituicao({ className }: SeletorInstituicaoProps) {
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="todas">Todas as instituições</SelectItem>
-          {instituicoes.map((instituicao) => (
+          {tenants.map((instituicao) => (
             <SelectItem key={instituicao.id} value={instituicao.id}>
               {instituicao.nomeFantasia}
             </SelectItem>
