@@ -126,13 +126,15 @@ function construirEntregue(entrada: EntradaEntregue): PeriodoObrigacao {
   };
   protocolos.push(protocolo);
 
+  const situacaoRetorno = entrada.situacaoRetorno ?? "aceito";
+
   return {
     id: entrada.id,
     instituicaoId: entrada.instituicaoId,
     moduloId: entrada.moduloId,
     competencia: entrada.competencia,
     competenciaRotulo: entrada.competenciaRotulo,
-    estado: "entregue",
+    estado: situacaoRetorno === "aceito_com_ressalvas" ? "retorno_com_ressalvas" : "retorno_aceito",
     prazoEntrega: entrada.prazoEntrega,
     dataAbertura: entrada.dataAbertura,
     lotes: [
@@ -165,6 +167,14 @@ function construirEntregue(entrada: EntradaEntregue): PeriodoObrigacao {
     contadorStatus: entrada.contadorStatus ?? "nao_aplicavel",
     contadorUsuarioId: entrada.contadorUsuarioId ?? null,
     contadorConfirmadoEm: entrada.contadorConfirmadoEm ?? null,
+    negacoesAprovacao: [],
+    emComiteDesde: null,
+    emitidoFiscalEm: null,
+    transmitidoEm: entrada.dataHoraEnvio,
+    retornoSituacao: situacaoRetorno,
+    arquivadoEm: null,
+    arquivadoPorUsuarioId: null,
+    retencaoAte: null,
   };
 }
 
@@ -388,6 +398,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -479,6 +497,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -656,6 +682,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -738,6 +772,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -915,6 +957,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -984,6 +1034,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -1173,6 +1231,14 @@ periodos.push({
   contadorStatus: "pendente",
   contadorUsuarioId: "usr-joao",
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -1234,6 +1300,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -1310,7 +1384,7 @@ periodos.push({
   moduloId: "cadoc5711",
   competencia: "2026-06",
   competenciaRotulo: "Junho/2026",
-  estado: "retorno_com_erro",
+  estado: "retorno_rejeitado",
   prazoEntrega: "2026-07-15",
   dataAbertura: "2026-07-01T00:00:00-03:00",
   lotes: [
@@ -1343,6 +1417,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: "rejeitado",
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -1498,6 +1580,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -1568,6 +1658,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -1745,6 +1843,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -1826,6 +1932,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -2015,6 +2129,14 @@ periodos.push({
   contadorStatus: "confirmado",
   contadorUsuarioId: "usr-joao",
   contadorConfirmadoEm: "2026-09-08T09:00:00-03:00",
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -2097,6 +2219,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -2274,6 +2404,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push({
@@ -2302,6 +2440,14 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 periodos.push(
@@ -2491,6 +2637,14 @@ periodos.push({
   contadorStatus: "pendente",
   contadorUsuarioId: "usr-joao",
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
 
 arquivos.push({
@@ -2539,7 +2693,265 @@ periodos.push({
   contadorStatus: "nao_aplicavel",
   contadorUsuarioId: null,
   contadorConfirmadoEm: null,
+  negacoesAprovacao: [],
+  emComiteDesde: null,
+  emitidoFiscalEm: null,
+  transmitidoEm: null,
+  retornoSituacao: null,
+  arquivadoEm: null,
+  arquivadoPorUsuarioId: null,
+  retencaoAte: null,
 });
+
+const TOTAIS_INICIAIS_DEMO: Record<ModuloId, Record<string, number>> = {
+  acam212: { operacoes: 0 },
+  cadoc5711: { datasBaseRecebidas: 0, datasBaseEsperadas: 16, clientesDistintos: 0, ativos: 0 },
+  cadoc5710: { carteiras: 0, ativos: 0, carteirasComStaking: 0 },
+  fiscal: { dps: 0, valorServicos: 0, valorIss: 0, valorRetido: 0 },
+};
+
+function prazoDaCompetenciaDemo(competencia: string, diaPrazo: number): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const mesSeguinte = mes === 12 ? 1 : mes + 1;
+  const anoPrazo = mes === 12 ? ano + 1 : ano;
+  return `${anoPrazo}-${mesSeguinte.toString().padStart(2, "0")}-${diaPrazo
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+interface EntradaDemoR1 {
+  id: string;
+  instituicaoId: string;
+  moduloId: ModuloId;
+  competencia: string;
+  competenciaRotulo: string;
+  estado: "liberado" | "devolvido_diretor" | "em_comite_qualidade" | "aguardando_retorno" | "arquivado";
+  quantidadeRegistros: number;
+  tamanhoBytes: number;
+  geradoEm: string;
+  liberadoEm: string;
+  aprovadoEm?: string;
+  entregueEm?: string;
+  arquivadoEm?: string;
+  negacoes?: { motivo: string; ocorridoEm: string }[];
+  protocolo?: { numeroProtocolo: string; canalEnvio: CanalEnvioBcb; dataHoraEnvio: string };
+}
+
+const USUARIO_EXECUTOR_DEMO = "usr-tomoe";
+const USUARIO_VALIDADOR_DEMO = "usr-clarice";
+const USUARIO_DIRETOR_DEMO = "usr-ricardo";
+
+function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
+  const modulo = buscarModulo(entrada.moduloId);
+  const loteId = `lote-${entrada.id.slice(4)}-01`;
+  const arquivoId = `arq-${entrada.id.slice(4)}-v1`;
+
+  arquivos.push({
+    id: arquivoId,
+    periodoId: entrada.id,
+    versao: 1,
+    nomeArquivo: `${modulo.schema}_demo_${entrada.competencia.replace("-", "")}_v1.xml`,
+    formato: "xml",
+    hashSha256: gerarHashDeterministico(arquivoId),
+    algoritmoHash: "SHA-256",
+    tamanhoBytes: entrada.tamanhoBytes,
+    tamanhoLegivel: formatarTamanhoArquivo(entrada.tamanhoBytes),
+    schema: modulo.schema,
+    versaoSchema: modulo.versaoSchema,
+    quantidadeRegistros: entrada.quantidadeRegistros,
+    geradoEm: entrada.geradoEm,
+    geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
+    situacao: "corrente",
+    previewConteudo: `<${modulo.schema} versao="${modulo.versaoSchema}">\n  <Cabecalho competencia="${entrada.competencia}" registros="${entrada.quantidadeRegistros}" />\n</${modulo.schema}>`,
+    urlDownload: "#mock-download",
+  });
+
+  let protocoloId: string | null = null;
+  if (entrada.protocolo) {
+    protocoloId = `prot-${entrada.id.slice(4)}`;
+    const situacaoRetorno = entrada.estado === "arquivado" ? "aceito" : "aguardando";
+    protocolos.push({
+      id: protocoloId,
+      periodoId: entrada.id,
+      numeroProtocolo: entrada.protocolo.numeroProtocolo,
+      dataHoraEnvio: entrada.protocolo.dataHoraEnvio,
+      canalEnvio: entrada.protocolo.canalEnvio,
+      registradoPorUsuarioId: USUARIO_DIRETOR_DEMO,
+      reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
+      situacaoRetorno,
+      codigoRetorno: situacaoRetorno === "aceito" ? "RET-0000" : null,
+      mensagemRetorno: situacaoRetorno === "aceito" ? "Documento processado com sucesso." : null,
+      dataRetorno: situacaoRetorno === "aceito" ? entrada.protocolo.dataHoraEnvio : null,
+      observacao: null,
+    });
+  }
+
+  return {
+    id: entrada.id,
+    instituicaoId: entrada.instituicaoId,
+    moduloId: entrada.moduloId,
+    competencia: entrada.competencia,
+    competenciaRotulo: entrada.competenciaRotulo,
+    estado: entrada.estado,
+    prazoEntrega: prazoDaCompetenciaDemo(entrada.competencia, modulo.diaPrazo),
+    dataAbertura: `${entrada.competencia}-01T00:00:00-03:00`,
+    lotes: [
+      {
+        id: loteId,
+        nomeArquivo: `dados_demo_${entrada.competencia.replace("-", "")}.csv`,
+        tamanhoBytes: Math.round(entrada.tamanhoBytes * 0.6),
+        recebidoEm: entrada.geradoEm,
+        recebidoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
+        canal: "upload",
+        linhasRecebidas: entrada.quantidadeRegistros,
+        linhasResolvidas: entrada.quantidadeRegistros,
+        linhasComPendencia: 0,
+        situacao: "processado",
+      },
+    ],
+    arquivoCorrenteId: arquivoId,
+    arquivoIds: [arquivoId],
+    validacaoId: null,
+    protocoloId,
+    excecaoIds: [],
+    totaisResumo: { ...TOTAIS_INICIAIS_DEMO[entrada.moduloId] },
+    geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
+    geradoEm: entrada.geradoEm,
+    liberadoPorUsuarioId: USUARIO_VALIDADOR_DEMO,
+    liberadoEm: entrada.liberadoEm,
+    aprovadoPorUsuarioId: entrada.aprovadoEm ? USUARIO_DIRETOR_DEMO : null,
+    aprovadoEm: entrada.aprovadoEm ?? null,
+    entregueEm: entrada.entregueEm ?? null,
+    contadorStatus: entrada.moduloId === "fiscal" ? "confirmado" : "nao_aplicavel",
+    contadorUsuarioId: entrada.moduloId === "fiscal" ? "usr-joao" : null,
+    contadorConfirmadoEm: entrada.moduloId === "fiscal" ? entrada.geradoEm : null,
+    negacoesAprovacao: (entrada.negacoes ?? []).map((negacao) => ({
+      motivo: negacao.motivo,
+      usuarioId: USUARIO_DIRETOR_DEMO,
+      ocorridoEm: negacao.ocorridoEm,
+      arquivoId,
+    })),
+    emComiteDesde: entrada.estado === "em_comite_qualidade" ? entrada.liberadoEm : null,
+    emitidoFiscalEm: null,
+    transmitidoEm: entrada.protocolo ? entrada.protocolo.dataHoraEnvio : null,
+    retornoSituacao: entrada.estado === "arquivado" ? "aceito" : null,
+    arquivadoEm: entrada.arquivadoEm ?? null,
+    arquivadoPorUsuarioId: entrada.arquivadoEm ? USUARIO_DIRETOR_DEMO : null,
+    retencaoAte: null,
+  };
+}
+
+const MODULOS_DEMO_R1: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710", "fiscal"];
+
+for (const moduloId of MODULOS_DEMO_R1) {
+  const slug = moduloId;
+
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r1liberado`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2026-01",
+      competenciaRotulo: "Janeiro/2026 (demo R1)",
+      estado: "liberado",
+      quantidadeRegistros: 120,
+      tamanhoBytes: 240_000,
+      geradoEm: "2026-02-03T09:00:00-03:00",
+      liberadoEm: "2026-02-03T14:00:00-03:00",
+    })
+  );
+
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r1devolvido`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2025-12",
+      competenciaRotulo: "Dezembro/2025 (demo R1)",
+      estado: "devolvido_diretor",
+      quantidadeRegistros: 118,
+      tamanhoBytes: 236_000,
+      geradoEm: "2026-01-05T09:00:00-03:00",
+      liberadoEm: "2026-01-05T14:00:00-03:00",
+      negacoes: [
+        {
+          motivo: "Divergência entre o total reportado e o resumo da competência. Revisar antes de reenviar.",
+          ocorridoEm: "2026-01-06T10:30:00-03:00",
+        },
+      ],
+    })
+  );
+
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r1retorno`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2025-11",
+      competenciaRotulo: "Novembro/2025 (demo R1)",
+      estado: "aguardando_retorno",
+      quantidadeRegistros: 130,
+      tamanhoBytes: 250_000,
+      geradoEm: "2025-12-03T09:00:00-03:00",
+      liberadoEm: "2025-12-03T14:00:00-03:00",
+      aprovadoEm: "2025-12-04T09:00:00-03:00",
+      entregueEm: "2025-12-04T15:00:00-03:00",
+      protocolo: {
+        numeroProtocolo: `DEMO-${slug.toUpperCase()}-202511`,
+        canalEnvio: moduloId === "fiscal" ? "outro" : "pstaw10",
+        dataHoraEnvio: "2025-12-04T15:00:00-03:00",
+      },
+    })
+  );
+
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r1arquivado`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2025-10",
+      competenciaRotulo: "Outubro/2025 (demo R1)",
+      estado: "arquivado",
+      quantidadeRegistros: 128,
+      tamanhoBytes: 248_000,
+      geradoEm: "2025-11-03T09:00:00-03:00",
+      liberadoEm: "2025-11-03T14:00:00-03:00",
+      aprovadoEm: "2025-11-04T09:00:00-03:00",
+      entregueEm: "2025-11-04T15:00:00-03:00",
+      arquivadoEm: "2025-11-20T10:00:00-03:00",
+      protocolo: {
+        numeroProtocolo: `DEMO-${slug.toUpperCase()}-202510`,
+        canalEnvio: moduloId === "fiscal" ? "outro" : "sisbacen",
+        dataHoraEnvio: "2025-11-04T15:00:00-03:00",
+      },
+    })
+  );
+}
+
+periodos.push(
+  construirPeriodoDemoR1({
+    id: "per-meridian-acam212-r1comite",
+    instituicaoId: "inst-meridian",
+    moduloId: "acam212",
+    competencia: "2025-09",
+    competenciaRotulo: "Setembro/2025 (demo R1)",
+    estado: "em_comite_qualidade",
+    quantidadeRegistros: 115,
+    tamanhoBytes: 232_000,
+    geradoEm: "2025-10-03T09:00:00-03:00",
+    liberadoEm: "2025-10-03T14:00:00-03:00",
+    negacoes: [
+      {
+        motivo: "Primeira devolução: divergência no grupo G10, valores incompatíveis com o extrato.",
+        ocorridoEm: "2025-10-04T10:00:00-03:00",
+      },
+      {
+        motivo: "Segunda devolução: inconsistência ainda presente após a correção enviada.",
+        ocorridoEm: "2025-10-07T11:00:00-03:00",
+      },
+    ],
+  })
+);
 
 export { periodos };
 
@@ -2605,11 +3017,17 @@ function calcularEtapaAtual(periodo: PeriodoObrigacao, etapasModulo: EtapaId[]):
       return "validacao";
     case "liberado":
       return "auditoria";
+    case "devolvido_diretor":
+      return "geracao";
+    case "em_comite_qualidade":
+      return "auditoria";
     case "aprovado":
-      return "entrega";
-    case "entregue":
-      return "entrega";
-    case "retorno_com_erro":
+    case "emitido_fiscal":
+    case "aguardando_retorno":
+    case "retorno_aceito":
+    case "retorno_com_ressalvas":
+    case "retorno_rejeitado":
+    case "arquivado":
       return "entrega";
     default:
       return "ingestao";
@@ -2628,11 +3046,11 @@ export function calcularPeriodoDerivado(
     indiceEtapaFiltrado >= 0 ? (indiceEtapaFiltrado / modulo.etapas.length) * 100 : 0;
 
   const diasParaPrazo = diferencaEmDias(periodo.prazoEntrega, hojeIso);
-  const atrasado = diasParaPrazo < 0 && periodo.estado !== "entregue";
+  const atrasado = diasParaPrazo < 0 && periodo.estado !== "arquivado";
   const diasDeAtraso = atrasado ? Math.abs(diasParaPrazo) : 0;
 
   const progressoPercentual =
-    periodo.estado === "entregue"
+    periodo.estado === "arquivado"
       ? 100
       : Math.min(95, Math.max(5, Math.round(progressoBase + (indiceEtapa >= 0 ? 5 : 0))));
 

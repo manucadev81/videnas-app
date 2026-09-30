@@ -37,7 +37,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
 import { useHidratarTenants, useTenantsStore } from "@/lib/store/tenants";
-import { usePeriodosStore } from "@/lib/store/periodos";
+import { useHidratarPeriodos, usePeriodosStore } from "@/lib/store/periodos";
 import { ItemModuloContratado } from "@/components/dominio/item-modulo-contratado";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { formatarCNPJ } from "@/lib/formatadores";
@@ -195,8 +195,9 @@ function EsqueletoOnboarding() {
 export default function OnboardingPage() {
   const hidratado = useHidratarSessao();
   const tenantsHidratados = useHidratarTenants();
+  const periodosHidratados = useHidratarPeriodos();
 
-  if (!hidratado || !tenantsHidratados) {
+  if (!hidratado || !tenantsHidratados || !periodosHidratados) {
     return <EsqueletoOnboarding />;
   }
 

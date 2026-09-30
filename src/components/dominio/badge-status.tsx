@@ -1,14 +1,19 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  Archive,
   BadgeCheck,
   Calculator,
   CheckCircle2,
   Clock,
   FileCog,
+  FileWarning,
+  Gavel,
   Inbox,
   PackageCheck,
+  Radio,
   SearchCheck,
   TriangleAlert,
+  Undo2,
   Unlock,
   XCircle,
 } from "lucide-react";
@@ -35,8 +40,14 @@ const CONFIGURACAO_ESTADO: Record<EstadoPeriodo, ConfiguracaoEstado> = {
   com_excecoes: { rotulo: "Com exceções", variante: "error", icone: TriangleAlert },
   liberado: { rotulo: "Liberado", variante: "success", icone: Unlock },
   aprovado: { rotulo: "Aprovado", variante: "success", icone: BadgeCheck },
-  entregue: { rotulo: "Entregue", variante: "success", icone: PackageCheck },
-  retorno_com_erro: { rotulo: "Retorno com erro", variante: "error", icone: XCircle },
+  devolvido_diretor: { rotulo: "Devolvido pelo Diretor", variante: "error", icone: Undo2 },
+  em_comite_qualidade: { rotulo: "Em Comitê de Qualidade", variante: "warning", icone: Gavel },
+  emitido_fiscal: { rotulo: "Documento fiscal emitido", variante: "info", icone: FileWarning },
+  aguardando_retorno: { rotulo: "Aguardando retorno", variante: "warning", icone: Radio },
+  retorno_aceito: { rotulo: "Retorno aceito", variante: "success", icone: PackageCheck },
+  retorno_com_ressalvas: { rotulo: "Retorno aceito com ressalvas", variante: "warning", icone: TriangleAlert },
+  retorno_rejeitado: { rotulo: "Retorno rejeitado", variante: "error", icone: XCircle },
+  arquivado: { rotulo: "Arquivado", variante: "neutral", icone: Archive },
 };
 
 const CLASSE_VARIANTE: Record<VarianteStatus, string> = {

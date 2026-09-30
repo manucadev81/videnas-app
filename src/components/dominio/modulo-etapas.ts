@@ -32,7 +32,9 @@ export function construirEtapasStepper(
     } else {
       const comErro =
         (estadoPeriodo === "com_excecoes" && etapaId === "validacao") ||
-        (estadoPeriodo === "retorno_com_erro" && etapaId === "entrega");
+        (estadoPeriodo === "retorno_rejeitado" && etapaId === "entrega") ||
+        (estadoPeriodo === "devolvido_diretor" && etapaId === "geracao") ||
+        (estadoPeriodo === "em_comite_qualidade" && etapaId === "auditoria");
       estado = comErro ? "erro" : "atual";
     }
 

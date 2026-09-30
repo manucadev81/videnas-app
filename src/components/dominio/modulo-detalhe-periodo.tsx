@@ -40,6 +40,7 @@ import {
 } from "@/lib/formatadores";
 import type {
   EtapaId,
+  NegacaoAprovacao,
   OperacaoCambio,
   PosicaoCustodiaDiaria,
   PosicaoCustodiaMensal,
@@ -395,6 +396,12 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         <BarraAcoesFluxo periodoId={periodoId} className="shrink-0" />
       </div>
 
+      {periodo.estado === "devolvido_diretor" && periodo.negacoesAprovacao.length > 0 ? (
+        <BannerNegacaoDiretor
+          negacao={periodo.negacoesAprovacao[periodo.negacoesAprovacao.length - 1]}
+        />
+      ) : null}
+
       <StepperEtapas
         etapas={etapas}
         aoSelecionar={(etapaId) => setEtapaSelecionada(etapaId)}
@@ -744,6 +751,22 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
       </Tabs>
 
       <Separator />
+    </div>
+  );
+}
+
+function BannerNegacaoDiretor({ negacao }: { negacao: NegacaoAprovacao }) {
+  const autor = buscarUsuario(negacao.usuarioId);
+  return (
+    <div
+      data-tour="banner-negacao-diretor"
+      className="rounded-lg border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text"
+    >
+      <p className="font-display text-base font-bold">Devolvido pelo Diretor</p>
+      <p className="mt-1">{negacao.motivo}</p>
+      <p className="mt-1 text-xs">
+        {autor?.nome ?? negacao.usuarioId} · {formatarDataHora(negacao.ocorridoEm)}
+      </p>
     </div>
   );
 }

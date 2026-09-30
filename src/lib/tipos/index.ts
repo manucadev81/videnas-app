@@ -25,8 +25,14 @@ export type EstadoPeriodo =
   | "com_excecoes"
   | "liberado"
   | "aprovado"
-  | "entregue"
-  | "retorno_com_erro";
+  | "devolvido_diretor"
+  | "em_comite_qualidade"
+  | "emitido_fiscal"
+  | "aguardando_retorno"
+  | "retorno_aceito"
+  | "retorno_com_ressalvas"
+  | "retorno_rejeitado"
+  | "arquivado";
 
 export type SeveridadeValidacao = "bloqueante" | "aviso" | "informativo";
 
@@ -84,10 +90,19 @@ export type TipoEventoAuditoria =
   | "REPROCESSAMENTO_SOLICITADO"
   | "PERIODO_LIBERADO"
   | "PERIODO_APROVADO"
+  | "APROVACAO_NEGADA"
+  | "COMITE_QUALIDADE_ACIONADO"
+  | "COMITE_QUALIDADE_DECIDIU"
+  | "DOCUMENTO_FISCAL_EMITIDO"
+  | "TRANSMISSAO_REALIZADA"
   | "ENTREGA_REGISTRADA"
   | "DPS_ENCAMINHADA_AO_EMISSOR"
-  | "RETORNO_BCB_ACEITO"
-  | "RETORNO_BCB_REJEITADO"
+  | "PROTOCOLO_MANUAL_REGISTRADO"
+  | "RETORNO_ACEITO"
+  | "RETORNO_ACEITO_COM_RESSALVAS"
+  | "RETORNO_REJEITADO"
+  | "PERIODO_ARQUIVADO"
+  | "AREA_CLIENTE_NOTIFICADA"
   | "PERIODO_REABERTO"
   | "HASH_REVERIFICADO"
   | "USUARIO_CONVIDADO"
@@ -120,6 +135,13 @@ export type AcaoId =
   | "registrar_retorno"
   | "reabrir"
   | "aprovar"
+  | "negar_aprovacao"
+  | "escalar_comite"
+  | "decidir_comite"
+  | "emitir_fiscal"
+  | "transmitir"
+  | "registrar_protocolo_manual"
+  | "arquivar"
   | "baixar_arquivo"
   | "registrar_protocolo"
   | "marcar_encaminhado"
@@ -227,6 +249,13 @@ export interface LoteIngestao {
   situacao: SituacaoLote;
 }
 
+export interface NegacaoAprovacao {
+  motivo: string;
+  usuarioId: string;
+  ocorridoEm: string;
+  arquivoId: string | null;
+}
+
 export interface PeriodoObrigacao {
   id: string;
   instituicaoId: string;
@@ -253,6 +282,14 @@ export interface PeriodoObrigacao {
   contadorStatus: ContadorStatus;
   contadorUsuarioId: string | null;
   contadorConfirmadoEm: string | null;
+  negacoesAprovacao: NegacaoAprovacao[];
+  emComiteDesde: string | null;
+  emitidoFiscalEm: string | null;
+  transmitidoEm: string | null;
+  retornoSituacao: SituacaoRetornoBcb | null;
+  arquivadoEm: string | null;
+  arquivadoPorUsuarioId: string | null;
+  retencaoAte: string | null;
 }
 
 export interface PeriodoDerivado extends PeriodoObrigacao {

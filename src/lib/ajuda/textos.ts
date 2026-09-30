@@ -123,17 +123,53 @@ export const TEXTOS_AJUDA = {
     descricao:
       "O Diretor aprovou o arquivo e assumiu a responsabilidade pela obrigação. Falta registrar o protocolo do Banco Central ou, no módulo Fiscal, marcar o encaminhamento ao emissor.",
   },
-  "estado.entregue": {
-    titulo: "Entregue",
-    pergunta: "O que significa o status Entregue?",
+  "estado.devolvido_diretor": {
+    titulo: "Devolvido pelo Diretor",
+    pergunta: "O que significa o status Devolvido pelo Diretor?",
     descricao:
-      "A obrigação foi cumprida na competência e o comprovante está registrado na trilha de auditoria. Se o órgão devolver o arquivo com erro, o período passa para Retorno com erro.",
+      "O Responsável de Compliance negou a aprovação e descreveu o motivo. O Executor precisa gerar uma nova versão do arquivo, que passa novamente por validação e liberação antes de voltar para aprovação.",
   },
-  "estado.retorno_com_erro": {
-    titulo: "Retorno com erro",
-    pergunta: "O que significa o status Retorno com erro?",
+  "estado.em_comite_qualidade": {
+    titulo: "Em Comitê de Qualidade",
+    pergunta: "O que significa o status Em Comitê de Qualidade?",
+    descricao:
+      "O período foi negado duas vezes pelo Responsável de Compliance e ficou em análise do Comitê de Qualidade. Nenhuma ação de execução fica disponível até a decisão do comitê.",
+  },
+  "estado.emitido_fiscal": {
+    titulo: "Documento fiscal emitido",
+    pergunta: "O que significa o status Documento fiscal emitido?",
+    descricao:
+      "O documento fiscal foi emitido depois da aprovação, conforme o contrato da instituição. Falta transmitir ou registrar o protocolo para seguir para o retorno do órgão.",
+  },
+  "estado.aguardando_retorno": {
+    titulo: "Aguardando retorno",
+    pergunta: "O que significa o status Aguardando retorno?",
+    descricao:
+      "O protocolo foi registrado e a obrigação aguarda o retorno do órgão destinatário. Assim que o retorno chegar, ele é registrado como aceito, aceito com ressalvas ou rejeitado.",
+  },
+  "estado.retorno_aceito": {
+    titulo: "Retorno aceito",
+    pergunta: "O que significa o status Retorno aceito?",
+    descricao:
+      "O órgão destinatário aceitou o arquivo sem ressalvas. A competência pode ser arquivada, encerrando o ciclo com um lacre de saída encadeado.",
+  },
+  "estado.retorno_com_ressalvas": {
+    titulo: "Retorno aceito com ressalvas",
+    pergunta: "O que significa o status Retorno aceito com ressalvas?",
+    descricao:
+      "O órgão destinatário aceitou o arquivo, mas registrou ressalvas na mensagem de retorno. O próximo passo depende de definição normativa pendente.",
+  },
+  "estado.retorno_rejeitado": {
+    titulo: "Retorno rejeitado",
+    pergunta: "O que significa o status Retorno rejeitado?",
     descricao:
       "O órgão destinatário recusou o arquivo entregue. O período precisa ser reaberto para correção, o que devolve a obrigação para a etapa de dados recebidos. O prazo regulatório continua contando.",
+  },
+  "estado.arquivado": {
+    titulo: "Arquivado",
+    pergunta: "O que significa o status Arquivado?",
+    descricao:
+      "A obrigação foi encerrada depois do retorno aceito, com um lacre final encadeado à cadeia de custódia da competência. O período fica somente para consulta.",
   },
 
   "painel.prazos": {

@@ -50,6 +50,7 @@ export interface EstadoEvidencias {
     entrada: EntradaFornecimentoFormulario
   ) => Promise<ResultadoEvidencia>;
   registrarEntregaAoCliente: (entrada: EntradaEntregaAoCliente) => Promise<ResultadoEvidencia>;
+  selarNovaVersaoArquivo: (entrada: EntradaSelarNovaVersaoArquivo) => Promise<ResultadoEvidencia>;
   registrarVerificacao: (lacreId: string, confere: boolean, hashCalculado: string) => void;
   reiniciarEvidencias: () => void;
 }
@@ -73,6 +74,13 @@ export interface EntradaEntregaAoCliente {
   periodo: PeriodoObrigacao;
   arquivo: ArquivoGerado;
   autor: AutorLacre;
+}
+
+export interface EntradaSelarNovaVersaoArquivo {
+  periodo: PeriodoObrigacao;
+  arquivo: ArquivoGerado;
+  autor: AutorLacre;
+  origemNome?: string;
 }
 
 type EvidenciasPersistidas = Pick<EstadoEvidencias, "lacres" | "fornecimentos" | "verificacoes">;
@@ -423,6 +431,65 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
           conteudo,
           origemNome: arquivo.nomeArquivo,
           tamanhoBytes: tamanhoEmBytesDoConteudo(conteudo),
+          autor,
+          hashAnterior: encadearApos(cadeia),
+          sequencia: proximaSequenciaDaCadeia(lacresAtuais, periodo, "saida"),
+        });
+
+        let gravado = lacre;
+
+        set((estado) => {
+          const definitivo = ajustarNaCadeia(lacre, estado.lacres, periodo);
+          if (estado.lacres[definitivo.id]) {
+            return estado;
+          }
+          gravado = definitivo;
+          return { lacres: { ...estado.lacres, [definitivo.id]: definitivo } };
+        });
+
+        if (get().lacres[gravado.id] !== gravado) {
+          return { sucesso: false, motivo: MOTIVO_LACRE_JA_EXISTE };
+        }
+
+        return { sucesso: true, lacre: gravado };
+      },
+
+      selarNovaVersaoArquivo: async ({
+        periodo,
+        arquivo,
+        autor,
+        origemNome,
+      }: EntradaSelarNovaVersaoArquivo) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const existente = lacreDeSaidaDoArquivo(get().lacres, arquivo.id);
+        if (existente) {
+          return { sucesso: true, lacre: existente };
+        }
+
+        const lacresAtuais = get().lacres;
+        const chave = {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        };
+        const cadeia = filtrarCadeia(Object.values(lacresAtuais), chave);
+        const conteudo = arquivo.previewConteudo || arquivo.nomeArquivo;
+
+        const lacre = await construirLacre({
+          sentido: "saida",
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          periodoId: periodo.id,
+          insumoId: null,
+          arquivoId: arquivo.id,
+          conteudo,
+          origemNome: origemNome ?? arquivo.nomeArquivo,
+          tamanhoBytes: arquivo.tamanhoBytes,
           autor,
           hashAnterior: encadearApos(cadeia),
           sequencia: proximaSequenciaDaCadeia(lacresAtuais, periodo, "saida"),

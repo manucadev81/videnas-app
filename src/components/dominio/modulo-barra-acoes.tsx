@@ -36,45 +36,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePeriodosStore } from "@/lib/store/periodos";
+import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { useSessaoStore } from "@/lib/store/sessao";
-import { buscarPerfil } from "@/lib/permissoes";
+import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { buscarModulo } from "@/lib/mock/modulos";
 import type { AcaoId, CanalEnvioBcb, ValidacaoItem } from "@/lib/tipos";
-import { truncarHash } from "@/lib/formatadores";
-
-const ROTULOS_ACAO: Record<AcaoId, string> = {
-  gerar: "Gerar arquivo",
-  regerar: "Gerar novamente",
-  enviar_validacao: "Enviar para validação",
-  enviar_contador: "Enviar ao contador",
-  validar_fiscal: "Confirmar enquadramento fiscal",
-  devolver_fiscal: "Devolver para correção",
-  executar_validacao: "Executar validação de schema",
-  liberar: "Liberar para o cliente",
-  registrar_retorno: "Registrar retorno do BCB",
-  reabrir: "Reabrir período para correção",
-  aprovar: "Aprovar e assumir responsabilidade",
-  baixar_arquivo: "Baixar arquivo",
-  registrar_protocolo: "Registrar protocolo do BCB",
-  marcar_encaminhado: "Marcar como encaminhado ao emissor",
-  tratar_excecao: "Tratar exceção",
-  editar_config_instituicao: "Editar dados da instituição",
-  gerenciar_usuarios: "Convidar / editar usuário",
-  editar_dicionarios: "Editar dicionários",
-  trocar_tenant: "Trocar de instituição",
-  exportar_auditoria: "Exportar trilha (CSV)",
-  fornecer_dados: "Fornecer dados do período",
-  baixar_comprovante: "Baixar comprovante lacrado",
-  verificar_integridade: "Verificar integridade do arquivo",
-  ver_evidencias: "Ver cadeia de custódia",
-  notificar_cliente: "Notificar cliente do que falta",
-  provisionar_tenant: "Cadastrar novo cliente",
-  gerenciar_clientes: "Administrar carteira de clientes",
-  convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
-  suspender_tenant: "Suspender / reativar cliente",
-  alterar_modulos_contratados: "Alterar módulos contratados",
-};
+import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 
 const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "ghost"> = {
   primario: "default",
@@ -96,6 +65,7 @@ const CANDIDATOS_BARRA: AcaoId[] = [
   "marcar_encaminhado",
   "registrar_retorno",
   "aprovar",
+  "negar_aprovacao",
 ];
 
 const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrutivo-suave" | "ghost">> = {
@@ -111,6 +81,7 @@ const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrut
   marcar_encaminhado: "primario",
   registrar_retorno: "secundario",
   aprovar: "primario",
+  negar_aprovacao: "destrutivo-suave",
   reabrir: "destrutivo-suave",
 };
 
@@ -177,6 +148,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const registrarEntrega = usePeriodosStore((estado) => estado.registrarEntrega);
   const registrarRetorno = usePeriodosStore((estado) => estado.registrarRetorno);
   const reabrir = usePeriodosStore((estado) => estado.reabrir);
+  const negarAprovacao = usePeriodosStore((estado) => estado.negarAprovacao);
+  const selarNovaVersaoArquivo = useEvidenciasStore((estado) => estado.selarNovaVersaoArquivo);
 
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
@@ -198,6 +171,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const instituicao = buscarInstituicao(periodo.instituicaoId);
   const arquivoCorrente = periodo.arquivoCorrenteId ? arquivos[periodo.arquivoCorrenteId] : undefined;
   const usuarioGerador = periodo.geradoPorUsuarioId ? buscarUsuario(periodo.geradoPorUsuarioId) : undefined;
+  const usuarioLiberador = periodo.liberadoPorUsuarioId ? buscarUsuario(periodo.liberadoPorUsuarioId) : undefined;
+  const modulo = buscarModulo(periodo.moduloId);
   const usuarioContador = periodo.contadorUsuarioId ? buscarUsuario(periodo.contadorUsuarioId) : undefined;
   const usuarioAtual = buscarUsuario(usuarioId);
 
@@ -215,7 +190,6 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     }
     if (acaoId === "registrar_retorno") {
       setCampoSelect("aceito");
-      setCampoTexto("RET-0000");
     }
     setDialogoAberto(acaoId);
   }
@@ -268,13 +242,45 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     }
   }
 
+  async function selarSeNecessario(estadoOrigem: string) {
+    if (estadoOrigem !== "devolvido_diretor" || !usuarioAtual) {
+      return;
+    }
+    const periodoAtual = usePeriodosStore.getState().periodos[periodoId];
+    const arquivoAtual = periodoAtual?.arquivoCorrenteId
+      ? usePeriodosStore.getState().arquivos[periodoAtual.arquivoCorrenteId]
+      : undefined;
+    if (!periodoAtual || !arquivoAtual) {
+      return;
+    }
+    await selarNovaVersaoArquivo({
+      periodo: periodoAtual,
+      arquivo: arquivoAtual,
+      autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
+      origemNome: `Nova versão gerada após devolução do Diretor — ${arquivoAtual.nomeArquivo}`,
+    });
+  }
+
   function confirmarDialogo() {
     if (!dialogoAberto) return;
 
     switch (dialogoAberto) {
       case "regerar": {
+        const estadoOrigem = periodo.estado;
         const resultado = gerarArquivo(periodoId, autor);
+        if (resultado.sucesso) {
+          void selarSeNecessario(estadoOrigem);
+        }
         tratarResultado(resultado, "Nova versão do arquivo gerada. Hash atualizado na trilha.");
+        return;
+      }
+      case "negar_aprovacao": {
+        if (campoTextarea.trim().length < 10) {
+          toast.error("Descreva o motivo da negação com pelo menos 10 caracteres.");
+          return;
+        }
+        const resultado = negarAprovacao(periodoId, autor, campoTextarea);
+        tratarResultado(resultado, "Aprovação negada. Período devolvido ao Executor.");
         return;
       }
       case "enviar_contador": {
@@ -347,7 +353,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
           periodoId,
           autor,
           (campoSelect || "aceito") as "aceito" | "aceito_com_ressalvas" | "rejeitado",
-          campoTexto || "RET-0000",
+          campoTexto,
           campoTextarea
         );
         tratarResultado(resultado, "Retorno do Banco Central registrado na trilha.");
@@ -582,7 +588,50 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
               <>
                 <DialogHeader>
                   <DialogTitle>Aprovar a competência {periodo.competenciaRotulo}?</DialogTitle>
+                  <DialogDescription>
+                    {modulo.nome} · Competência {periodo.competenciaRotulo} · versão v
+                    {arquivoCorrente?.versao ?? "—"} · liberado por {usuarioLiberador?.nome ?? "—"}
+                  </DialogDescription>
                 </DialogHeader>
+                <div className="space-y-1.5 rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
+                  <p>
+                    Hash SHA-256:{" "}
+                    <span className="font-mono">
+                      {arquivoCorrente ? truncarHash(arquivoCorrente.hashSha256) : "—"}
+                    </span>
+                  </p>
+                </div>
+                {periodo.negacoesAprovacao.length > 0 ? (
+                  <div className="space-y-1.5 rounded-md border border-status-warning-border bg-status-warning-bg p-3">
+                    <p className="text-xs font-semibold text-status-warning-text">
+                      Negações anteriores ({periodo.negacoesAprovacao.length})
+                    </p>
+                    <ul className="space-y-1.5 text-xs text-status-warning-text">
+                      {periodo.negacoesAprovacao.map((negacao, indice) => {
+                        const arquivoNegado = negacao.arquivoId ? arquivos[negacao.arquivoId] : undefined;
+                        return (
+                          <li key={`${negacao.ocorridoEm}-${indice}`}>
+                            {formatarDataHora(negacao.ocorridoEm)} ·{" "}
+                            {buscarUsuario(negacao.usuarioId)?.nome ?? negacao.usuarioId}
+                            {arquivoNegado ? (
+                              <>
+                                {" "}
+                                · versão v{arquivoNegado.versao} · hash{" "}
+                                <span className="font-mono">{truncarHash(arquivoNegado.hashSha256)}</span>
+                              </>
+                            ) : negacao.arquivoId ? (
+                              ` · arquivo ${negacao.arquivoId}`
+                            ) : (
+                              ""
+                            )}
+                            <br />
+                            {negacao.motivo}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="ciencia-aprovacao"
@@ -601,6 +650,44 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   </Button>
                   <Button type="button" onClick={confirmarDialogo}>
                     Aprovar
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "negar_aprovacao" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Negar aprovação e devolver ao Executor?</DialogTitle>
+                  <DialogDescription>
+                    Descreva o que precisa ser corrigido. O período volta para o Executor e uma nova
+                    versão do arquivo precisará passar por validação e liberação novamente.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-1.5">
+                  <Textarea
+                    value={campoTextarea}
+                    onChange={(evento) => setCampoTextarea(evento.target.value)}
+                    placeholder="Descreva o motivo da negação (mínimo 10 caracteres)."
+                    rows={4}
+                  />
+                  {campoTextarea.trim().length > 0 && campoTextarea.trim().length < 10 ? (
+                    <p className="text-xs text-status-error-text">
+                      Descreva o motivo com pelo menos 10 caracteres.
+                    </p>
+                  ) : null}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={campoTextarea.trim().length < 10}
+                    onClick={confirmarDialogo}
+                  >
+                    Negar aprovação
                   </Button>
                 </DialogFooter>
               </>
@@ -740,6 +827,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                       id="codigo-retorno"
                       value={campoTexto}
                       onChange={(evento) => setCampoTexto(evento.target.value)}
+                      placeholder="RET-0000"
                     />
                   </div>
                   <div className="space-y-1.5">

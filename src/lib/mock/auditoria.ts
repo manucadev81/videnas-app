@@ -21,10 +21,19 @@ const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   REPROCESSAMENTO_SOLICITADO: "Reprocessamento solicitado",
   PERIODO_LIBERADO: "Período liberado",
   PERIODO_APROVADO: "Período aprovado",
+  APROVACAO_NEGADA: "Aprovação negada pelo Diretor",
+  COMITE_QUALIDADE_ACIONADO: "Comitê de Qualidade acionado",
+  COMITE_QUALIDADE_DECIDIU: "Comitê de Qualidade decidiu",
+  DOCUMENTO_FISCAL_EMITIDO: "Documento fiscal emitido",
+  TRANSMISSAO_REALIZADA: "Transmissão realizada",
   ENTREGA_REGISTRADA: "Entrega registrada",
   DPS_ENCAMINHADA_AO_EMISSOR: "DPS encaminhada ao emissor",
-  RETORNO_BCB_ACEITO: "Retorno do BCB aceito",
-  RETORNO_BCB_REJEITADO: "Retorno do BCB rejeitado",
+  PROTOCOLO_MANUAL_REGISTRADO: "Protocolo manual registrado",
+  RETORNO_ACEITO: "Retorno aceito",
+  RETORNO_ACEITO_COM_RESSALVAS: "Retorno aceito com ressalvas",
+  RETORNO_REJEITADO: "Retorno rejeitado",
+  PERIODO_ARQUIVADO: "Período arquivado",
+  AREA_CLIENTE_NOTIFICADA: "Área do cliente notificada",
   PERIODO_REABERTO: "Período reaberto",
   HASH_REVERIFICADO: "Hash reverificado",
   USUARIO_CONVIDADO: "Usuário convidado",
@@ -261,8 +270,19 @@ for (const periodo of periodos) {
   }
 }
 
+const TIPO_EVENTO_RETORNO: Record<"aceito" | "aceito_com_ressalvas" | "rejeitado", TipoEventoAuditoria> = {
+  aceito: "RETORNO_ACEITO",
+  aceito_com_ressalvas: "RETORNO_ACEITO_COM_RESSALVAS",
+  rejeitado: "RETORNO_REJEITADO",
+};
+
 for (const protocolo of protocolos) {
-  if (protocolo.situacaoRetorno === "rejeitado" && protocolo.dataRetorno) {
+  if (
+    (protocolo.situacaoRetorno === "aceito" ||
+      protocolo.situacaoRetorno === "aceito_com_ressalvas" ||
+      protocolo.situacaoRetorno === "rejeitado") &&
+    protocolo.dataRetorno
+  ) {
     const periodo = periodos.find((item) => item.id === protocolo.periodoId);
     if (periodo) {
       eventos.push(
@@ -272,17 +292,61 @@ for (const protocolo of protocolos) {
           periodoId: periodo.id,
           moduloId: periodo.moduloId,
           competencia: periodo.competencia,
-          tipo: "RETORNO_BCB_REJEITADO",
+          tipo: TIPO_EVENTO_RETORNO[protocolo.situacaoRetorno],
           usuarioId: "usr-clarice",
           referencia: protocolo.numeroProtocolo,
           payload: {
             protocoloBcb: protocolo.numeroProtocolo,
             codigoRetorno: protocolo.codigoRetorno,
             mensagemRetorno: protocolo.mensagemRetorno,
+            resultado: protocolo.situacaoRetorno,
           },
         })
       );
     }
+  }
+}
+
+for (const periodo of periodos) {
+  for (const negacao of periodo.negacoesAprovacao) {
+    eventos.push(
+      criarEvento({
+        ocorridoEm: negacao.ocorridoEm,
+        instituicaoId: periodo.instituicaoId,
+        periodoId: periodo.id,
+        moduloId: periodo.moduloId,
+        competencia: periodo.competencia,
+        tipo: "APROVACAO_NEGADA",
+        usuarioId: negacao.usuarioId,
+        referencia: negacao.arquivoId,
+        payload: {
+          motivo: negacao.motivo,
+          arquivoId: negacao.arquivoId,
+          estadoAnterior: "liberado",
+          estadoNovo: "devolvido_diretor",
+        },
+      })
+    );
+  }
+
+  if (periodo.arquivadoEm && periodo.arquivadoPorUsuarioId) {
+    eventos.push(
+      criarEvento({
+        ocorridoEm: periodo.arquivadoEm,
+        instituicaoId: periodo.instituicaoId,
+        periodoId: periodo.id,
+        moduloId: periodo.moduloId,
+        competencia: periodo.competencia,
+        tipo: "PERIODO_ARQUIVADO",
+        usuarioId: periodo.arquivadoPorUsuarioId,
+        referencia: null,
+        payload: {
+          estadoAnterior: periodo.retornoSituacao === "aceito_com_ressalvas" ? "retorno_com_ressalvas" : "retorno_aceito",
+          estadoNovo: "arquivado",
+          retencaoAte: periodo.retencaoAte,
+        },
+      })
+    );
   }
 }
 

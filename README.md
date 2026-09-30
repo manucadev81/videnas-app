@@ -4,7 +4,7 @@ Mockup de front-end (Next.js 16 + React 19) da Videnas, uma RegTech de conformid
 
 **Este projeto é 100% mockado**: não há backend, API routes, autenticação real, `fetch` de rede ou banco de dados. Todo o estado (sessão, perfil ativo, períodos regulatórios, arquivos, validações, exceções, trilha de auditoria, fornecimentos e lacres criptográficos) vive em stores Zustand no navegador.
 
-Três recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload: a sessão (`videnas-sessao`), as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`) — e a carteira de clientes provisionados pelo Administrador, com os usuários iniciais criados junto (`videnas-tenants`). O restante (períodos, eventos, exceções) vive em memória e volta à semente a cada reload. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
+Quatro recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload ou a uma troca de login: a sessão (`videnas-sessao`), as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`) —, a carteira de clientes provisionados pelo Administrador, com os usuários iniciais criados junto (`videnas-tenants`), e os períodos regulatórios com arquivos, validações, protocolos, exceções e a trilha de auditoria (`videnas-periodos`). O logout não zera mais esses dados — só a sessão é limpa. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
 
 ## Stack
 
@@ -71,11 +71,11 @@ Rotas listadas com um prefixo (`/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/ap
 
 | Perfil | Rotas permitidas | Ações permitidas |
 |---|---|---|
-| `diretor` | `/`, `/login`, `/onboarding`, `/app`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `aprovar`, `registrar_protocolo`, `marcar_encaminhado`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
+| `diretor` | `/`, `/login`, `/onboarding`, `/app`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `aprovar`, `negar_aprovacao`, `decidir_comite` (oculta — D3), `registrar_protocolo`, `marcar_encaminhado`, `registrar_protocolo_manual` (oculta — flag pendente), `arquivar` (oculta — D14), `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
 | `operacional` | `/`, `/login`, `/selecionar-instituicao`, `/onboarding`, `/app`, `/app/fornecimento`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/configuracoes`, `/app/configuracoes/instituicao`, `/app/configuracoes/usuarios`, `/app/configuracoes/dicionarios` | `baixar_arquivo`, `tratar_excecao`, `editar_dicionarios`, `notificar_cliente`, `gerenciar_usuarios` |
 | `contador` | `/`, `/login`, `/selecionar-instituicao`, `/onboarding`, `/app`, `/app/fiscal`, `/app/calendario` | `validar_fiscal`, `devolver_fiscal`, `baixar_arquivo` |
 | `cliente` | `/`, `/login`, `/app`, `/app/fornecimento`, `/app/entregas`, `/app/calendario` | `fornecer_dados`, `baixar_comprovante`, `baixar_arquivo`, `verificar_integridade` |
-| `executor` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias`, `/app/configuracoes`, `/app/configuracoes/dicionarios` | `gerar`, `regerar`, `enviar_validacao`, `enviar_contador`, `reabrir`, `tratar_excecao`, `editar_dicionarios`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
+| `executor` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias`, `/app/configuracoes`, `/app/configuracoes/dicionarios` | `gerar`, `regerar` (inclui reenvio após devolução do Diretor), `enviar_validacao`, `enviar_contador`, `emitir_fiscal` (oculta — D4/D5), `transmitir` (oculta — D4/D5), `reabrir`, `tratar_excecao`, `editar_dicionarios`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
 | `validador` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `executar_validacao`, `liberar`, `registrar_retorno`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
 | `admin` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/clientes`, `/app/auditoria`, `/app/evidencias` | `provisionar_tenant`, `gerenciar_clientes`, `convidar_usuario_inicial`, `suspender_tenant`, `alterar_modulos_contratados`, `trocar_tenant`, `exportar_auditoria`, `ver_evidencias`, `verificar_integridade` |
 
@@ -123,6 +123,20 @@ Por que ele fica fora da segregação de funções: a regra de 4 olhos é **Exec
 
 O Administrador é **multi-tenant**, mas por um motivo diferente do Executor e do Validador: ele não atende várias instituições, ele **administra todas**. Por isso, em `/selecionar-instituicao`, o cartão tracejado "todas" o leva para `/app/clientes` e não para `/app/operacao`.
 
+## Máquina de estados do período (R1 — aprovação, devolução e retorno)
+
+`entregue` e `retorno_com_erro` não existem mais. A partir de `liberado`, o fluxo é:
+
+`liberado` → **`aprovar`** (Diretor) → `aprovado`, ou **`negar_aprovacao`** (Diretor, motivo mínimo 10 caracteres) → `devolvido_diretor`.
+
+`devolvido_diretor` → **`regerar`** (Executor) → `gerado` (nova versão do arquivo; a anterior vira `substituida`; a nova versão é selada e encadeada na cadeia de custódia do período) → o único caminho adiante é `enviar_validacao` (não-fiscal) ou `enviar_contador` (Fiscal) → validação e liberação de novo, antes de qualquer nova aprovação.
+
+`aprovado` → **`registrar_protocolo`** (não-fiscal) ou **`marcar_encaminhado`** (Fiscal) → `aguardando_retorno` → **`registrar_retorno`** (Validador, 3 desfechos obrigatórios: aceito / aceito com ressalvas / rejeitado, com código e mensagem sempre obrigatórios e texto de ressalva obrigatório para o desfecho intermediário) → `retorno_aceito`, `retorno_com_ressalvas` ou `retorno_rejeitado`.
+
+`retorno_rejeitado` → **`reabrir`** (Executor) → `dados_ingeridos`. `retorno_aceito` → **`arquivar`** → `arquivado` (ação ainda oculta em R1; ator pendente de decisão — ver `docs/backlog-front-approval-flow.md`).
+
+Duas negações seguidas escalariam para `em_comite_qualidade`, mas essa escalada automática está **desabilitada em R1** (decisão do Tech Lead): toda negação vai para `devolvido_diretor`, e o histórico de negações (`negacoesAprovacao`) fica visível no diálogo de aprovação e na linha do tempo do período. As ações `escalar_comite`, `decidir_comite`, `emitir_fiscal`, `transmitir`, `registrar_protocolo_manual` e `arquivar` existem em `REGRAS_ACAO` mas ficam ocultas nesta fatia — cada uma amarrada a uma decisão pendente ou flag em `src/lib/mock/configuracao-fluxo.ts`. Detalhe completo em `docs/backlog-front-approval-flow.md` (seção 5 e "Decisões de escopo do Tech Lead").
+
 ## Como nasce um cliente novo
 
 Passo a passo clicável, de ponta a ponta, do cadastro à primeira competência aberta:
@@ -137,7 +151,7 @@ Passo a passo clicável, de ponta a ponta, do cadastro à primeira competência 
 
 Na ficha do cliente o Administrador ainda pode **alterar os módulos contratados** (`MODULOS_CONTRATADOS_ALTERADOS`) e **suspender/reativar** o atendimento (`TENANT_SUSPENSO` / `TENANT_REATIVADO`, a suspensão exigindo um motivo escrito de pelo menos 10 caracteres). Todos esses eventos aparecem na mesma trilha de `/app/auditoria`, sem período, módulo nem competência associados, porque valem para o tenant inteiro.
 
-**Persistência e reinício**: os tenants provisionados e os usuários iniciais criados junto ficam em `localStorage`, sob a chave `videnas-tenants`. Consequência prática: **um CNPJ já cadastrado bloqueia o recadastro enquanto o storage não for limpo** — e o mesmo vale para os e-mails. Para voltar à semente sem abrir o DevTools, use o botão **"Reiniciar dados da demonstração"**, no rodapé de `/app/clientes` (só o Administrador o vê): um diálogo de confirmação explica que os clientes cadastrados na sessão serão descartados e que Meridian Digital Assets, Cofre Atlântico e Pampulha Capital voltam ao estado original. Em código, a ação equivalente é `useTenantsStore.getState().reiniciarTenants()`.
+**Persistência e reinício**: os tenants provisionados e os usuários iniciais criados junto ficam em `localStorage`, sob a chave `videnas-tenants`. Consequência prática: **um CNPJ já cadastrado bloqueia o recadastro enquanto o storage não for limpo** — e o mesmo vale para os e-mails. Para voltar à semente sem abrir o DevTools, use o botão **"Reiniciar demo"**, no cabeçalho de `/app` (visível para qualquer perfil autenticado), ou o botão equivalente no rodapé de `/app/clientes` (só o Administrador o vê): um diálogo de confirmação explica que todos os dados da demonstração — clientes, períodos, evidências, protocolos, exceções e a trilha de auditoria — voltam ao estado inicial da semente. Em código, a ação equivalente é `reiniciarDemo()`, em `src/lib/store/demo.ts`.
 
 ## Como trocar de perfil e de instituição no mock
 
@@ -283,7 +297,7 @@ O mock já vem semeado com uma competência propositalmente incompleta: **`per-m
 8. **Voltar como Cliente, baixar e verificar** — o Cliente não está no seletor de perfil do header, então é preciso **sair** (botão "Sair") e **entrar de novo** com `natalia.queiroz@meridiandigital.com.br`, que cai direto em `/app`. Em `/app/entregas`, o arquivo lacrado aparece com hash, data e quem liberou. Clique em **"Baixar arquivo"** e depois em **"Verificar integridade"**, selecionando o arquivo que acabou de baixar: o hash recalculado bate com o do lacre e o resultado é **Confere**. Abra o arquivo, mude um caractere, salve e repita: o resultado vira "não confere".
 9. **Conferir a cadeia inteira** — troque para **Diretor / Compliance** (ou Executor/Validador) e abra `/app/evidencias`: entrada e saída lado a lado, com filtros, badge de sentido, detalhe do lacre (hash completo, algoritmo, identificador da chave, autor) e a linha do tempo do encadeamento por `hashAnterior`.
 
-**Reiniciar o mock**: a carteira de clientes tem botão de reset próprio — **"Reiniciar dados da demonstração"**, no rodapé de `/app/clientes`, visível só para o Administrador. Para o resto, como fornecimentos, lacres e verificações são persistidos, apague as chaves `videnas-evidencias`, `videnas-sessao` e `videnas-tenants` do `localStorage` (DevTools → Application → Local Storage) e recarregue — tudo volta à semente. Em código, as ações equivalentes são `useEvidenciasStore.getState().reiniciarEvidencias()` e `useTenantsStore.getState().reiniciarTenants()`.
+**Reiniciar o mock**: use o botão **"Reiniciar demo"**, no cabeçalho de `/app` (global, qualquer perfil autenticado) ou o botão **"Reiniciar dados da demonstração"**, no rodapé de `/app/clientes` (só o Administrador o vê) — os dois chamam a mesma ação e zeram tenants, períodos, arquivos, validações, protocolos, exceções, a trilha de auditoria, fornecimentos, lacres e verificações de uma vez, sem deixar estado órfão. Se o usuário logado só existia entre os tenants/usuários provisionados na demo, a sessão é encerrada automaticamente e a tela volta para `/login`. Em código, a ação equivalente é `reiniciarDemo()`, em `src/lib/store/demo.ts`, que chama `useTenantsStore.getState().reiniciarTenants()`, `usePeriodosStore.getState().reiniciarMock()` e `useEvidenciasStore.getState().reiniciarEvidencias()` em sequência. A sessão (`videnas-sessao`) não é zerada — só é encerrada quando o usuário atual deixa de existir na semente.
 
 ## Como testar o fluxo de 4 olhos (segregação de funções)
 

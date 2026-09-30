@@ -35,6 +35,7 @@ import {
   responsavelEnvioDoTenant,
   useTenantsStore,
 } from "@/lib/store/tenants";
+import { reiniciarDemo } from "@/lib/store/demo";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import type { Instituicao, ModuloId, StatusImplantacao, TipoInstituicao, Usuario } from "@/lib/tipos";
@@ -78,7 +79,6 @@ export default function ClientesPage() {
   const hidratado = useTenantsStore((estado) => estado.hidratado);
   const tenants = useTenantsStore((estado) => estado.tenants);
   const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
-  const reiniciarTenants = useTenantsStore((estado) => estado.reiniciarTenants);
 
   const [dialogReiniciar, setDialogReiniciar] = useState(false);
   const [statusFiltro, setStatusFiltro] = useState<StatusImplantacao | null>(null);
@@ -219,13 +219,21 @@ export default function ClientesPage() {
   ];
 
   function confirmarReinicio() {
-    reiniciarTenants();
+    const resultado = reiniciarDemo();
     setStatusFiltro(null);
     setTipoFiltro(TODOS);
     setModuloFiltro(TODOS);
     setBusca("");
     setDialogReiniciar(false);
-    toast.success("Dados da demonstração reiniciados. A carteira voltou à semente original.");
+
+    if (resultado.sessaoEncerrada) {
+      toast.success(
+        "Dados da demonstração reiniciados. Sua sessão foi encerrada porque o usuário atual não existe mais na semente."
+      );
+      return;
+    }
+
+    toast.success("Dados da demonstração reiniciados. Tudo voltou ao estado inicial.");
   }
 
   return (
@@ -348,12 +356,13 @@ export default function ClientesPage() {
       <Dialog open={dialogReiniciar} onOpenChange={setDialogReiniciar}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reiniciar os dados da demonstração?</DialogTitle>
+            <DialogTitle>Reiniciar todos os dados da demonstração?</DialogTitle>
             <DialogDescription>
               Os clientes cadastrados nesta sessão são descartados, junto com os usuários iniciais
-              provisionados para eles — e os CNPJs usados voltam a ficar livres. A semente da
-              demonstração (Meridian Digital Assets, Cofre Atlântico e Pampulha Capital) volta ao
-              estado original.
+              provisionados para eles — e os CNPJs usados voltam a ficar livres. Períodos,
+              evidências, protocolos, exceções e o histórico de auditoria também voltam ao estado
+              inicial da semente da demonstração (Meridian Digital Assets, Cofre Atlântico e
+              Pampulha Capital).
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

@@ -36,8 +36,14 @@ const ROTULOS_ESTADO: Record<EstadoPeriodo | "todos", string> = {
   com_excecoes: "Com exceções",
   liberado: "Liberado",
   aprovado: "Aprovado",
-  entregue: "Entregue",
-  retorno_com_erro: "Retorno com erro",
+  devolvido_diretor: "Devolvido pelo Diretor",
+  em_comite_qualidade: "Em Comitê de Qualidade",
+  emitido_fiscal: "Documento fiscal emitido",
+  aguardando_retorno: "Aguardando retorno",
+  retorno_aceito: "Retorno aceito",
+  retorno_com_ressalvas: "Retorno aceito com ressalvas",
+  retorno_rejeitado: "Retorno rejeitado",
+  arquivado: "Arquivado",
 };
 
 const GRUPOS_COMPOSICAO: { chave: string; rotulo: string }[] = [

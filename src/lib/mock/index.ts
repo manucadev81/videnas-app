@@ -10,3 +10,4 @@ export * from "@/lib/mock/prazos";
 export * from "@/lib/mock/excecoes";
 export * from "@/lib/mock/hash";
 export * from "@/lib/mock/previsualizacao";
+export * from "@/lib/mock/configuracao-fluxo";

@@ -63,17 +63,18 @@ export default function OperacaoPage() {
   const ehExecutor = perfilAtivo === "executor";
   const aGerar = filaBase.filter((periodo) => periodo.estado === "dados_ingeridos");
   const aEnviar = filaBase.filter((periodo) => periodo.estado === "gerado");
+  const aRegerarDevolvidos = filaBase.filter((periodo) => periodo.estado === "devolvido_diretor");
   const emValidacao = filaBase.filter((periodo) => periodo.estado === "em_validacao");
   const aLiberar = filaBase.filter((periodo) => periodo.estado === "validado");
   const aTratarExcecoes = filaBase.filter((periodo) => periodo.estado === "com_excecoes");
 
   const filaDoPerfil = ehExecutor
-    ? [...aGerar, ...aEnviar, ...aTratarExcecoes]
+    ? [...aRegerarDevolvidos, ...aGerar, ...aEnviar, ...aTratarExcecoes]
     : [...emValidacao, ...aTratarExcecoes, ...aLiberar];
 
   const estadosFila: EstadoPeriodo[] =
     perfilAtivo === "executor"
-      ? ["dados_ingeridos", "gerado", "com_excecoes"]
+      ? ["devolvido_diretor", "dados_ingeridos", "gerado", "com_excecoes"]
       : ["em_validacao", "com_excecoes", "validado"];
 
   const contadorPorInstituicao = tenants.map((instituicao) => ({
@@ -216,6 +217,12 @@ export default function OperacaoPage() {
         <div data-tour="operacao-fila" className="space-y-6">
           {ehExecutor ? (
             <>
+              <GrupoFila
+                titulo="Devolvido pelo Diretor"
+                periodos={aRegerarDevolvidos}
+                rotuloAcao="Gerar novamente"
+                usuarioId={usuarioId}
+              />
               <GrupoFila
                 titulo="A gerar"
                 periodos={aGerar}

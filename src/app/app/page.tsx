@@ -45,8 +45,14 @@ const ROTULOS_ESTADO: Record<EstadoPeriodo, string> = {
   com_excecoes: "Com exceções",
   liberado: "Liberado",
   aprovado: "Aprovado",
-  entregue: "Entregue",
-  retorno_com_erro: "Retorno com erro",
+  devolvido_diretor: "Devolvido pelo Diretor",
+  em_comite_qualidade: "Em Comitê de Qualidade",
+  emitido_fiscal: "Documento fiscal emitido",
+  aguardando_retorno: "Aguardando retorno",
+  retorno_aceito: "Retorno aceito",
+  retorno_com_ressalvas: "Retorno aceito com ressalvas",
+  retorno_rejeitado: "Retorno rejeitado",
+  arquivado: "Arquivado",
 };
 
 function rotaPeriodo(moduloId: ModuloId, periodoId: string): string {
@@ -129,7 +135,7 @@ export default function DashboardPage() {
   const periodosAtrasados = periodosEscopo.filter((periodo) => calcularPeriodoDerivado(periodo).atrasado);
 
   const proximosPrazos = periodosEscopo
-    .filter((periodo) => periodo.estado !== "entregue")
+    .filter((periodo) => periodo.estado !== "arquivado")
     .map((periodo) => ({ periodo, derivado: calcularPeriodoDerivado(periodo) }))
     .sort((a, b) => a.derivado.diasParaPrazo - b.derivado.diasParaPrazo)
     .slice(0, 6);
@@ -452,8 +458,15 @@ function PainelCompliance({
   const paraAprovar = periodos.filter((periodo) => periodo.estado === "liberado");
   const paraRegistrar = periodos.filter((periodo) => periodo.estado === "aprovado");
   const atrasados = periodos.filter(
-    (periodo) => periodo.estado !== "entregue" && calcularPeriodoDerivado(periodo).atrasado
+    (periodo) => periodo.estado !== "arquivado" && calcularPeriodoDerivado(periodo).atrasado
   );
+
+  const paraAprovarPorModulo = new Map<ModuloId, PeriodoObrigacao[]>();
+  for (const periodo of paraAprovar) {
+    const lista = paraAprovarPorModulo.get(periodo.moduloId) ?? [];
+    lista.push(periodo);
+    paraAprovarPorModulo.set(periodo.moduloId, lista);
+  }
 
   function linhaAcao(periodo: PeriodoObrigacao, rotulo: string) {
     const modulo = buscarModulo(periodo.moduloId);
@@ -532,7 +545,18 @@ function PainelCompliance({
         {paraAprovar.length === 0 ? (
           <p className="text-sm text-neutral-500">Nenhuma competência liberada aguardando a sua aprovação.</p>
         ) : (
-          <ul className="space-y-2">{paraAprovar.map((periodo) => linhaAcao(periodo, "Aprovar"))}</ul>
+          <div className="space-y-4">
+            {Array.from(paraAprovarPorModulo.entries()).map(([moduloId, periodosDoModulo]) => (
+              <div key={moduloId}>
+                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                  {buscarModulo(moduloId).nome} ({periodosDoModulo.length})
+                </h3>
+                <ul className="space-y-2">
+                  {periodosDoModulo.map((periodo) => linhaAcao(periodo, "Aprovar"))}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

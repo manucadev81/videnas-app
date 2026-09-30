@@ -161,7 +161,7 @@ export default function CalendarioPage() {
                 const hoje = dataIso === HOJE_ISO;
                 const vencido = prazosDia.some((prazo) => {
                   const periodo = periodos[prazo.periodoId];
-                  return dataIso < HOJE_ISO && periodo && periodo.estado !== "entregue";
+                  return dataIso < HOJE_ISO && periodo && periodo.estado !== "arquivado";
                 });
 
                 return (

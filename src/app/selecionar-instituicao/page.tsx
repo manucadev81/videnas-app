@@ -42,11 +42,11 @@ const SIGLA_MODULO: Record<string, string> = {
 
 function resumoInstituicao(instituicaoId: string) {
   const periodos = periodosPorInstituicao(instituicaoId).map((periodo) => calcularPeriodoDerivado(periodo));
-  const emAberto = periodos.filter((periodo) => periodo.estado !== "entregue").length;
+  const emAberto = periodos.filter((periodo) => periodo.estado !== "arquivado").length;
   const atrasados = periodos.filter((periodo) => periodo.atrasado).length;
 
   const entregues = periodos
-    .filter((periodo) => periodo.estado === "entregue" && periodo.entregueEm)
+    .filter((periodo) => periodo.entregueEm)
     .sort((a, b) => (a.entregueEm! < b.entregueEm! ? 1 : -1));
 
   const ultimaEntrega = entregues[0];

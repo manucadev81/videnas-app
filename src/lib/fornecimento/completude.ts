@@ -145,7 +145,7 @@ export function calcularCompletude(
       : "modelado_canonicamente";
 
   const diasParaPrazo = diferencaEmDiasIso(periodo.prazoEntrega, hojeIso);
-  const atrasado = diasParaPrazo < 0 && periodo.estado !== "entregue";
+  const atrasado = diasParaPrazo < 0 && periodo.estado !== "arquivado";
 
   return {
     periodoId: periodo.id,

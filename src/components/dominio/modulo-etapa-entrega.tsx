@@ -24,7 +24,17 @@ import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, formatarTamanhoArquivo } from "@/lib/formatadores";
 import type { ArquivoGerado, EstadoPeriodo, ProtocoloBCB } from "@/lib/tipos";
 
-const ESTADOS_COM_PROVA_DE_ENTREGA: EstadoPeriodo[] = ["liberado", "aprovado", "entregue"];
+const ESTADOS_COM_PROVA_DE_ENTREGA: EstadoPeriodo[] = [
+  "liberado",
+  "aprovado",
+  "devolvido_diretor",
+  "emitido_fiscal",
+  "aguardando_retorno",
+  "retorno_aceito",
+  "retorno_com_ressalvas",
+  "retorno_rejeitado",
+  "arquivado",
+];
 
 function ProvaDeEntrega({
   periodoId,

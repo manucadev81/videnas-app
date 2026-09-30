@@ -7,6 +7,7 @@ import { TourProvider } from "@/components/tutorial/tour-provider";
 import { FabAjuda } from "@/components/ajuda/fab-ajuda";
 import { HidratacaoEvidencias } from "@/components/evidencias/hidratacao-evidencias";
 import { HidratacaoTenants } from "@/components/tenants/hidratacao-tenants";
+import { HidratacaoPeriodos } from "@/components/periodos/hidratacao-periodos";
 import { TourOverlay } from "@/components/tutorial/tour-overlay";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     <TourProvider>
       <HidratacaoEvidencias />
       <HidratacaoTenants />
+      <HidratacaoPeriodos />
       <div className="flex min-h-full flex-1">
         <SidebarApp />
         <div className="flex min-w-0 flex-1 flex-col">

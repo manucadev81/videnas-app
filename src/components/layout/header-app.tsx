@@ -15,6 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { SeletorPerfil } from "@/components/dominio/seletor-perfil";
 import { SeletorInstituicao } from "@/components/dominio/seletor-instituicao";
 import { IdentidadeUsuario } from "@/components/dominio/identidade-usuario";
+import { BotaoReiniciarDemo } from "@/components/dominio/botao-reiniciar-demo";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
 import { buscarTenant, useTenantsStore } from "@/lib/store/tenants";
@@ -80,6 +81,7 @@ export function HeaderApp() {
             <SeletorPerfil className="w-56" />
           </div>
         )}
+        <BotaoReiniciarDemo variant="ghost" size="sm" rotuloCompacto />
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger

@@ -42,13 +42,19 @@ flowchart TD
     J -- Sim --> K[Excecao: Executor corrige e regera]
     K --> I
     J -- Nao --> L[Validador libera para o cliente]
-    L --> M[Compliance aprova e assume responsabilidade]
-    M --> N[Transmissao externa ao BCB ou emissor fiscal]
-    N --> O[Registro de protocolo ou encaminhamento e retorno]
-    O --> P[Lacre de saida, entrega e verificacao de integridade]
+    L --> M{Compliance decide}
+    M -- Aprova --> N[Compliance assume responsabilidade]
+    M -- Nega, com motivo --> M2[Devolvido ao Executor]
+    M2 --> F
+    N --> O[Transmissao externa ao BCB ou emissor fiscal]
+    O --> P[Registro de protocolo ou encaminhamento: aguardando retorno]
+    P --> Q{Retorno do orgao}
+    Q -- Aceito --> R[Arquivado, com lacre final encadeado]
+    Q -- Rejeitado --> K
+    Q -- Com ressalvas --> S[Aceito com ressalvas - proximo passo pendente de definicao normativa]
 ```
 
-Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel.
+Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos o registro do protocolo ou do encaminhamento, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Diretor pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Duas negacoes seguidas escalariam para um Comite de Qualidade, mas essa escalada automatica esta desabilitada nesta fatia de entrega.
 
 ## 4. Modulos regulatorios e documentos
 
@@ -111,3 +117,5 @@ Em sintese, a Videnas demonstra um fluxo de conformidade ponta a ponta: provisio
 - `src/lib/evidencias/cripto.ts`
 - `src/components/layout/sidebar-app.tsx`
 - `Sentinellus_Escopo_Essencial_Mockup_v1.docx`
+
+**Documento relacionado:** `docs/backlog-front-approval-flow.md` - backlog front-end (em ingles) do fluxo de aprovacao, retorno ao regulador e arquivamento, de 29/09/2026.

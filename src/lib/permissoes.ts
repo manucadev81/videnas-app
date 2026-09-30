@@ -1,4 +1,5 @@
-import type { Acao, AcaoId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
+import type { Acao, AcaoId, EstadoPeriodo, ModuloId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
+import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
 
 export interface PerfilMetadados {
   id: PerfilId;
@@ -50,8 +51,12 @@ export const PERFIS: PerfilMetadados[] = [
     ],
     acoesPermitidas: [
       "aprovar",
+      "negar_aprovacao",
+      "decidir_comite",
       "registrar_protocolo",
       "marcar_encaminhado",
+      "registrar_protocolo_manual",
+      "arquivar",
       "exportar_auditoria",
       "baixar_arquivo",
       "baixar_comprovante",
@@ -160,6 +165,8 @@ export const PERFIS: PerfilMetadados[] = [
       "regerar",
       "enviar_validacao",
       "enviar_contador",
+      "emitir_fiscal",
+      "transmitir",
       "reabrir",
       "tratar_excecao",
       "editar_dicionarios",
@@ -261,7 +268,7 @@ export function podeVerRota(perfil: PerfilId, href: string): boolean {
   return rotas.some((rota) => !ROTAS_SEM_DESCENDENTES.has(rota) && href.startsWith(`${rota}/`));
 }
 
-const ROTULOS_ACAO: Record<AcaoId, string> = {
+export const ROTULOS_ACAO: Record<AcaoId, string> = {
   gerar: "Gerar arquivo",
   regerar: "Gerar novamente",
   enviar_validacao: "Enviar para validação",
@@ -273,6 +280,13 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
   registrar_retorno: "Registrar retorno do BCB",
   reabrir: "Reabrir período para correção",
   aprovar: "Aprovar e assumir responsabilidade",
+  negar_aprovacao: "Devolver / negar aprovação",
+  escalar_comite: "Escalar ao Comitê de Qualidade",
+  decidir_comite: "Registrar decisão do Comitê de Qualidade",
+  emitir_fiscal: "Emitir documento fiscal",
+  transmitir: "Transmitir ao órgão",
+  registrar_protocolo_manual: "Registrar protocolo manualmente",
+  arquivar: "Arquivar período",
   baixar_arquivo: "Baixar arquivo",
   registrar_protocolo: "Registrar protocolo do BCB",
   marcar_encaminhado: "Marcar como encaminhado ao emissor",
@@ -296,44 +310,95 @@ const ROTULOS_ACAO: Record<AcaoId, string> = {
 
 interface RegraAcao {
   id: AcaoId;
-  estadosOrigem: PeriodoObrigacao["estado"][];
-  estadoDestino: PeriodoObrigacao["estado"] | null;
+  estadosOrigem: EstadoPeriodo[];
+  estadoDestino: EstadoPeriodo | null;
   variante: Acao["variante"];
-  somenteFiscal?: boolean;
-  excetoFiscal?: boolean;
+  modulos?: ModuloId[];
 }
+
+const MODULOS_NAO_FISCAIS: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710"];
+const TODOS_ESTADOS_LEITURA: EstadoPeriodo[] = [
+  "aguardando_dados",
+  "dados_ingeridos",
+  "gerado",
+  "aguardando_contador",
+  "em_validacao",
+  "validado",
+  "com_excecoes",
+  "liberado",
+  "aprovado",
+  "devolvido_diretor",
+  "em_comite_qualidade",
+  "emitido_fiscal",
+  "aguardando_retorno",
+  "retorno_aceito",
+  "retorno_com_ressalvas",
+  "retorno_rejeitado",
+  "arquivado",
+];
 
 const REGRAS_ACAO: RegraAcao[] = [
   { id: "gerar", estadosOrigem: ["dados_ingeridos"], estadoDestino: "gerado", variante: "primario" },
-  { id: "regerar", estadosOrigem: ["com_excecoes"], estadoDestino: "gerado", variante: "secundario" },
-  { id: "enviar_validacao", estadosOrigem: ["gerado"], estadoDestino: "em_validacao", variante: "primario", excetoFiscal: true },
-  { id: "enviar_contador", estadosOrigem: ["gerado"], estadoDestino: "aguardando_contador", variante: "primario", somenteFiscal: true },
-  { id: "validar_fiscal", estadosOrigem: ["aguardando_contador"], estadoDestino: "em_validacao", variante: "primario", somenteFiscal: true },
-  { id: "devolver_fiscal", estadosOrigem: ["aguardando_contador"], estadoDestino: "gerado", variante: "destrutivo-suave", somenteFiscal: true },
+  { id: "regerar", estadosOrigem: ["com_excecoes", "devolvido_diretor"], estadoDestino: "gerado", variante: "secundario" },
+  { id: "enviar_validacao", estadosOrigem: ["gerado"], estadoDestino: "em_validacao", variante: "primario", modulos: MODULOS_NAO_FISCAIS },
+  { id: "enviar_contador", estadosOrigem: ["gerado"], estadoDestino: "aguardando_contador", variante: "primario", modulos: ["fiscal"] },
+  { id: "validar_fiscal", estadosOrigem: ["aguardando_contador"], estadoDestino: "em_validacao", variante: "primario", modulos: ["fiscal"] },
+  { id: "devolver_fiscal", estadosOrigem: ["aguardando_contador"], estadoDestino: "gerado", variante: "destrutivo-suave", modulos: ["fiscal"] },
   { id: "executar_validacao", estadosOrigem: ["em_validacao", "com_excecoes"], estadoDestino: "validado", variante: "primario" },
   { id: "liberar", estadosOrigem: ["validado"], estadoDestino: "liberado", variante: "primario" },
   { id: "aprovar", estadosOrigem: ["liberado"], estadoDestino: "aprovado", variante: "primario" },
-  { id: "registrar_protocolo", estadosOrigem: ["aprovado"], estadoDestino: "entregue", variante: "primario", excetoFiscal: true },
-  { id: "marcar_encaminhado", estadosOrigem: ["aprovado"], estadoDestino: "entregue", variante: "primario", somenteFiscal: true },
-  { id: "registrar_retorno", estadosOrigem: ["entregue"], estadoDestino: "retorno_com_erro", variante: "secundario" },
-  { id: "reabrir", estadosOrigem: ["retorno_com_erro", "liberado", "aprovado"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
-  { id: "baixar_arquivo", estadosOrigem: ["gerado", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "negar_aprovacao", estadosOrigem: ["liberado"], estadoDestino: "devolvido_diretor", variante: "destrutivo-suave" },
+  { id: "escalar_comite", estadosOrigem: ["liberado"], estadoDestino: "em_comite_qualidade", variante: "destrutivo-suave" },
+  { id: "decidir_comite", estadosOrigem: ["em_comite_qualidade"], estadoDestino: null, variante: "primario" },
+  { id: "emitir_fiscal", estadosOrigem: ["aprovado"], estadoDestino: "emitido_fiscal", variante: "primario", modulos: ["fiscal"] },
+  { id: "marcar_encaminhado", estadosOrigem: ["aprovado"], estadoDestino: "aguardando_retorno", variante: "primario", modulos: ["fiscal"] },
+  { id: "transmitir", estadosOrigem: ["aprovado", "emitido_fiscal"], estadoDestino: "aguardando_retorno", variante: "primario" },
+  { id: "registrar_protocolo", estadosOrigem: ["aprovado"], estadoDestino: "aguardando_retorno", variante: "primario", modulos: MODULOS_NAO_FISCAIS },
+  { id: "registrar_protocolo_manual", estadosOrigem: ["aprovado", "emitido_fiscal"], estadoDestino: "aguardando_retorno", variante: "secundario" },
+  { id: "registrar_retorno", estadosOrigem: ["aguardando_retorno"], estadoDestino: null, variante: "secundario" },
+  { id: "reabrir", estadosOrigem: ["retorno_rejeitado", "liberado", "aprovado"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
+  { id: "arquivar", estadosOrigem: ["retorno_aceito"], estadoDestino: "arquivado", variante: "secundario" },
+  { id: "baixar_arquivo", estadosOrigem: TODOS_ESTADOS_LEITURA.filter((estado) => estado !== "aguardando_dados" && estado !== "dados_ingeridos"), estadoDestino: null, variante: "ghost" },
   { id: "tratar_excecao", estadosOrigem: ["com_excecoes", "em_validacao"], estadoDestino: null, variante: "secundario" },
-  { id: "exportar_auditoria", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "exportar_auditoria", estadosOrigem: TODOS_ESTADOS_LEITURA, estadoDestino: null, variante: "ghost" },
   { id: "fornecer_dados", estadosOrigem: ["aguardando_dados", "dados_ingeridos"], estadoDestino: null, variante: "primario" },
-  { id: "baixar_comprovante", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
-  { id: "verificar_integridade", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
-  { id: "ver_evidencias", estadosOrigem: ["aguardando_dados", "dados_ingeridos", "gerado", "aguardando_contador", "em_validacao", "validado", "com_excecoes", "liberado", "aprovado", "entregue", "retorno_com_erro"], estadoDestino: null, variante: "ghost" },
+  { id: "baixar_comprovante", estadosOrigem: TODOS_ESTADOS_LEITURA, estadoDestino: null, variante: "ghost" },
+  { id: "verificar_integridade", estadosOrigem: TODOS_ESTADOS_LEITURA, estadoDestino: null, variante: "ghost" },
+  { id: "ver_evidencias", estadosOrigem: TODOS_ESTADOS_LEITURA, estadoDestino: null, variante: "ghost" },
   { id: "notificar_cliente", estadosOrigem: ["aguardando_dados", "dados_ingeridos"], estadoDestino: null, variante: "secundario" },
 ];
 
+function moduloPermiteAcao(regra: RegraAcao, moduloId: ModuloId): boolean {
+  return !regra.modulos || regra.modulos.includes(moduloId);
+}
+
+function acaoOcultaPorConfiguracao(acaoId: AcaoId, moduloId: ModuloId): boolean {
+  const configuracaoModulo = configuracaoFluxo.modulos[moduloId];
+  switch (acaoId) {
+    case "decidir_comite":
+      return !configuracaoFluxo.comiteQualidade?.decisorPerfilId;
+    case "emitir_fiscal":
+      return configuracaoModulo?.contrato?.emissao !== true;
+    case "transmitir":
+      return (
+        configuracaoModulo?.contrato?.transmissao !== true ||
+        configuracaoModulo?.registroPrevio?.responsavel !== "videnas"
+      );
+    case "registrar_protocolo_manual":
+      return !configuracaoFluxo.registroProtocoloManualHabilitado;
+    case "arquivar":
+      return !configuracaoFluxo.arquivamentoPerfilId;
+    default:
+      return false;
+  }
+}
+
 export function acoesDisponiveis(perfil: PerfilId, periodo: PeriodoObrigacao): Acao[] {
   const perfilMetadados = buscarPerfil(perfil);
-  const ehFiscal = periodo.moduloId === "fiscal";
 
   return REGRAS_ACAO.filter((regra) => perfilMetadados.acoesPermitidas.includes(regra.id))
-    .filter((regra) => (regra.somenteFiscal ? ehFiscal : true))
-    .filter((regra) => (regra.excetoFiscal ? !ehFiscal : true))
+    .filter((regra) => moduloPermiteAcao(regra, periodo.moduloId))
+    .filter((regra) => !acaoOcultaPorConfiguracao(regra.id, periodo.moduloId))
     .filter((regra) => regra.estadosOrigem.includes(periodo.estado))
     .map((regra) => ({
       id: regra.id,
@@ -374,11 +439,15 @@ export function podeExecutar(
     return { permitido: false, visivel: false };
   }
 
-  const ehFiscal = periodo.moduloId === "fiscal";
-  if (regra.somenteFiscal && !ehFiscal) {
+  if (!moduloPermiteAcao(regra, periodo.moduloId)) {
     return { permitido: false, visivel: false };
   }
-  if (regra.excetoFiscal && ehFiscal) {
+
+  if (acaoOcultaPorConfiguracao(acaoId, periodo.moduloId)) {
+    return { permitido: false, visivel: false };
+  }
+
+  if (periodo.estado === "em_comite_qualidade" && acaoId !== "decidir_comite") {
     return { permitido: false, visivel: false };
   }
 

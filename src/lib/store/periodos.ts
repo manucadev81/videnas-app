@@ -1,13 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type {
   AcaoId,
   ArquivoGerado,
   CanalEnvioBcb,
+  EstadoPeriodo,
   Excecao,
   EventoAuditoria,
   ModuloId,
+  NegacaoAprovacao,
   PerfilId,
   PeriodoObrigacao,
   ProtocoloBCB,
@@ -191,6 +195,7 @@ export interface EntradaEventoAdministrativo {
 }
 
 export interface EstadoPeriodosStore {
+  hidratado: boolean;
   periodos: Record<string, PeriodoObrigacao>;
   arquivos: Record<string, ArquivoGerado>;
   validacoes: Record<string, ValidacaoResultado>;
@@ -234,6 +239,8 @@ export interface EstadoPeriodosStore {
   liberar: (periodoId: string, autor: AutorAcao) => ResultadoAcao;
 
   aprovar: (periodoId: string, autor: AutorAcao, textoCiencia: string) => ResultadoAcao;
+
+  negarAprovacao: (periodoId: string, autor: AutorAcao, motivo: string) => ResultadoAcao;
 
   registrarEntrega: (
     periodoId: string,
@@ -290,8 +297,19 @@ export interface EstadoPeriodosStore {
   reiniciarMock: () => void;
 }
 
-export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
-  ...estadoInicial(),
+type PeriodosPersistidos = Pick<
+  EstadoPeriodosStore,
+  "periodos" | "arquivos" | "validacoes" | "protocolos" | "excecoes" | "eventos" | "registros"
+>;
+
+export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
+const VERSAO_ARMAZENAMENTO_PERIODOS = 1;
+
+export const usePeriodosStore = create<EstadoPeriodosStore>()(
+  persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
+    (set, get) => ({
+      hidratado: false,
+      ...estadoInicial(),
 
   ingerirDados: (periodoId, autor, lote) => {
     const periodo = get().periodos[periodoId];
@@ -387,6 +405,11 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
     };
 
     const arquivoAnteriorId = periodo.arquivoCorrenteId;
+    const estadoAnterior = periodo.estado;
+    const ultimaNegacao =
+      estadoAnterior === "devolvido_diretor" && periodo.negacoesAprovacao.length > 0
+        ? periodo.negacoesAprovacao[periodo.negacoesAprovacao.length - 1]
+        : null;
 
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
@@ -408,6 +431,17 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
             arquivoIdAnterior: arquivoAnteriorId,
             arquivoIdNovo: arquivoId,
             hashNovo: arquivo.hashSha256,
+            estadoAnterior,
+            estadoNovo: "gerado",
+            ...(ultimaNegacao
+              ? {
+                  negacaoReferenciada: {
+                    motivo: ultimaNegacao.motivo,
+                    ocorridoEm: ultimaNegacao.ocorridoEm,
+                    indice: periodo.negacoesAprovacao.length - 1,
+                  },
+                }
+              : {}),
           }
         : {
             arquivoId,
@@ -417,14 +451,25 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
             schema: modulo.schema,
             versaoSchema: modulo.versaoSchema,
             registros: quantidadeRegistros,
+            estadoAnterior,
+            estadoNovo: "gerado",
           }
     );
 
-    set((estado) => ({
-      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      arquivos: { ...estado.arquivos, [arquivoId]: arquivo },
-      eventos: [...estado.eventos, evento],
-    }));
+    set((estado) => {
+      const arquivosAtualizados = { ...estado.arquivos, [arquivoId]: arquivo };
+      if (arquivoAnteriorId && arquivosAtualizados[arquivoAnteriorId]) {
+        arquivosAtualizados[arquivoAnteriorId] = {
+          ...arquivosAtualizados[arquivoAnteriorId],
+          situacao: "substituida",
+        };
+      }
+      return {
+        periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+        arquivos: arquivosAtualizados,
+        eventos: [...estado.eventos, evento],
+      };
+    });
 
     return { sucesso: true };
   },
@@ -679,6 +724,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
       usuarioDiretor: autor.usuarioId,
       textoCiencia,
       hashSha256: arquivo?.hashSha256 ?? null,
+      moduloId: periodo.moduloId,
+      arquivoVersao: arquivo?.versao ?? null,
+      estadoAnterior: "liberado",
+      estadoNovo: "aprovado",
     });
 
     set((estado) => ({
@@ -716,9 +765,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
 
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
-      estado: "entregue",
+      estado: "aguardando_retorno",
       protocoloId,
       entregueEm: agora,
+      transmitidoEm: agora,
     };
 
     const evento = construirEvento(
@@ -728,8 +778,20 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
       ehFiscal ? "DPS encaminhada ao emissor" : "Entrega registrada",
       protocolo.numeroProtocolo,
       ehFiscal
-        ? { emissor: dados.emissor ?? "Não informado", observacao: dados.observacao ?? null }
-        : { protocoloBcb: protocolo.numeroProtocolo, dataHoraEnvio: agora, canal: protocolo.canalEnvio, reciboHash: protocolo.reciboHash }
+        ? {
+            emissor: dados.emissor ?? "Não informado",
+            observacao: dados.observacao ?? null,
+            estadoAnterior: "aprovado",
+            estadoNovo: "aguardando_retorno",
+          }
+        : {
+            protocoloBcb: protocolo.numeroProtocolo,
+            dataHoraEnvio: agora,
+            canal: protocolo.canalEnvio,
+            reciboHash: protocolo.reciboHash,
+            estadoAnterior: "aprovado",
+            estadoNovo: "aguardando_retorno",
+          }
     );
 
     set((estado) => ({
@@ -743,9 +805,22 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
 
   registrarRetorno: (periodoId, autor, situacao, codigoRetorno, mensagemRetorno) => {
     const periodo = get().periodos[periodoId];
-    if (!periodo || !periodo.protocoloId) return { sucesso: false, motivo: "Período sem protocolo registrado." };
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    if (periodo.estado !== "aguardando_retorno") {
+      return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    }
+    if (!periodo.protocoloId) return { sucesso: false, motivo: "Período sem protocolo registrado." };
     const protocolo = get().protocolos[periodo.protocoloId];
     if (!protocolo) return { sucesso: false, motivo: "Protocolo não encontrado." };
+    if (!codigoRetorno.trim()) {
+      return { sucesso: false, motivo: "Informe o código de retorno recebido." };
+    }
+    if (!mensagemRetorno.trim()) {
+      return { sucesso: false, motivo: "Descreva a mensagem de retorno recebida." };
+    }
+    if (situacao === "aceito_com_ressalvas" && mensagemRetorno.trim().length < 10) {
+      return { sucesso: false, motivo: "Descreva a ressalva recebida com pelo menos 10 caracteres." };
+    }
 
     const agora = new Date().toISOString();
     const protocoloAtualizado: ProtocoloBCB = {
@@ -756,19 +831,40 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
       dataRetorno: agora,
     };
 
+    const novoEstado: EstadoPeriodo =
+      situacao === "aceito"
+        ? "retorno_aceito"
+        : situacao === "aceito_com_ressalvas"
+          ? "retorno_com_ressalvas"
+          : "retorno_rejeitado";
+
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
-      estado: situacao === "rejeitado" ? "retorno_com_erro" : periodo.estado,
+      estado: novoEstado,
+      retornoSituacao: situacao,
     };
 
-    const evento = construirEvento(
-      autor,
-      periodoAtualizado,
-      situacao === "rejeitado" ? "RETORNO_BCB_REJEITADO" : "RETORNO_BCB_ACEITO",
-      situacao === "rejeitado" ? "Retorno do BCB rejeitado" : "Retorno do BCB aceito",
-      protocolo.numeroProtocolo,
-      { protocoloBcb: protocolo.numeroProtocolo, codigoRetorno, mensagemRetorno }
-    );
+    const tipoEvento: TipoEventoAuditoria =
+      situacao === "aceito"
+        ? "RETORNO_ACEITO"
+        : situacao === "aceito_com_ressalvas"
+          ? "RETORNO_ACEITO_COM_RESSALVAS"
+          : "RETORNO_REJEITADO";
+    const rotuloTipo =
+      situacao === "aceito"
+        ? "Retorno aceito"
+        : situacao === "aceito_com_ressalvas"
+          ? "Retorno aceito com ressalvas"
+          : "Retorno rejeitado";
+
+    const evento = construirEvento(autor, periodoAtualizado, tipoEvento, rotuloTipo, protocolo.numeroProtocolo, {
+      protocoloBcb: protocolo.numeroProtocolo,
+      codigoRetorno,
+      mensagemRetorno,
+      resultado: situacao,
+      estadoAnterior: periodo.estado,
+      estadoNovo: novoEstado,
+    });
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
@@ -779,10 +875,58 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
     return { sucesso: true };
   },
 
+  negarAprovacao: (periodoId, autor, motivo) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    if (periodo.estado !== "liberado") {
+      return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    }
+    if (!motivo || motivo.trim().length < 10) {
+      return { sucesso: false, motivo: "Descreva o motivo da negação com pelo menos 10 caracteres." };
+    }
+
+    const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const agora = new Date().toISOString();
+    const negacao: NegacaoAprovacao = {
+      motivo,
+      usuarioId: autor.usuarioId,
+      ocorridoEm: agora,
+      arquivoId: arquivo?.id ?? null,
+    };
+
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "devolvido_diretor",
+      negacoesAprovacao: [...periodo.negacoesAprovacao, negacao],
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "APROVACAO_NEGADA",
+      "Aprovação negada pelo Diretor",
+      arquivo?.hashSha256 ?? null,
+      {
+        motivo,
+        arquivoId: arquivo?.id ?? null,
+        hashSha256: arquivo?.hashSha256 ?? null,
+        estadoAnterior: "liberado",
+        estadoNovo: "devolvido_diretor",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
   reabrir: (periodoId, autor, motivo) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
-    if (!["retorno_com_erro", "liberado", "aprovado"].includes(periodo.estado)) {
+    if (!["retorno_rejeitado", "liberado", "aprovado"].includes(periodo.estado)) {
       return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
     }
     if (!motivo || motivo.trim().length < 10) {
@@ -934,6 +1078,14 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
         contadorStatus: "nao_aplicavel",
         contadorUsuarioId: null,
         contadorConfirmadoEm: null,
+        negacoesAprovacao: [],
+        emComiteDesde: null,
+        emitidoFiscalEm: null,
+        transmitidoEm: null,
+        retornoSituacao: null,
+        arquivadoEm: null,
+        arquivadoPorUsuarioId: null,
+        retencaoAte: null,
       });
     }
 
@@ -980,5 +1132,64 @@ export const usePeriodosStore = create<EstadoPeriodosStore>((set, get) => ({
     });
   },
 
-  reiniciarMock: () => set(estadoInicial()),
-}));
+      reiniciarMock: () => set(estadoInicial()),
+    }),
+    {
+      name: NOME_ARMAZENAMENTO_PERIODOS,
+      version: VERSAO_ARMAZENAMENTO_PERIODOS,
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: true,
+      partialize: (estado) => ({
+        periodos: estado.periodos,
+        arquivos: estado.arquivos,
+        validacoes: estado.validacoes,
+        protocolos: estado.protocolos,
+        excecoes: estado.excecoes,
+        eventos: estado.eventos,
+        registros: estado.registros,
+      }),
+      migrate: (persistido, versao) => {
+        if (versao !== VERSAO_ARMAZENAMENTO_PERIODOS) {
+          return estadoInicial() as PeriodosPersistidos;
+        }
+        return persistido as PeriodosPersistidos;
+      },
+      merge: (persistido, atual) => {
+        const parcial = (persistido ?? {}) as Partial<PeriodosPersistidos>;
+        return {
+          ...atual,
+          ...parcial,
+          periodos: { ...atual.periodos, ...(parcial.periodos ?? {}) },
+          arquivos: { ...atual.arquivos, ...(parcial.arquivos ?? {}) },
+          validacoes: { ...atual.validacoes, ...(parcial.validacoes ?? {}) },
+          protocolos: { ...atual.protocolos, ...(parcial.protocolos ?? {}) },
+          excecoes: { ...atual.excecoes, ...(parcial.excecoes ?? {}) },
+          eventos: parcial.eventos ?? atual.eventos,
+          registros: { ...atual.registros, ...(parcial.registros ?? {}) },
+        };
+      },
+      onRehydrateStorage: () => () => {
+        usePeriodosStore.setState({ hidratado: true });
+      },
+    }
+  )
+);
+
+export function useHidratarPeriodos(): boolean {
+  const hidratado = usePeriodosStore((estado) => estado.hidratado);
+
+  useEffect(() => {
+    const armazenamento = usePeriodosStore.persist;
+
+    if (!armazenamento) {
+      usePeriodosStore.setState({ hidratado: true });
+      return;
+    }
+
+    if (!armazenamento.hasHydrated()) {
+      void armazenamento.rehydrate();
+    }
+  }, []);
+
+  return hidratado;
+}
