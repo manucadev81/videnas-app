@@ -18,6 +18,7 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
+import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
 import type { ModuloId, PerfilId, TipoEventoAuditoria } from "@/lib/tipos";
 
 const ROTULOS_MODULO: Record<ModuloId, string> = {
@@ -218,6 +219,11 @@ export default function AuditoriaPage() {
                       <td className="px-4 py-2 text-neutral-600">{evento.competencia ?? "—"}</td>
                       <td className="px-4 py-2">
                         <span className="status-badge status-badge-info">{evento.rotuloTipo}</span>
+                        {detalheLegivelDoEvento(evento) ? (
+                          <span className="mt-1 block text-xs text-neutral-500">
+                            {detalheLegivelDoEvento(evento)?.resumo}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-4 py-2 text-neutral-600">{evento.usuarioNome}</td>
                       <td className="px-4 py-2 text-neutral-600">{ROTULOS_PERFIL[evento.perfilId]}</td>
@@ -235,6 +241,16 @@ export default function AuditoriaPage() {
                             eventoId: <span className="font-mono">{evento.id}</span> · IP:{" "}
                             <span className="font-mono">{evento.ip}</span> · {evento.userAgent}
                           </p>
+                          {detalheLegivelDoEvento(evento) ? (
+                            <div className="mb-2 space-y-1 rounded-md border border-neutral-200 bg-white p-3 text-xs text-neutral-700">
+                              <p className="font-semibold">{detalheLegivelDoEvento(evento)?.resumo}</p>
+                              <ul className="space-y-0.5">
+                                {detalheLegivelDoEvento(evento)?.linhas.map((linha, indice) => (
+                                  <li key={`${indice}-${linha}`}>{linha}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
                           <pre className="max-h-48 overflow-auto rounded-md bg-white p-3 font-mono text-xs text-neutral-600">
                             {JSON.stringify(evento.payload, null, 2)}
                           </pre>

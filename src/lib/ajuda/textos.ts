@@ -133,7 +133,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Em Comitê de Qualidade",
     pergunta: "O que significa o status Em Comitê de Qualidade?",
     descricao:
-      "O período foi negado duas vezes pelo Responsável de Compliance e ficou em análise do Comitê de Qualidade. Nenhuma ação de execução fica disponível até a decisão do comitê.",
+      "O período foi negado duas ou mais vezes e ficou em análise do Comitê de Qualidade da Videnas, presidido pelo Administrador. Nenhuma ação de execução fica disponível até a decisão do comitê, que devolve o período ao Executor (com plano de correção) ou ao Diretor.",
   },
   "estado.emitido_fiscal": {
     titulo: "Documento fiscal emitido",

@@ -16,6 +16,7 @@ import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { BarraAcoesFluxo } from "@/components/dominio/modulo-barra-acoes";
+import { BlocoDecisaoComite } from "@/components/dominio/bloco-decisao-comite";
 import { PainelExcecoes } from "@/components/dominio/modulo-painel-excecoes";
 import { RecepcaoDocumentos } from "@/components/dominio/modulo-recepcao-documentos";
 import { EtapaEntrega } from "@/components/dominio/modulo-etapa-entrega";
@@ -27,6 +28,17 @@ import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
+import {
+  contarNegativas,
+  limiarNegativas,
+  montarHistoricoNegativas,
+  proximaNegativaEscalaParaComite,
+  rotuloContagemNegativas,
+  rotuloOrigemNegativa,
+  rotuloTotalNegativas,
+  type RegistroHistoricoNegativa,
+} from "@/lib/negacoes";
+import { descricaoQuorumComite, situacaoPrazoComite, type SituacaoPrazoComite } from "@/lib/comite";
 import { operacoesPorPeriodo } from "@/lib/mock/operacoes";
 import { posicoesDiariasPorPeriodo, posicoesMensaisPorPeriodo } from "@/lib/mock/custodia";
 import { servicosPorPeriodo } from "@/lib/mock/fiscal";
@@ -40,6 +52,7 @@ import {
 } from "@/lib/formatadores";
 import type {
   EtapaId,
+  DecisaoComiteQualidade,
   NegacaoAprovacao,
   OperacaoCambio,
   PosicaoCustodiaDiaria,
@@ -350,6 +363,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
     usuarioGerador && usuarioLiberador && usuarioGerador.id !== usuarioLiberador.id
   );
 
+  const ultimaDecisaoComite = periodo.decisoesComite?.at(-1);
   const ehFiscal = periodo.moduloId === "fiscal";
   const rotaLista = modulo.rota;
   const posicoesMensaisDoPeriodo =
@@ -387,6 +401,16 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
           <div data-tour="periodo-cabecalho" className="mt-2 flex flex-wrap items-center gap-2">
             <BadgeStatus estado={periodo.estado} comAjuda />
             <BadgeAtrasado dias={derivado.diasDeAtraso} />
+            {contarNegativas(periodo) > 0 ? (
+              <span
+                className={cn(
+                  "status-badge",
+                  contarNegativas(periodo) >= limiarNegativas() ? "status-badge-error" : "status-badge-warning"
+                )}
+              >
+                Negativas: {rotuloTotalNegativas(contarNegativas(periodo))}
+              </span>
+            ) : null}
             <span className="text-sm text-neutral-500">Prazo: {formatarData(periodo.prazoEntrega)}</span>
             <span className="text-sm text-neutral-500">
               {instituicao?.nomeFantasia} · {instituicao ? formatarCNPJ(instituicao.cnpj) : ""}
@@ -399,6 +423,52 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
       {periodo.estado === "devolvido_diretor" && periodo.negacoesAprovacao.length > 0 ? (
         <BannerNegacaoDiretor
           negacao={periodo.negacoesAprovacao[periodo.negacoesAprovacao.length - 1]}
+          numero={contarNegativas(periodo)}
+          escalaNaProxima={proximaNegativaEscalaParaComite(periodo)}
+          decisaoComite={
+            ultimaDecisaoComite &&
+            ultimaDecisaoComite.desfecho === "manter_negativa" &&
+            ultimaDecisaoComite.decididoEm >
+              periodo.negacoesAprovacao[periodo.negacoesAprovacao.length - 1].ocorridoEm
+              ? ultimaDecisaoComite
+              : null
+          }
+        />
+      ) : null}
+
+      {periodo.estado === "liberado" && contarNegativas(periodo) > 0 ? (
+        <BannerPosicionamento variante="atencao" titulo="Esta competência já foi negada antes">
+          {rotuloContagemNegativas(contarNegativas(periodo))} registrada
+          {contarNegativas(periodo) === 1 ? "" : "s"}.
+          {proximaNegativaEscalaParaComite(periodo)
+            ? " Uma nova negativa nesta competência escala o período ao Comitê de Qualidade."
+            : ""}
+          {ultimaDecisaoComite &&
+          ultimaDecisaoComite.desfecho === "negativa_superada" &&
+          ultimaDecisaoComite.arquivoId === periodo.arquivoCorrenteId ? (
+            <BlocoDecisaoComite
+              decisao={ultimaDecisaoComite}
+              titulo="Justificativa do Comitê de Qualidade"
+              className="mt-2"
+            />
+          ) : null}
+        </BannerPosicionamento>
+      ) : null}
+
+      {periodo.estado === "em_comite_qualidade" ? (
+        <BannerComiteQualidade
+          historico={montarHistoricoNegativas(periodo.negacoesAprovacao, (arquivoId) => arquivos[arquivoId])}
+          desde={periodo.emComiteDesde}
+          diasParaPrazo={derivado.diasParaPrazo}
+          prazoComite={situacaoPrazoComite(periodo)}
+          decisoesAnteriores={periodo.decisoesComite ?? []}
+          lacreDossieId={
+            (
+              eventosPeriodo
+                .filter((evento) => evento.tipo === "COMITE_QUALIDADE_ACIONADO")
+                .at(-1)?.payload.lacreDossieId as string | null | undefined
+            ) ?? null
+          }
         />
       ) : null}
 
@@ -763,7 +833,123 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
   );
 }
 
-function BannerNegacaoDiretor({ negacao }: { negacao: NegacaoAprovacao }) {
+function BannerComiteQualidade({
+  historico,
+  desde,
+  diasParaPrazo,
+  prazoComite,
+  decisoesAnteriores,
+  lacreDossieId,
+}: {
+  historico: RegistroHistoricoNegativa[];
+  desde: string | null;
+  diasParaPrazo: number;
+  prazoComite: SituacaoPrazoComite | null;
+  decisoesAnteriores: DecisaoComiteQualidade[];
+  lacreDossieId: string | null;
+}) {
+  const critico = prazoComite?.critico ?? diasParaPrazo <= 3;
+  const prazoTexto =
+    diasParaPrazo < 0
+      ? `Prazo regulatório vencido há ${Math.abs(diasParaPrazo)} ${Math.abs(diasParaPrazo) === 1 ? "dia" : "dias"}.`
+      : diasParaPrazo === 0
+        ? "O prazo regulatório vence hoje."
+        : `Faltam ${diasParaPrazo} ${diasParaPrazo === 1 ? "dia" : "dias"} para o prazo regulatório.`;
+
+  return (
+    <div
+      data-tour="banner-comite-qualidade"
+      role="note"
+      className={cn(
+        "space-y-3 rounded-lg border p-4 text-sm",
+        critico
+          ? "border-status-error-border bg-status-error-bg text-status-error-text"
+          : "border-status-warning-border bg-status-warning-bg text-status-warning-text"
+      )}
+    >
+      <div>
+        <p className="flex flex-wrap items-center gap-2 font-display text-base font-bold">
+          Em Comitê de Qualidade
+          {critico ? <span className="status-badge status-badge-error">Prazo crítico</span> : null}
+        </p>
+        <p className="mt-1">
+          {historico.some((registro) => registro.origem === "contador")
+            ? `Esta competência acumulou ${historico.length} ${historico.length === 1 ? "negativa" : "negativas"}, entre negações do Diretor e devoluções do Contador`
+            : `O Diretor negou a aprovação ${historico.length} ${historico.length === 1 ? "vez" : "vezes"} nesta competência`}{" "}
+          (limite de {limiarNegativas()}). O período foi escalado ao Comitê de Qualidade e está
+          somente leitura para todos os perfis
+          {desde ? `, desde ${formatarDataHora(desde)}` : ""}. {prazoTexto}
+        </p>
+      </div>
+      <div className="rounded-md border border-current/30 bg-white/60 p-3 text-xs">
+        <p>
+          O Comitê de Qualidade da Videnas é presidido pelo Administrador, com quórum{" "}
+          {descricaoQuorumComite()}. Sem acordo, a negativa é mantida. O Comitê é consultivo: a
+          aprovação regulatória continua sendo do Diretor.
+        </p>
+        {prazoComite ? (
+          <p className="mt-1 font-semibold" role="status">
+            Prazo do Comitê: {formatarData(prazoComite.prazoIso)} · {prazoComite.texto}
+            {prazoComite.origem === "prazo_regulatorio"
+              ? " (limitado pelo prazo regulatório)"
+              : ""}
+            .
+          </p>
+        ) : null}
+      </div>
+      {decisoesAnteriores.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold">Decisões anteriores do Comitê</p>
+          {decisoesAnteriores.map((decisao) => (
+            <BlocoDecisaoComite key={decisao.id} decisao={decisao} />
+          ))}
+        </div>
+      ) : null}
+      <div>
+        <p className="text-xs font-semibold">Histórico de negativas</p>
+        <ol className="mt-1.5 space-y-2 text-xs">
+          {historico.map((registro) => (
+            <li key={`${registro.numero}-${registro.ocorridoEm}`} className="rounded-md bg-white/60 p-2.5">
+              <p className="font-semibold">
+                {rotuloContagemNegativas(registro.numero)} · {rotuloOrigemNegativa(registro.origem)} ·{" "}
+                {registro.usuarioNome} ·{" "}
+                {formatarDataHora(registro.ocorridoEm)}
+              </p>
+              <p className="mt-0.5">
+                {registro.versaoArquivo ? `Versão v${registro.versaoArquivo}` : "Versão não identificada"}
+                {registro.hashArquivo ? (
+                  <>
+                    {" "}
+                    · hash <span className="font-mono">{truncarHash(registro.hashArquivo)}</span>
+                  </>
+                ) : null}
+              </p>
+              <p className="mt-0.5">{registro.motivo}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+      {lacreDossieId ? (
+        <p className="text-xs">
+          Dossiê de escalonamento lacrado na cadeia do período:{" "}
+          <span className="font-mono">{lacreDossieId}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function BannerNegacaoDiretor({
+  negacao,
+  numero,
+  escalaNaProxima,
+  decisaoComite,
+}: {
+  negacao: NegacaoAprovacao;
+  numero: number;
+  escalaNaProxima: boolean;
+  decisaoComite: DecisaoComiteQualidade | null;
+}) {
   const autor = buscarUsuario(negacao.usuarioId);
   return (
     <div
@@ -771,10 +957,21 @@ function BannerNegacaoDiretor({ negacao }: { negacao: NegacaoAprovacao }) {
       className="rounded-lg border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text"
     >
       <p className="font-display text-base font-bold">Devolvido pelo Diretor</p>
+      <p className="mt-0.5 text-xs font-medium">
+        {rotuloContagemNegativas(numero)}
+        {escalaNaProxima ? " · uma nova negativa escala o período ao Comitê de Qualidade" : ""}
+      </p>
       <p className="mt-1">{negacao.motivo}</p>
       <p className="mt-1 text-xs">
         {autor?.nome ?? negacao.usuarioId} · {formatarDataHora(negacao.ocorridoEm)}
       </p>
+      {decisaoComite ? (
+        <BlocoDecisaoComite
+          decisao={decisaoComite}
+          titulo="Plano de correção do Comitê de Qualidade"
+          className="mt-3"
+        />
+      ) : null}
     </div>
   );
 }

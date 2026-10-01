@@ -23,6 +23,8 @@ export const ROTULOS_TIPO_ARTEFATO: Record<TipoArtefatoLacre, string> = {
   anexo_retorno: "Anexo do retorno",
   recibo_retorno: "Recibo do retorno",
   dossie_arquivamento: "Dossiê de arquivamento",
+  dossie_comite: "Dossiê de escalonamento ao Comitê",
+  ata_comite: "Ata do Comitê de Qualidade",
 };
 
 export const TIPOS_ARTEFATO: TipoArtefatoLacre[] = [
@@ -31,6 +33,8 @@ export const TIPOS_ARTEFATO: TipoArtefatoLacre[] = [
   "anexo_retorno",
   "recibo_retorno",
   "dossie_arquivamento",
+  "dossie_comite",
+  "ata_comite",
 ];
 
 export function tipoArtefatoDoLacre(

@@ -21,7 +21,7 @@ O escopo atual cobre quatro frentes: **ACAM212**, **Cadoc 5711**, **Cadoc 5710**
 | Contador / Fiscal | Confirma ou devolve aliquota de ISS, retencao e enquadramento tributario das DPS. | Atua apenas no modulo Fiscal. |
 | Executor - Videnas | Executa a ingestao tecnica, gera ou regera o arquivo e o envia para validacao. | Nao fornece dados, nao libera e nao aprova. |
 | Validador - Videnas | Valida o schema e libera o arquivo para o cliente. | Nunca gera; quem gerou nao pode liberar. |
-| Administrador - Videnas | Provisiona tenants, contrata modulos, convida usuarios iniciais, suspende e reativa clientes. | Nao participa do pipeline regulatorio. |
+| Administrador - Videnas | Provisiona tenants, contrata modulos, convida usuarios iniciais, suspende e reativa clientes; preside o Comite de Qualidade e registra a decisao. | Nao participa do pipeline regulatorio. |
 
 A separacao **Executor -> Validador -> Compliance** materializa o controle de quatro olhos e reduz conflito de interesses. O Administrador fica fora desse ciclo.
 
@@ -44,7 +44,9 @@ flowchart TD
     J -- Nao --> L[Validador libera para o cliente]
     L --> M{Compliance decide}
     M -- Aprova --> N[Compliance assume responsabilidade]
-    M -- Nega, com motivo --> M2[Devolvido ao Executor]
+    M -- Nega, com motivo --> M3{Qual negativa da competencia?}
+    M3 -- Primeira --> M2[Devolvido ao Executor]
+    M3 -- Segunda --> M4[Comite de Qualidade: periodo somente leitura ate a decisao do Administrador e de um segundo membro]
     M2 --> F
     N --> O[Transmissao externa ao BCB ou emissor fiscal]
     O --> P[Registro de protocolo ou encaminhamento: aguardando retorno]
@@ -54,7 +56,7 @@ flowchart TD
     Q -- Com ressalvas --> S[Aceito com ressalvas - proximo passo pendente de definicao normativa, atras de flag]
 ```
 
-Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos o registro do protocolo ou do encaminhamento, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Diretor pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Duas negacoes seguidas escalariam para um Comite de Qualidade, mas essa escalada automatica esta desabilitada nesta fatia de entrega.
+Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos o registro do protocolo ou do encaminhamento, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Diretor pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Na segunda negativa da mesma competencia, o periodo e escalado para o Comite de Qualidade em vez de voltar ao Executor: o historico de negativas (versao, hash, motivo, autor e data) e lacrado em um dossie na cadeia do periodo, o periodo fica somente leitura para todos os perfis e aparece em destaque, com os dias ate o prazo, no painel, na fila de operacao e no calendario. A contagem e por competencia e nao zera (premissa a confirmar); devolucoes do Contador nao contam por padrao, mas podem contar conforme a configuracao/contrato de cada cliente (decisao de 2026-10-01). O Comite de Qualidade da Videnas (decisao de 2026-10-01) e presidido pelo Administrador, com um segundo membro da equipe Videnas que nao tenha gerado nem liberado versoes negadas, nem negado a aprovacao; o quorum e 2 de 2, por unanimidade (sem acordo, a negativa e mantida). O Administrador registra a decisao com justificativa: manter a negativa, com plano de correcao e retorno ao Executor, ou considerar a negativa superada e devolver ao Diretor, que ve a justificativa do Comite. Nao ha aprovacao por excecao. A decisao gera um evento de auditoria e uma ata lacrada na mesma cadeia do periodo; da terceira negativa em diante o periodo volta direto ao Comite. O prazo do Comite e de 2 dias uteis ou 3 dias antes do prazo regulatorio, o que vier primeiro.
 
 O retorno do orgao e registrado por alguem da equipe Videnas (Executor ou Validador) com tres desfechos. No ACAM212 ele e registrado como ACAM213 (identificador, data, codigo, mensagem e arquivo anexado opcional); o anexo e um recibo do retorno sao lacrados na mesma cadeia do periodo. Um retorno rejeitado abre uma excecao e permite reabrir o periodo para correcao. O arquivamento gera um dossie lacrado como ultimo elo da cadeia e deixa o periodo somente leitura; periodos arquivados ficam ocultos por padrao nas listas. Quem arquiva tambem e alguem da equipe Videnas (Executor ou Validador), e a retencao conta a partir do arquivamento por 5 anos (por ora), exibida como "Retido ate" no periodo arquivado; nada e expurgado ao fim do prazo. Uma decisao segue aberta e por isso fica atras de flag: o que fazer apos um retorno aceito com ressalvas (nenhuma saida e oferecida).
 

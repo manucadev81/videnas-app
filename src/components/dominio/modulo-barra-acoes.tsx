@@ -36,16 +36,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePeriodosStore, validarEntradaRetorno } from "@/lib/store/periodos";
+import { TAMANHO_MINIMO_TEXTO_COMITE, usePeriodosStore, validarEntradaRetorno } from "@/lib/store/periodos";
+import { BlocoDecisaoComite } from "@/components/dominio/bloco-decisao-comite";
+import {
+  descricaoQuorumComite,
+  impedimentosDoComite,
+  membrosElegiveisAoComite,
+  situacaoPrazoComite,
+  usuariosImpedidosDoComite,
+} from "@/lib/comite";
 import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
-import { ROTULO_RETORNO_GENERICO, configuracaoFluxo, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
-import type { AcaoId, CanalEnvioBcb, ValidacaoItem } from "@/lib/tipos";
-import { formatarDataHora, truncarHash } from "@/lib/formatadores";
+import {
+  DESFECHOS_COMITE,
+  ROTULO_RETORNO_GENERICO,
+  configuracaoFluxo,
+  rotuloRetornoDoModulo,
+} from "@/lib/mock/configuracao-fluxo";
+import type { AcaoId, CanalEnvioBcb, DesfechoComite, ValidacaoItem } from "@/lib/tipos";
+import { formatarData, formatarDataHora, truncarHash } from "@/lib/formatadores";
+import {
+  contarNegativas,
+  limiarNegativas,
+  proximaNegativaEscalaParaComite,
+  rotuloContagemNegativas,
+  rotuloOrigemNegativa,
+  rotuloTotalNegativas,
+} from "@/lib/negacoes";
 
 const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "ghost"> = {
   primario: "default",
@@ -69,6 +90,7 @@ const CANDIDATOS_BARRA: AcaoId[] = [
   "arquivar",
   "aprovar",
   "negar_aprovacao",
+  "decidir_comite",
 ];
 
 const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrutivo-suave" | "ghost">> = {
@@ -86,6 +108,7 @@ const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrut
   arquivar: "secundario",
   aprovar: "primario",
   negar_aprovacao: "destrutivo-suave",
+  decidir_comite: "primario",
   reabrir: "destrutivo-suave",
 };
 
@@ -158,6 +181,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const selarNovaVersaoArquivo = useEvidenciasStore((estado) => estado.selarNovaVersaoArquivo);
   const selarRetornoRegulador = useEvidenciasStore((estado) => estado.selarRetornoRegulador);
   const selarArquivamento = useEvidenciasStore((estado) => estado.selarArquivamento);
+  const selarEscalaComite = useEvidenciasStore((estado) => estado.selarEscalaComite);
+  const selarAtaComite = useEvidenciasStore((estado) => estado.selarAtaComite);
+  const validarDecisaoComite = usePeriodosStore((estado) => estado.validarDecisaoComite);
+  const decidirComite = usePeriodosStore((estado) => estado.decidirComite);
+  const eventosStore = usePeriodosStore((estado) => estado.eventos);
 
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
@@ -171,6 +199,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const [campoCheckbox, setCampoCheckbox] = useState(false);
   const [campoData, setCampoData] = useState("");
   const [campoAnexo, setCampoAnexo] = useState<File | null>(null);
+  const [campoMembro, setCampoMembro] = useState("");
+  const [campoDesfecho, setCampoDesfecho] = useState<DesfechoComite | "">("");
+  const [campoPlano, setCampoPlano] = useState("");
   const [processando, setProcessando] = useState(false);
 
   if (!periodo || !perfilAtivo || !usuarioId) {
@@ -197,6 +228,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     setCampoCheckbox(false);
     setCampoData("");
     setCampoAnexo(null);
+    setCampoMembro("");
+    setCampoDesfecho("");
+    setCampoPlano("");
     if (acaoId === "registrar_protocolo") {
       setCampoSelect("pstaw10");
     }
@@ -371,6 +405,132 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     }
   }
 
+  async function confirmarNegacao() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    if (campoTextarea.trim().length < 10) {
+      toast.error("Descreva o motivo da negação com pelo menos 10 caracteres.");
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "negar_aprovacao", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    if (!proximaNegativaEscalaParaComite(periodo)) {
+      const resultado = negarAprovacao(periodoId, autor, campoTextarea);
+      tratarResultado(resultado, "Aprovação negada. Período devolvido ao Executor.");
+      return;
+    }
+
+    const ocorridoEm = new Date().toISOString();
+    setProcessando(true);
+    try {
+      const periodoComNegacao = {
+        ...periodo,
+        negacoesAprovacao: [
+          ...periodo.negacoesAprovacao,
+          {
+            motivo: campoTextarea,
+            usuarioId: autor.usuarioId,
+            ocorridoEm,
+            arquivoId: arquivoCorrente?.id ?? null,
+          },
+        ],
+      };
+      const selagem = await selarEscalaComite({
+        periodo: periodoComNegacao,
+        buscarArquivo: (arquivoId) => usePeriodosStore.getState().arquivos[arquivoId],
+        escaladoEm: ocorridoEm,
+        autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o dossiê de escalonamento.");
+        return;
+      }
+      const resultado = negarAprovacao(periodoId, autor, campoTextarea, {
+        ocorridoEm,
+        lacreId: selagem.lacre.id,
+        hashDossie: selagem.lacre.hashSha256,
+      });
+      tratarResultado(
+        resultado,
+        "Aprovação negada. Período escalado ao Comitê de Qualidade e dossiê lacrado na cadeia."
+      );
+    } catch {
+      toast.error("Não foi possível negar a aprovação.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function confirmarDecisaoComite() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    if (!campoDesfecho) {
+      toast.error("Escolha o desfecho do Comitê.");
+      return;
+    }
+    if (!campoMembro) {
+      toast.error("Selecione o segundo membro do Comitê de Qualidade.");
+      return;
+    }
+    const dados = {
+      membroId: campoMembro,
+      desfecho: campoDesfecho,
+      justificativa: campoTextarea,
+      planoCorrecao: campoPlano,
+    };
+    const validacao = validarDecisaoComite(periodoId, autor, dados);
+    if (!validacao.sucesso) {
+      toast.error(validacao.motivo ?? "Não foi possível registrar a decisão.");
+      return;
+    }
+
+    const decididoEm = new Date().toISOString();
+    const estadoNovo = DESFECHOS_COMITE[campoDesfecho].estadoDestino;
+    setProcessando(true);
+    try {
+      const selagem = await selarAtaComite({
+        periodo,
+        buscarArquivo: (arquivoId) => usePeriodosStore.getState().arquivos[arquivoId],
+        desfecho: campoDesfecho,
+        participantes: [
+          { usuarioId: autor.usuarioId, papel: "Presidente" },
+          { usuarioId: campoMembro, papel: "Membro" },
+        ],
+        justificativa: campoTextarea.trim(),
+        planoCorrecao: DESFECHOS_COMITE[campoDesfecho].exigePlanoCorrecao ? campoPlano.trim() : null,
+        estadoNovo,
+        decididoEm,
+        autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar a ata do Comitê.");
+        return;
+      }
+      const resultado = decidirComite(periodoId, autor, {
+        ...dados,
+        decididoEm,
+        lacreId: selagem.lacre.id,
+        hashAta: selagem.lacre.hashSha256,
+      });
+      tratarResultado(
+        resultado,
+        campoDesfecho === "negativa_superada"
+          ? "Decisão registrada. Período devolvido ao Diretor e ata lacrada na cadeia."
+          : "Decisão registrada. Período devolvido ao Executor com o plano de correção e ata lacrada na cadeia."
+      );
+    } catch {
+      toast.error("Não foi possível registrar a decisão do Comitê.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   function confirmarDialogo() {
     if (!dialogoAberto) return;
 
@@ -385,12 +545,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         return;
       }
       case "negar_aprovacao": {
-        if (campoTextarea.trim().length < 10) {
-          toast.error("Descreva o motivo da negação com pelo menos 10 caracteres.");
-          return;
-        }
-        const resultado = negarAprovacao(periodoId, autor, campoTextarea);
-        tratarResultado(resultado, "Aprovação negada. Período devolvido ao Executor.");
+        void confirmarNegacao();
+        return;
+      }
+      case "decidir_comite": {
+        void confirmarDecisaoComite();
         return;
       }
       case "enviar_contador": {
@@ -475,6 +634,23 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         fecharDialogo();
     }
   }
+
+  const impedimentosComite =
+    periodo.estado === "em_comite_qualidade" ? impedimentosDoComite(periodo, arquivos, eventosStore) : {};
+  const membrosElegiveis =
+    periodo.estado === "em_comite_qualidade"
+      ? membrosElegiveisAoComite(periodo, usuarioId, impedimentosComite)
+      : [];
+  const usuariosImpedidos = usuariosImpedidosDoComite(impedimentosComite);
+  const prazoComite = periodo.estado === "em_comite_qualidade" ? situacaoPrazoComite(periodo) : null;
+  const desfechosComite = configuracaoFluxo.comiteQualidade?.desfechosPermitidos ?? [];
+  const ultimaDecisaoComite = periodo.decisoesComite?.at(-1);
+  const decisaoParaDiretor =
+    ultimaDecisaoComite &&
+    ultimaDecisaoComite.desfecho === "negativa_superada" &&
+    ultimaDecisaoComite.arquivoId === periodo.arquivoCorrenteId
+      ? ultimaDecisaoComite
+      : null;
 
   const acoesBarra = CANDIDATOS_BARRA.filter((acaoId) => perfilMetadados.acoesPermitidas.includes(acaoId))
     .map((acaoId) => ({ acaoId, avaliacao: podeExecutarStore(perfilAtivo, acaoId, periodoId, usuarioId) }))
@@ -709,17 +885,25 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                     </span>
                   </p>
                 </div>
+                {decisaoParaDiretor ? (
+                  <div className="rounded-md border border-status-info-border bg-status-info-bg p-3 text-status-info-text">
+                    <BlocoDecisaoComite
+                      decisao={decisaoParaDiretor}
+                      titulo="Justificativa do Comitê de Qualidade"
+                    />
+                  </div>
+                ) : null}
                 {periodo.negacoesAprovacao.length > 0 ? (
                   <div className="space-y-1.5 rounded-md border border-status-warning-border bg-status-warning-bg p-3">
                     <p className="text-xs font-semibold text-status-warning-text">
-                      Negações anteriores ({periodo.negacoesAprovacao.length})
+                      Negações anteriores ({rotuloTotalNegativas(periodo.negacoesAprovacao.length)})
                     </p>
                     <ul className="space-y-1.5 text-xs text-status-warning-text">
                       {periodo.negacoesAprovacao.map((negacao, indice) => {
                         const arquivoNegado = negacao.arquivoId ? arquivos[negacao.arquivoId] : undefined;
                         return (
                           <li key={`${negacao.ocorridoEm}-${indice}`}>
-                            {formatarDataHora(negacao.ocorridoEm)} ·{" "}
+                            {rotuloOrigemNegativa(negacao.origem)} · {formatarDataHora(negacao.ocorridoEm)} ·{" "}
                             {buscarUsuario(negacao.usuarioId)?.nome ?? negacao.usuarioId}
                             {arquivoNegado ? (
                               <>
@@ -766,12 +950,41 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
             {dialogoAberto === "negar_aprovacao" ? (
               <>
                 <DialogHeader>
-                  <DialogTitle>Negar aprovação e devolver ao Executor?</DialogTitle>
+                  <DialogTitle>
+                    {proximaNegativaEscalaParaComite(periodo)
+                      ? "Negar aprovação e escalar ao Comitê de Qualidade?"
+                      : "Negar aprovação e devolver ao Executor?"}
+                  </DialogTitle>
                   <DialogDescription>
-                    Descreva o que precisa ser corrigido. O período volta para o Executor e uma nova
-                    versão do arquivo precisará passar por validação e liberação novamente.
+                    Descreva o que precisa ser corrigido.{" "}
+                    {proximaNegativaEscalaParaComite(periodo)
+                      ? "O período não volta para o Executor: fica bloqueado para qualquer alteração até a decisão do Comitê."
+                      : "O período volta para o Executor e uma nova versão do arquivo precisará passar por validação e liberação novamente."}
                   </DialogDescription>
                 </DialogHeader>
+                <p
+                  className="text-sm font-medium text-neutral-700"
+                  aria-live="polite"
+                >
+                  {rotuloContagemNegativas(contarNegativas(periodo) + 1)}
+                </p>
+                {proximaNegativaEscalaParaComite(periodo) ? (
+                  <div
+                    role="alert"
+                    className="space-y-1 rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-sm text-status-warning-text"
+                  >
+                    <p className="font-semibold">Esta negativa envia o período ao Comitê de Qualidade.</p>
+                    <p className="text-xs">
+                      É a negativa {contarNegativas(periodo) + 1}{" "}
+                      {contarNegativas(periodo) + 1 > limiarNegativas()
+                        ? `(limite ${limiarNegativas()})`
+                        : `de ${limiarNegativas()}`}{" "}
+                      nesta competência. Ao confirmar, o histórico de negativas será lacrado em um dossiê e
+                      o período ficará somente leitura até a decisão do Comitê de Qualidade, presidido
+                      pelo Administrador da Videnas.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
                   <Textarea
                     value={campoTextarea}
@@ -792,10 +1005,151 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   <Button
                     type="button"
                     variant="destructive"
-                    disabled={campoTextarea.trim().length < 10}
+                    disabled={campoTextarea.trim().length < 10 || processando}
                     onClick={confirmarDialogo}
                   >
-                    Negar aprovação
+                    {proximaNegativaEscalaParaComite(periodo)
+                      ? "Negar e escalar ao Comitê"
+                      : "Negar aprovação"}
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "decidir_comite" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Registrar decisão do Comitê de Qualidade</DialogTitle>
+                  <DialogDescription>
+                    Você preside o Comitê. Quórum: {descricaoQuorumComite()}. A decisão é lavrada em uma
+                    ata lacrada e encadeada ao dossiê de escalonamento. O Comitê é consultivo: a aprovação
+                    regulatória continua sendo do Diretor.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="comite-membro">Segundo membro do Comitê</Label>
+                    <Select value={campoMembro} onValueChange={(valor) => setCampoMembro(valor ?? "")}>
+                      <SelectTrigger id="comite-membro" className="w-full">
+                        <SelectValue placeholder="Selecione um membro elegível">
+                          {(valor: string | null) => {
+                            const selecionado = membrosElegiveis.find((membro) => membro.id === valor);
+                            return selecionado
+                              ? `${selecionado.nome} · ${buscarPerfil(selecionado.perfilId).rotulo}`
+                              : "Selecione um membro elegível";
+                          }}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {membrosElegiveis.map((membro) => (
+                          <SelectItem key={membro.id} value={membro.id}>
+                            {membro.nome} · {buscarPerfil(membro.perfilId).rotulo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {membrosElegiveis.length === 0 ? (
+                      <p role="alert" className="text-xs text-status-error-text">
+                        Nenhum membro elegível: todos os candidatos da equipe Videnas estão impedidos
+                        por segregação de funções.
+                      </p>
+                    ) : null}
+                    {usuariosImpedidos.length > 0 ? (
+                      <p className="text-xs text-neutral-500">
+                        Impedidos por segregação de funções (geraram ou liberaram versões negadas, ou
+                        negaram/devolveram):{" "}
+                        {usuariosImpedidos.map((usuario) => usuario.nome).join(", ")}.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium text-neutral-700">Desfecho</legend>
+                    <RadioGroup
+                      value={campoDesfecho}
+                      onValueChange={(valor) => setCampoDesfecho(valor as DesfechoComite)}
+                    >
+                      {desfechosComite.map((desfecho) => (
+                        <div key={desfecho} className="flex items-start gap-2">
+                          <RadioGroupItem value={desfecho} id={`desfecho-${desfecho}`} className="mt-0.5" />
+                          <Label htmlFor={`desfecho-${desfecho}`} className="block font-normal">
+                            <span className="font-medium">{DESFECHOS_COMITE[desfecho].rotulo}</span>
+                            <span className="block text-xs text-neutral-500">
+                              {DESFECHOS_COMITE[desfecho].descricao}
+                            </span>
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    <p className="text-xs text-neutral-500">
+                      Sem acordo entre os dois membros, a negativa é mantida: registre o primeiro
+                      desfecho.
+                    </p>
+                  </fieldset>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="comite-justificativa">Justificativa</Label>
+                    <Textarea
+                      id="comite-justificativa"
+                      value={campoTextarea}
+                      onChange={(evento) => setCampoTextarea(evento.target.value)}
+                      placeholder={`Registre a justificativa do Comitê (mínimo ${TAMANHO_MINIMO_TEXTO_COMITE} caracteres).`}
+                      rows={3}
+                    />
+                    {campoTextarea.trim().length > 0 &&
+                    campoTextarea.trim().length < TAMANHO_MINIMO_TEXTO_COMITE ? (
+                      <p className="text-xs text-status-error-text">
+                        Descreva a justificativa com pelo menos {TAMANHO_MINIMO_TEXTO_COMITE} caracteres.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {campoDesfecho && DESFECHOS_COMITE[campoDesfecho].exigePlanoCorrecao ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="comite-plano">Plano de correção</Label>
+                      <Textarea
+                        id="comite-plano"
+                        value={campoPlano}
+                        onChange={(evento) => setCampoPlano(evento.target.value)}
+                        placeholder={`O que o Executor deve corrigir na nova versão (mínimo ${TAMANHO_MINIMO_TEXTO_COMITE} caracteres).`}
+                        rows={3}
+                      />
+                      {campoPlano.trim().length > 0 &&
+                      campoPlano.trim().length < TAMANHO_MINIMO_TEXTO_COMITE ? (
+                        <p className="text-xs text-status-error-text">
+                          Descreva o plano com pelo menos {TAMANHO_MINIMO_TEXTO_COMITE} caracteres.
+                        </p>
+                      ) : null}
+                      <p className="text-xs text-neutral-500">
+                        O Executor precisa gerar uma nova versão do arquivo; o plano fica visível a ele no
+                        período.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {prazoComite ? (
+                    <p className="text-xs text-neutral-500">
+                      Prazo do Comitê: {formatarData(prazoComite.prazoIso)} · {prazoComite.texto}.
+                    </p>
+                  ) : null}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={confirmarDialogo}
+                    disabled={
+                      processando ||
+                      !campoMembro ||
+                      !campoDesfecho ||
+                      campoTextarea.trim().length < TAMANHO_MINIMO_TEXTO_COMITE ||
+                      (DESFECHOS_COMITE[campoDesfecho || "negativa_superada"].exigePlanoCorrecao &&
+                        campoPlano.trim().length < TAMANHO_MINIMO_TEXTO_COMITE)
+                    }
+                  >
+                    {processando ? "Lacrando…" : "Registrar decisão e lacrar ata"}
                   </Button>
                 </DialogFooter>
               </>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gavel } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
@@ -11,7 +11,8 @@ import { useSessaoStore } from "@/lib/store/sessao";
 import { prazosRegulatorios } from "@/lib/mock/prazos";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
-import { HOJE_ISO } from "@/lib/mock/periodos";
+import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
+import { descreverContagemPrazo } from "@/components/fornecimento/constantes";
 import { formatarCompetenciaCurta, formatarData } from "@/lib/formatadores";
 import type { ModuloId } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
@@ -193,8 +194,16 @@ export default function CalendarioPage() {
                       {prazosDia.map((prazo) => (
                         <span
                           key={prazo.id}
-                          className={cn("rounded px-1 py-0.5 text-[10px] font-medium text-white", CORES_MODULO[prazo.moduloId].ponto)}
+                          className={cn(
+                            "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium text-white",
+                            CORES_MODULO[prazo.moduloId].ponto,
+                            periodos[prazo.periodoId]?.estado === "em_comite_qualidade" &&
+                              "ring-2 ring-status-warning-text"
+                          )}
                         >
+                          {periodos[prazo.periodoId]?.estado === "em_comite_qualidade" ? (
+                            <Gavel className="size-2.5" aria-label="Em Comitê de Qualidade" />
+                          ) : null}
                           {buscarModulo(prazo.moduloId).sigla}
                         </span>
                       ))}
@@ -236,6 +245,15 @@ export default function CalendarioPage() {
                       <p className="text-xs text-neutral-500">{instituicao?.nomeFantasia}</p>
                     ) : null}
                     <p className="text-xs text-neutral-500">Estado: {periodo.estado}</p>
+                    {periodo.estado === "em_comite_qualidade" ? (
+                      <p className="text-xs font-medium text-status-warning-text">
+                        Em Comitê de Qualidade ·{" "}
+                        {(() => {
+                          const derivado = calcularPeriodoDerivado(periodo);
+                          return descreverContagemPrazo(derivado.diasParaPrazo, derivado.atrasado);
+                        })()}
+                      </p>
+                    ) : null}
                     <Link
                       href={perfilAtivo === "cliente" ? "/app/fornecimento" : rotaPeriodo(prazo.moduloId, periodo.id)}
                       className="mt-1 inline-block text-xs font-medium text-brand-700 hover:text-brand-800"

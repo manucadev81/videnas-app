@@ -214,7 +214,9 @@ export function DetalheLacre({
               <VerificadorIntegridade key={lacre.id} lacre={lacre} dataTour="evidencias-verificar" />
 
               {tipoArtefatoDoLacre(lacre) === "recibo_retorno" ||
-              tipoArtefatoDoLacre(lacre) === "dossie_arquivamento" ? (
+              tipoArtefatoDoLacre(lacre) === "dossie_arquivamento" ||
+              tipoArtefatoDoLacre(lacre) === "dossie_comite" ||
+              tipoArtefatoDoLacre(lacre) === "ata_comite" ? (
                 <Button type="button" variant="outline" className="w-full" onClick={baixarConteudo}>
                   <Download aria-hidden="true" />
                   Baixar conteúdo lacrado

@@ -7,6 +7,8 @@ import type {
   AcaoId,
   ArquivoGerado,
   CanalEnvioBcb,
+  DecisaoComiteQualidade,
+  DesfechoComite,
   EstadoPeriodo,
   Excecao,
   EventoAuditoria,
@@ -39,7 +41,21 @@ import {
   podeExecutar as avaliarAcao,
   type AvaliacaoAcao,
 } from "@/lib/permissoes";
-import { calcularRetencaoAte, configuracaoFluxo, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
+import {
+  calcularRetencaoAte,
+  configuracaoFluxo,
+  DESFECHOS_COMITE,
+  rotuloRetornoDoModulo,
+} from "@/lib/mock/configuracao-fluxo";
+import { descricaoQuorumComite, impedimentosDoComite } from "@/lib/comite";
+import {
+  contarNegativas,
+  devolucaoContadorContaComoNegacao,
+  devolucaoContadorEscalaParaComite,
+  limiarNegativas,
+  montarHistoricoNegativas,
+  proximaNegativaEscalaParaComite,
+} from "@/lib/negacoes";
 
 export interface AutorAcao {
   usuarioId: string;
@@ -67,6 +83,24 @@ export interface DadosArquivamento {
   hashDossie: string;
   arquivadoEm: string;
 }
+
+export interface DadosEscalaComite {
+  ocorridoEm: string;
+  lacreId: string;
+  hashDossie: string;
+}
+
+export interface DadosDecisaoComite {
+  membroId: string;
+  desfecho: DesfechoComite;
+  justificativa: string;
+  planoCorrecao?: string | null;
+  decididoEm: string;
+  lacreId?: string | null;
+  hashAta?: string | null;
+}
+
+export const TAMANHO_MINIMO_TEXTO_COMITE = 10;
 
 export function validarEntradaRetorno(
   situacao: "aceito" | "aceito_com_ressalvas" | "rejeitado",
@@ -278,7 +312,20 @@ export interface EstadoPeriodosStore {
 
   aprovar: (periodoId: string, autor: AutorAcao, textoCiencia: string) => ResultadoAcao;
 
-  negarAprovacao: (periodoId: string, autor: AutorAcao, motivo: string) => ResultadoAcao;
+  negarAprovacao: (
+    periodoId: string,
+    autor: AutorAcao,
+    motivo: string,
+    dados?: DadosEscalaComite
+  ) => ResultadoAcao;
+
+  validarDecisaoComite: (
+    periodoId: string,
+    autor: AutorAcao,
+    dados: Omit<DadosDecisaoComite, "decididoEm" | "lacreId" | "hashAta">
+  ) => ResultadoAcao;
+
+  decidirComite: (periodoId: string, autor: AutorAcao, dados: DadosDecisaoComite) => ResultadoAcao;
 
   registrarEntrega: (
     periodoId: string,
@@ -344,7 +391,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 4;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 7;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
@@ -578,11 +625,30 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     }
 
     const agora = new Date().toISOString();
+    const contaComoNegacao = decisao === "devolvido" && devolucaoContadorContaComoNegacao();
+    const escalaParaComite = contaComoNegacao && devolucaoContadorEscalaParaComite(periodo);
+    const numeroNegativa = contarNegativas(periodo) + 1;
+    const arquivoCorrente = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const estadoNovo: EstadoPeriodo =
+      decisao === "confirmado" ? "em_validacao" : escalaParaComite ? "em_comite_qualidade" : "gerado";
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
-      estado: decisao === "confirmado" ? "em_validacao" : "gerado",
+      estado: estadoNovo,
       contadorStatus: decisao === "confirmado" ? "confirmado" : "devolvido",
       contadorConfirmadoEm: decisao === "confirmado" ? agora : periodo.contadorConfirmadoEm,
+      negacoesAprovacao: contaComoNegacao
+        ? [
+            ...periodo.negacoesAprovacao,
+            {
+              origem: "contador",
+              motivo: observacao ?? "",
+              usuarioId: autor.usuarioId,
+              ocorridoEm: agora,
+              arquivoId: arquivoCorrente?.id ?? null,
+            },
+          ]
+        : periodo.negacoesAprovacao,
+      emComiteDesde: escalaParaComite ? agora : periodo.emComiteDesde,
     };
 
     const evento = construirEvento(
@@ -593,12 +659,43 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       null,
       decisao === "confirmado"
         ? { usuarioId: autor.usuarioId, observacao: observacao ?? null }
-        : { motivo: observacao }
+        : {
+            motivo: observacao,
+            contaComoNegacao,
+            numeroNegativa: contaComoNegacao ? numeroNegativa : null,
+            limiarComite: contaComoNegacao ? limiarNegativas() : null,
+            escalouParaComite: escalaParaComite,
+            estadoAnterior: "aguardando_contador",
+            estadoNovo,
+          }
     );
+
+    const eventoComite = escalaParaComite
+      ? construirEvento(
+          autor,
+          periodoAtualizado,
+          "COMITE_QUALIDADE_ACIONADO",
+          "Comitê de Qualidade acionado",
+          arquivoCorrente?.hashSha256 ?? null,
+          {
+            origem: "contador",
+            numeroNegativa,
+            limiarComite: limiarNegativas(),
+            historicoNegativas: montarHistoricoNegativas(
+              periodoAtualizado.negacoesAprovacao,
+              (arquivoId) => get().arquivos[arquivoId]
+            ),
+            lacreDossieId: null,
+            hashDossie: null,
+            estadoAnterior: "aguardando_contador",
+            estadoNovo,
+          }
+        )
+      : null;
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: [...estado.eventos, evento],
+      eventos: eventoComite ? [...estado.eventos, evento, eventoComite] : [...estado.eventos, evento],
     }));
 
     return { sucesso: true };
@@ -736,6 +833,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const evento = construirEvento(autor, periodoAtualizado, "PERIODO_LIBERADO", "Período liberado", arquivo?.hashSha256 ?? null, {
       usuarioValidador: autor.usuarioId,
       usuarioExecutor: periodo.geradoPorUsuarioId,
+      arquivoId: arquivo?.id ?? null,
       hashSha256: arquivo?.hashSha256 ?? null,
       segregacaoOk: true,
     });
@@ -1019,9 +1117,15 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     return { sucesso: true };
   },
 
-  negarAprovacao: (periodoId, autor, motivo) => {
+  negarAprovacao: (periodoId, autor, motivo, dados) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "negar_aprovacao", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
     if (periodo.estado !== "liberado") {
       return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
     }
@@ -1030,7 +1134,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     }
 
     const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
-    const agora = new Date().toISOString();
+    const agora = dados?.ocorridoEm ?? new Date().toISOString();
+    const numeroNegativa = contarNegativas(periodo) + 1;
+    const limiar = limiarNegativas();
+    const escalaParaComite = proximaNegativaEscalaParaComite(periodo);
     const negacao: NegacaoAprovacao = {
       motivo,
       usuarioId: autor.usuarioId,
@@ -1038,10 +1145,12 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       arquivoId: arquivo?.id ?? null,
     };
 
+    const estadoNovo: EstadoPeriodo = escalaParaComite ? "em_comite_qualidade" : "devolvido_diretor";
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
-      estado: "devolvido_diretor",
+      estado: estadoNovo,
       negacoesAprovacao: [...periodo.negacoesAprovacao, negacao],
+      emComiteDesde: escalaParaComite ? agora : periodo.emComiteDesde,
     };
 
     const evento = construirEvento(
@@ -1052,10 +1161,156 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       arquivo?.hashSha256 ?? null,
       {
         motivo,
+        numeroNegativa,
+        limiarComite: limiar,
+        escalouParaComite: escalaParaComite,
         arquivoId: arquivo?.id ?? null,
+        versaoArquivo: arquivo?.versao ?? null,
         hashSha256: arquivo?.hashSha256 ?? null,
         estadoAnterior: "liberado",
-        estadoNovo: "devolvido_diretor",
+        estadoNovo,
+      }
+    );
+
+    const eventoComite = escalaParaComite
+      ? construirEvento(
+          autor,
+          periodoAtualizado,
+          "COMITE_QUALIDADE_ACIONADO",
+          "Comitê de Qualidade acionado",
+          dados?.hashDossie ?? arquivo?.hashSha256 ?? null,
+          {
+            numeroNegativa,
+            limiarComite: limiar,
+            historicoNegativas: montarHistoricoNegativas(
+              periodoAtualizado.negacoesAprovacao,
+              (arquivoId) => get().arquivos[arquivoId]
+            ),
+            lacreDossieId: dados?.lacreId ?? null,
+            hashDossie: dados?.hashDossie ?? null,
+            estadoAnterior: "liberado",
+            estadoNovo,
+          }
+        )
+      : null;
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      eventos: eventoComite ? [...estado.eventos, evento, eventoComite] : [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  validarDecisaoComite: (periodoId, autor, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const impedimentosComite = impedimentosDoComite(periodo, get().arquivos, get().eventos);
+    const avaliacao = avaliarAcao(autor.perfilId, "decidir_comite", periodo, {
+      usuarioAtualId: autor.usuarioId,
+      impedimentosComite,
+      membroComiteId: dados.membroId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+    if (periodo.estado !== "em_comite_qualidade") {
+      return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    }
+    const configuracao = configuracaoFluxo.comiteQualidade;
+    if (!configuracao || !configuracao.desfechosPermitidos.includes(dados.desfecho)) {
+      return { sucesso: false, motivo: "Desfecho não permitido pela configuração do Comitê." };
+    }
+    if (!dados.justificativa || dados.justificativa.trim().length < TAMANHO_MINIMO_TEXTO_COMITE) {
+      return {
+        sucesso: false,
+        motivo: `Descreva a justificativa com pelo menos ${TAMANHO_MINIMO_TEXTO_COMITE} caracteres.`,
+      };
+    }
+    if (
+      DESFECHOS_COMITE[dados.desfecho].exigePlanoCorrecao &&
+      (!dados.planoCorrecao || dados.planoCorrecao.trim().length < TAMANHO_MINIMO_TEXTO_COMITE)
+    ) {
+      return {
+        sucesso: false,
+        motivo: `Descreva o plano de correção com pelo menos ${TAMANHO_MINIMO_TEXTO_COMITE} caracteres.`,
+      };
+    }
+    return { sucesso: true };
+  },
+
+  decidirComite: (periodoId, autor, dados) => {
+    const validacao = get().validarDecisaoComite(periodoId, autor, dados);
+    if (!validacao.sucesso) return validacao;
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+
+    const definicao = DESFECHOS_COMITE[dados.desfecho];
+    const estadoNovo: EstadoPeriodo = definicao.estadoDestino;
+    const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const planoCorrecao = definicao.exigePlanoCorrecao ? (dados.planoCorrecao ?? "").trim() : null;
+    const justificativa = dados.justificativa.trim();
+    const decisao: DecisaoComiteQualidade = {
+      id: `dec-${periodoId.slice(4)}-${(periodo.decisoesComite?.length ?? 0) + 1}`,
+      desfecho: dados.desfecho,
+      presidenteId: autor.usuarioId,
+      membroId: dados.membroId,
+      justificativa,
+      planoCorrecao,
+      escaladoEm: periodo.emComiteDesde,
+      decididoEm: dados.decididoEm,
+      arquivoId: arquivo?.id ?? null,
+      estadoNovo,
+      lacreAtaId: dados.lacreId ?? null,
+      hashAta: dados.hashAta ?? null,
+    };
+
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: estadoNovo,
+      emComiteDesde: null,
+      decisoesComite: [...(periodo.decisoesComite ?? []), decisao],
+    };
+
+    const presidente = buscarUsuario(autor.usuarioId);
+    const membro = buscarUsuario(dados.membroId);
+    const participantes = [
+      {
+        usuarioId: autor.usuarioId,
+        nome: presidente?.nome ?? autor.usuarioId,
+        perfilId: presidente?.perfilId ?? autor.perfilId,
+        papel: "Presidente",
+      },
+      {
+        usuarioId: dados.membroId,
+        nome: membro?.nome ?? dados.membroId,
+        perfilId: membro?.perfilId ?? null,
+        papel: "Membro",
+      },
+    ];
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "COMITE_QUALIDADE_DECIDIU",
+      "Comitê de Qualidade decidiu",
+      dados.hashAta ?? null,
+      {
+        desfecho: dados.desfecho,
+        rotuloDesfecho: definicao.rotulo,
+        participantes,
+        quorum: descricaoQuorumComite(),
+        justificativa,
+        planoCorrecao,
+        numeroNegativas: contarNegativas(periodo),
+        escaladoEm: periodo.emComiteDesde,
+        arquivoId: arquivo?.id ?? null,
+        versaoArquivo: arquivo?.versao ?? null,
+        hashSha256: arquivo?.hashSha256 ?? null,
+        lacreAtaId: dados.lacreId ?? null,
+        hashAta: dados.hashAta ?? null,
+        estadoAnterior: "em_comite_qualidade",
+        estadoNovo,
       }
     );
 
@@ -1315,6 +1570,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     return avaliarAcao(perfil, acaoId, periodo, {
       usuarioAtualId,
       excecoesBloqueantesAbertas: get().excecoesBloqueantesAbertas(periodoId),
+      impedimentosComite:
+        acaoId === "decidir_comite"
+          ? impedimentosDoComite(periodo, get().arquivos, get().eventos)
+          : undefined,
     });
   },
 

@@ -9,6 +9,7 @@ import { CardPrazo } from "@/components/dominio/card-prazo";
 import { BadgeStatus } from "@/components/dominio/badge-status";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { CardModuloDashboard } from "@/components/dominio/card-modulo-dashboard";
+import { GrupoComiteQualidade } from "@/components/dominio/grupo-comite-qualidade";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
@@ -182,19 +183,33 @@ export default function DashboardPage() {
             return false;
           }
           if (perfilAtivo === "executor") {
-            return ["dados_ingeridos", "gerado", "com_excecoes", "retorno_rejeitado"].includes(
-              periodo.estado
-            );
+            return [
+              "em_comite_qualidade",
+              "dados_ingeridos",
+              "gerado",
+              "com_excecoes",
+              "retorno_rejeitado",
+            ].includes(periodo.estado);
           }
-          return ["em_validacao", "com_excecoes", "validado", "aguardando_retorno"].includes(
-            periodo.estado
-          );
+          return [
+            "em_comite_qualidade",
+            "em_validacao",
+            "com_excecoes",
+            "validado",
+            "aguardando_retorno",
+          ].includes(periodo.estado);
         }).length,
       }))
     : [];
 
   if (perfilAtivo === "admin") {
-    return <PainelAdmin tenants={tenants} eventosRecentes={eventosRecentes} />;
+    return (
+      <PainelAdmin
+        tenants={tenants}
+        eventosRecentes={eventosRecentes}
+        periodosEmComite={todosPeriodos.filter((periodo) => periodo.estado === "em_comite_qualidade")}
+      />
+    );
   }
 
   if (periodosEscopo.length === 0) {
@@ -219,6 +234,13 @@ export default function DashboardPage() {
       />
     );
   }
+
+  const periodosEmComite = ehCliente
+    ? []
+    : periodosEscopo.filter(
+        (periodo) =>
+          periodo.estado === "em_comite_qualidade" && (!ehContador || periodo.moduloId === "fiscal")
+      );
 
   if (perfilAtivo === "diretor") {
     return <PainelCompliance instituicao={instituicao} periodos={periodosEscopo} />;
@@ -247,6 +269,12 @@ export default function DashboardPage() {
           </Link>
         </div>
       ) : null}
+
+      <GrupoComiteQualidade
+        periodos={periodosEmComite}
+        rotaPeriodo={rotaDoPeriodo}
+        mostrarInstituicao={!instituicao}
+      />
 
       {ehCliente ? (
         <section
@@ -533,6 +561,11 @@ function PainelCompliance({
         </div>
       ) : null}
 
+      <GrupoComiteQualidade
+        periodos={periodos.filter((periodo) => periodo.estado === "em_comite_qualidade")}
+        rotaPeriodo={rotaPeriodo}
+      />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-md border border-neutral-200 bg-white p-3">
           <p className="text-xs text-neutral-500">Aguardando a sua aprovação</p>
@@ -596,9 +629,11 @@ function PainelCompliance({
 function PainelAdmin({
   tenants,
   eventosRecentes,
+  periodosEmComite,
 }: {
   tenants: Instituicao[];
   eventosRecentes: EventoAuditoria[];
+  periodosEmComite: PeriodoObrigacao[];
 }) {
   const contagem: Record<StatusImplantacao, number> = {
     provisionado: 0,
@@ -652,6 +687,8 @@ function PainelAdmin({
           </Link>
         </div>
       </header>
+
+      <GrupoComiteQualidade periodos={periodosEmComite} rotaPeriodo={rotaPeriodo} mostrarInstituicao />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {tiles.map((tile) => (

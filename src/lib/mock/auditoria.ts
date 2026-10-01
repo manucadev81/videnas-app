@@ -1,5 +1,14 @@
 import type { EventoAuditoria, TipoEventoAuditoria } from "@/lib/tipos";
-import { arquivos, periodos, protocolos, validacoes } from "@/lib/mock/periodos";
+import {
+  arquivos,
+  liberacoesHistoricasDemo,
+  periodos,
+  protocolos,
+  validacoes,
+} from "@/lib/mock/periodos";
+import { lacresSemente } from "@/lib/mock/evidencias";
+import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import { montarHistoricoNegativas } from "@/lib/negacoes";
 import { excecoes } from "@/lib/mock/excecoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 
@@ -311,8 +320,39 @@ for (const protocolo of protocolos) {
   }
 }
 
+for (const liberacao of liberacoesHistoricasDemo) {
+  const periodo = periodos.find((item) => item.id === liberacao.periodoId);
+  if (!periodo) continue;
+  const arquivo = arquivos.find((item) => item.id === liberacao.arquivoId);
+  eventos.push(
+    criarEvento({
+      ocorridoEm: liberacao.liberadoEm,
+      instituicaoId: periodo.instituicaoId,
+      periodoId: periodo.id,
+      moduloId: periodo.moduloId,
+      competencia: periodo.competencia,
+      tipo: "PERIODO_LIBERADO",
+      usuarioId: liberacao.liberadoPorUsuarioId,
+      referencia: arquivo?.hashSha256 ?? null,
+      payload: {
+        usuarioValidador: liberacao.liberadoPorUsuarioId,
+        usuarioExecutor: arquivo?.geradoPorUsuarioId ?? null,
+        arquivoId: liberacao.arquivoId,
+        hashSha256: arquivo?.hashSha256 ?? null,
+        segregacaoOk: liberacao.liberadoPorUsuarioId !== arquivo?.geradoPorUsuarioId,
+      },
+    })
+  );
+}
+
 for (const periodo of periodos) {
-  for (const negacao of periodo.negacoesAprovacao) {
+  periodo.negacoesAprovacao.forEach((negacao, indice) => {
+    if (negacao.origem === "contador") return;
+    const arquivoNegado = negacao.arquivoId
+      ? arquivos.find((item) => item.id === negacao.arquivoId)
+      : undefined;
+    const escalou =
+      periodo.estado === "em_comite_qualidade" && indice === periodo.negacoesAprovacao.length - 1;
     eventos.push(
       criarEvento({
         ocorridoEm: negacao.ocorridoEm,
@@ -322,12 +362,47 @@ for (const periodo of periodos) {
         competencia: periodo.competencia,
         tipo: "APROVACAO_NEGADA",
         usuarioId: negacao.usuarioId,
-        referencia: negacao.arquivoId,
+        referencia: arquivoNegado?.hashSha256 ?? negacao.arquivoId,
         payload: {
           motivo: negacao.motivo,
+          numeroNegativa: indice + 1,
+          limiarComite: configuracaoFluxo.limiarNegacoesComite,
+          escalouParaComite: escalou,
           arquivoId: negacao.arquivoId,
+          versaoArquivo: arquivoNegado?.versao ?? null,
+          hashSha256: arquivoNegado?.hashSha256 ?? null,
           estadoAnterior: "liberado",
-          estadoNovo: "devolvido_diretor",
+          estadoNovo: escalou ? "em_comite_qualidade" : "devolvido_diretor",
+        },
+      })
+    );
+  });
+
+  if (periodo.estado === "em_comite_qualidade" && periodo.emComiteDesde) {
+    const ultimaNegacao = periodo.negacoesAprovacao[periodo.negacoesAprovacao.length - 1];
+    const dossie = lacresSemente.find(
+      (lacre) => lacre.periodoId === periodo.id && lacre.tipoArtefato === "dossie_comite"
+    );
+    eventos.push(
+      criarEvento({
+        ocorridoEm: periodo.emComiteDesde.replace(/:\d{2}(-03:00)$/, ":02$1"),
+        instituicaoId: periodo.instituicaoId,
+        periodoId: periodo.id,
+        moduloId: periodo.moduloId,
+        competencia: periodo.competencia,
+        tipo: "COMITE_QUALIDADE_ACIONADO",
+        usuarioId: ultimaNegacao?.usuarioId ?? "usr-ricardo",
+        referencia: dossie?.hashSha256 ?? null,
+        payload: {
+          numeroNegativa: periodo.negacoesAprovacao.length,
+          limiarComite: configuracaoFluxo.limiarNegacoesComite,
+          historicoNegativas: montarHistoricoNegativas(periodo.negacoesAprovacao, (arquivoId) =>
+            arquivos.find((item) => item.id === arquivoId)
+          ),
+          lacreDossieId: dossie?.id ?? null,
+          hashDossie: dossie?.hashSha256 ?? null,
+          estadoAnterior: "liberado",
+          estadoNovo: "em_comite_qualidade",
         },
       })
     );

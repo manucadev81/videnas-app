@@ -249,11 +249,31 @@ export interface LoteIngestao {
   situacao: SituacaoLote;
 }
 
+export type OrigemNegacao = "diretor" | "contador";
+
 export interface NegacaoAprovacao {
+  origem?: OrigemNegacao;
   motivo: string;
   usuarioId: string;
   ocorridoEm: string;
   arquivoId: string | null;
+}
+
+export type DesfechoComite = "manter_negativa" | "negativa_superada";
+
+export interface DecisaoComiteQualidade {
+  id: string;
+  desfecho: DesfechoComite;
+  presidenteId: string;
+  membroId: string;
+  justificativa: string;
+  planoCorrecao: string | null;
+  escaladoEm: string | null;
+  decididoEm: string;
+  arquivoId: string | null;
+  estadoNovo: EstadoPeriodo;
+  lacreAtaId: string | null;
+  hashAta: string | null;
 }
 
 export interface PeriodoObrigacao {
@@ -284,6 +304,7 @@ export interface PeriodoObrigacao {
   contadorConfirmadoEm: string | null;
   negacoesAprovacao: NegacaoAprovacao[];
   emComiteDesde: string | null;
+  decisoesComite?: DecisaoComiteQualidade[];
   emitidoFiscalEm: string | null;
   transmitidoEm: string | null;
   retornoSituacao: SituacaoRetornoBcb | null;
@@ -556,7 +577,9 @@ export type TipoArtefatoLacre =
   | "arquivo_entregue"
   | "anexo_retorno"
   | "recibo_retorno"
-  | "dossie_arquivamento";
+  | "dossie_arquivamento"
+  | "dossie_comite"
+  | "ata_comite";
 
 export interface CampoFormularioInsumo {
   chave: string;

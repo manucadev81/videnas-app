@@ -1,5 +1,6 @@
 import type { Acao, AcaoId, EstadoPeriodo, ModuloId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
 import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import { avaliarParticipantesDoComite, type ImpedimentosComite } from "@/lib/comite";
 
 export interface PerfilMetadados {
   id: PerfilId;
@@ -52,7 +53,6 @@ export const PERFIS: PerfilMetadados[] = [
     acoesPermitidas: [
       "aprovar",
       "negar_aprovacao",
-      "decidir_comite",
       "registrar_protocolo",
       "marcar_encaminhado",
       "registrar_protocolo_manual",
@@ -221,7 +221,7 @@ export const PERFIS: PerfilMetadados[] = [
     rotulo: "Administrador",
     rotuloCompleto: "Administrador — Videnas",
     descricao:
-      "Provisiona e administra os clientes da Videnas: cadastra o tenant, contrata módulos e convida os usuários iniciais. Não opera o pipeline regulatório.",
+      "Provisiona e administra os clientes da Videnas: cadastra o tenant, contrata módulos e convida os usuários iniciais. Não opera o pipeline regulatório; preside o Comitê de Qualidade e registra a decisão.",
     lado: "videnas",
     corBadge: "violet",
     icone: "Building2",
@@ -230,10 +230,13 @@ export const PERFIS: PerfilMetadados[] = [
       "/selecionar-instituicao",
       "/app",
       "/app/clientes",
+      ...ROTAS_MODULOS_REGULATORIOS,
+      "/app/fiscal",
       "/app/auditoria",
       "/app/evidencias",
     ],
     acoesPermitidas: [
+      "decidir_comite",
       "provisionar_tenant",
       "gerenciar_clientes",
       "convidar_usuario_inicial",
@@ -340,6 +343,14 @@ const TODOS_ESTADOS_LEITURA: EstadoPeriodo[] = [
   "arquivado",
 ];
 
+const ACOES_LEITURA: AcaoId[] = [
+  "baixar_arquivo",
+  "baixar_comprovante",
+  "verificar_integridade",
+  "ver_evidencias",
+  "exportar_auditoria",
+];
+
 const REGRAS_ACAO: RegraAcao[] = [
   { id: "gerar", estadosOrigem: ["dados_ingeridos"], estadoDestino: "gerado", variante: "primario" },
   { id: "regerar", estadosOrigem: ["com_excecoes", "devolvido_diretor"], estadoDestino: "gerado", variante: "secundario" },
@@ -384,7 +395,7 @@ function acaoOcultaPorConfiguracao(
   const configuracaoModulo = configuracaoFluxo.modulos[moduloId];
   switch (acaoId) {
     case "decidir_comite":
-      return !configuracaoFluxo.comiteQualidade?.decisorPerfilId;
+      return configuracaoFluxo.comiteQualidade?.decisorPerfilId !== perfil;
     case "emitir_fiscal":
       return configuracaoModulo?.contrato?.emissao !== true;
     case "transmitir":
@@ -439,6 +450,8 @@ export interface AvaliacaoAcao {
 export interface ContextoAvaliacaoAcao {
   usuarioAtualId?: string;
   excecoesBloqueantesAbertas?: number;
+  impedimentosComite?: ImpedimentosComite;
+  membroComiteId?: string;
 }
 
 export function podeExecutar(
@@ -466,7 +479,11 @@ export function podeExecutar(
     return { permitido: false, visivel: false };
   }
 
-  if (periodo.estado === "em_comite_qualidade" && acaoId !== "decidir_comite") {
+  if (
+    periodo.estado === "em_comite_qualidade" &&
+    acaoId !== "decidir_comite" &&
+    !ACOES_LEITURA.includes(acaoId)
+  ) {
     return { permitido: false, visivel: false };
   }
 
@@ -544,6 +561,17 @@ export function podeExecutar(
       visivel: true,
       motivo: "Quem registrou o retorno não pode arquivar o período. Segregação de funções obrigatória.",
     };
+  }
+
+  if (acaoId === "decidir_comite" && contexto.impedimentosComite) {
+    const participacao = avaliarParticipantesDoComite(
+      periodo,
+      { presidenteId: contexto.usuarioAtualId, membroId: contexto.membroComiteId },
+      contexto.impedimentosComite
+    );
+    if (!participacao.permitido) {
+      return { permitido: false, visivel: true, motivo: participacao.motivo };
+    }
   }
 
   if (

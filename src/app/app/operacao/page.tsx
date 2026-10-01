@@ -5,6 +5,7 @@ import Link from "next/link";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BadgeStatus } from "@/components/dominio/badge-status";
 import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
+import { GrupoComiteQualidade } from "@/components/dominio/grupo-comite-qualidade";
 import {
   Select,
   SelectContent,
@@ -71,17 +72,18 @@ export default function OperacaoPage() {
   const aTratarExcecoes = filaBase.filter((periodo) => periodo.estado === "com_excecoes");
   const aReabrirRejeitados = filaBase.filter((periodo) => periodo.estado === "retorno_rejeitado");
   const aguardandoRetorno = filaBase.filter((periodo) => periodo.estado === "aguardando_retorno");
+  const emComite = filaBase.filter((periodo) => periodo.estado === "em_comite_qualidade");
   const arquivadosOcultos = filaBase.filter((periodo) => periodo.estado === "arquivado");
   const arquivadosVisiveis = mostrarArquivados ? arquivadosOcultos : [];
 
   const filaDoPerfil = ehExecutor
-    ? [...aRegerarDevolvidos, ...aReabrirRejeitados, ...aGerar, ...aEnviar, ...aTratarExcecoes]
-    : [...emValidacao, ...aTratarExcecoes, ...aLiberar, ...aguardandoRetorno];
+    ? [...emComite, ...aRegerarDevolvidos, ...aReabrirRejeitados, ...aGerar, ...aEnviar, ...aTratarExcecoes]
+    : [...emComite, ...emValidacao, ...aTratarExcecoes, ...aLiberar, ...aguardandoRetorno];
 
   const estadosFila: EstadoPeriodo[] =
     perfilAtivo === "executor"
-      ? ["devolvido_diretor", "retorno_rejeitado", "dados_ingeridos", "gerado", "com_excecoes"]
-      : ["em_validacao", "com_excecoes", "validado", "aguardando_retorno"];
+      ? ["em_comite_qualidade", "devolvido_diretor", "retorno_rejeitado", "dados_ingeridos", "gerado", "com_excecoes"]
+      : ["em_comite_qualidade", "em_validacao", "com_excecoes", "validado", "aguardando_retorno"];
 
   const contadorPorInstituicao = tenants.map((instituicao) => ({
     instituicao,
@@ -227,6 +229,7 @@ export default function OperacaoPage() {
         <EstadoVazio titulo="Nenhum item na sua fila. Tudo em dia." mensagem="Ajuste os filtros para ver outros itens." />
       ) : (
         <div data-tour="operacao-fila" className="space-y-6">
+          <GrupoComiteQualidade periodos={emComite} rotaPeriodo={rotaPeriodo} mostrarInstituicao />
           {ehExecutor ? (
             <>
               <GrupoFila

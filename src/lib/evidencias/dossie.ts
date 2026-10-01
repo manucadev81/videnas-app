@@ -1,8 +1,20 @@
-import type { ArquivoGerado, PeriodoObrigacao, ProtocoloBCB } from "@/lib/tipos";
-import { calcularRetencaoAte, configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import type {
+  ArquivoGerado,
+  DesfechoComite,
+  EstadoPeriodo,
+  PeriodoObrigacao,
+  ProtocoloBCB,
+} from "@/lib/tipos";
+import {
+  calcularRetencaoAte,
+  configuracaoFluxo,
+  DESFECHOS_COMITE,
+} from "@/lib/mock/configuracao-fluxo";
+import { descricaoQuorumComite } from "@/lib/comite";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
+import { limiarNegativas, montarHistoricoNegativas } from "@/lib/negacoes";
 
 export interface EntradaDossieArquivamento {
   periodo: PeriodoObrigacao;
@@ -60,6 +72,7 @@ export function montarDossieArquivamento(entrada: EntradaDossieArquivamento): st
         ]
       : [],
     negacoes: periodo.negacoesAprovacao.map((negacao) => ({
+      origem: negacao.origem ?? "diretor",
       negadoPor: nomeDoUsuario(negacao.usuarioId),
       negadoEm: negacao.ocorridoEm,
       motivo: negacao.motivo,
@@ -156,6 +169,134 @@ export function montarReciboRetorno(entrada: EntradaReciboRetorno): string {
     registro: {
       registradoEm: entrada.registradoEm,
       registradoPor: nomeDoUsuario(entrada.registradoPorUsuarioId),
+    },
+  };
+
+  return JSON.stringify(documento, null, 2);
+}
+
+export interface EntradaDossieComite {
+  periodo: PeriodoObrigacao;
+  buscarArquivo: (arquivoId: string) => ArquivoGerado | undefined;
+  escaladoEm: string;
+  escaladoPorUsuarioId: string;
+  hashLacreAnterior: string | null;
+}
+
+export function montarDossieComite(entrada: EntradaDossieComite): string {
+  const { periodo } = entrada;
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const modulo = buscarModulo(periodo.moduloId);
+  const historico = montarHistoricoNegativas(periodo.negacoesAprovacao, entrada.buscarArquivo);
+
+  const documento = {
+    documento: "Dossiê de escalonamento ao Comitê de Qualidade — Videnas",
+    periodo: {
+      identificador: periodo.id,
+      modulo: modulo.nome,
+      moduloIdentificador: periodo.moduloId,
+      competencia: periodo.competencia,
+      competenciaRotulo: periodo.competenciaRotulo,
+    },
+    instituicao: {
+      identificador: periodo.instituicaoId,
+      razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
+      cnpj: instituicao?.cnpj ?? null,
+    },
+    escalonamento: {
+      limiarNegativas: limiarNegativas(),
+      totalNegativas: historico.length,
+      escaladoEm: entrada.escaladoEm,
+      escaladoPor: nomeDoUsuario(entrada.escaladoPorUsuarioId),
+      hashLacreAnterior: entrada.hashLacreAnterior,
+    },
+    historicoNegativas: historico.map((registro) => ({
+      numero: registro.numero,
+      origem: registro.origem,
+      negadoPor: registro.usuarioNome,
+      negadoEm: registro.ocorridoEm,
+      motivo: registro.motivo,
+      arquivoIdentificador: registro.arquivoId,
+      versaoArquivo: registro.versaoArquivo,
+      hashArquivo: registro.hashArquivo,
+    })),
+    decisaoDoComite: `Aguardando decisão do Comitê de Qualidade (presidido pelo Administrador da Videnas, quórum ${descricaoQuorumComite()}). A decisão é lavrada em ata lacrada na cadeia do período.`,
+  };
+
+  return JSON.stringify(documento, null, 2);
+}
+
+export interface ParticipanteAtaComite {
+  usuarioId: string;
+  papel: "Presidente" | "Membro";
+}
+
+export interface EntradaAtaComite {
+  periodo: PeriodoObrigacao;
+  buscarArquivo: (arquivoId: string) => ArquivoGerado | undefined;
+  desfecho: DesfechoComite;
+  participantes: ParticipanteAtaComite[];
+  justificativa: string;
+  planoCorrecao: string | null;
+  estadoAnterior: EstadoPeriodo;
+  estadoNovo: EstadoPeriodo;
+  decididoEm: string;
+  hashLacreAnterior: string | null;
+}
+
+export function montarAtaComite(entrada: EntradaAtaComite): string {
+  const { periodo } = entrada;
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const modulo = buscarModulo(periodo.moduloId);
+  const historico = montarHistoricoNegativas(periodo.negacoesAprovacao, entrada.buscarArquivo);
+  const definicao = DESFECHOS_COMITE[entrada.desfecho];
+
+  const documento = {
+    documento: "Ata do Comitê de Qualidade — Videnas",
+    periodo: {
+      identificador: periodo.id,
+      modulo: modulo.nome,
+      moduloIdentificador: periodo.moduloId,
+      competencia: periodo.competencia,
+      competenciaRotulo: periodo.competenciaRotulo,
+    },
+    instituicao: {
+      identificador: periodo.instituicaoId,
+      razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
+      cnpj: instituicao?.cnpj ?? null,
+    },
+    participantes: entrada.participantes.map((participante) => {
+      const usuario = buscarUsuario(participante.usuarioId);
+      return {
+        papel: participante.papel,
+        identificador: participante.usuarioId,
+        nome: usuario?.nome ?? participante.usuarioId,
+        perfil: usuario?.perfilId ?? null,
+        cargo: usuario?.cargo ?? null,
+      };
+    }),
+    quorum: descricaoQuorumComite(),
+    historicoNegativas: historico.map((registro) => ({
+      numero: registro.numero,
+      origem: registro.origem,
+      negadoPor: registro.usuarioNome,
+      negadoEm: registro.ocorridoEm,
+      motivo: registro.motivo,
+      versaoArquivo: registro.versaoArquivo,
+      hashArquivo: registro.hashArquivo,
+    })),
+    decisao: {
+      desfecho: entrada.desfecho,
+      descricaoDesfecho: definicao.rotulo,
+      justificativa: entrada.justificativa,
+      planoCorrecao: entrada.planoCorrecao,
+      estadoAnterior: entrada.estadoAnterior,
+      estadoNovo: entrada.estadoNovo,
+      decididoEm: entrada.decididoEm,
+      efeito: definicao.descricao,
+    },
+    cadeia: {
+      hashLacreAnterior: entrada.hashLacreAnterior,
     },
   };
 

@@ -11,6 +11,8 @@ import type {
   RegistroLacre,
   SentidoLacre,
   SituacaoRetornoBcb,
+  DesfechoComite,
+  EstadoPeriodo,
   TipoArtefatoLacre,
 } from "@/lib/tipos";
 import {
@@ -24,7 +26,13 @@ import {
   type AutorLacre,
 } from "@/lib/evidencias/lacre";
 import { criptografiaDisponivel } from "@/lib/evidencias/cripto";
-import { montarDossieArquivamento, montarReciboRetorno } from "@/lib/evidencias/dossie";
+import {
+  montarAtaComite,
+  montarDossieArquivamento,
+  montarDossieComite,
+  montarReciboRetorno,
+  type ParticipanteAtaComite,
+} from "@/lib/evidencias/dossie";
 import {
   montarConteudoArquivoEntregue,
   tamanhoEmBytesDoConteudo,
@@ -59,6 +67,8 @@ export interface EstadoEvidencias {
   selarNovaVersaoArquivo: (entrada: EntradaSelarNovaVersaoArquivo) => Promise<ResultadoEvidencia>;
   selarRetornoRegulador: (entrada: EntradaSelarRetornoRegulador) => Promise<ResultadoSelagemRetorno>;
   selarArquivamento: (entrada: EntradaSelarArquivamento) => Promise<ResultadoEvidencia>;
+  selarEscalaComite: (entrada: EntradaSelarEscalaComite) => Promise<ResultadoEvidencia>;
+  selarAtaComite: (entrada: EntradaSelarAtaComite) => Promise<ResultadoEvidencia>;
   registrarVerificacao: (lacreId: string, confere: boolean, hashCalculado: string) => void;
   reiniciarEvidencias: () => void;
 }
@@ -116,6 +126,25 @@ export interface EntradaSelarArquivamento {
   arquivo: ArquivoGerado | undefined;
   protocolo: ProtocoloBCB | undefined;
   arquivadoEm: string;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarEscalaComite {
+  periodo: PeriodoObrigacao;
+  buscarArquivo: (arquivoId: string) => ArquivoGerado | undefined;
+  escaladoEm: string;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarAtaComite {
+  periodo: PeriodoObrigacao;
+  buscarArquivo: (arquivoId: string) => ArquivoGerado | undefined;
+  desfecho: DesfechoComite;
+  participantes: ParticipanteAtaComite[];
+  justificativa: string;
+  planoCorrecao: string | null;
+  estadoNovo: EstadoPeriodo;
+  decididoEm: string;
   autor: AutorLacre;
 }
 
@@ -731,6 +760,90 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
             conteudo: dossie,
             origemNome: `Dossiê de arquivamento — ${periodo.competenciaRotulo}`,
             tamanhoBytes: tamanhoEmBytesDoConteudo(dossie),
+            autor,
+          }
+        );
+      },
+
+      selarEscalaComite: async ({ periodo, buscarArquivo, escaladoEm, autor }: EntradaSelarEscalaComite) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const lacresAtuais = get().lacres;
+        const cadeia = filtrarCadeia(Object.values(lacresAtuais), {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        });
+
+        const dossie = montarDossieComite({
+          periodo,
+          buscarArquivo,
+          escaladoEm,
+          escaladoPorUsuarioId: autor.usuarioId,
+          hashLacreAnterior: encadearApos(cadeia),
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "saida",
+            tipoArtefato: "dossie_comite",
+            conteudo: dossie,
+            origemNome: `Dossiê de escalonamento ao Comitê — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(dossie),
+            autor,
+          }
+        );
+      },
+
+      selarAtaComite: async ({
+        periodo,
+        buscarArquivo,
+        desfecho,
+        participantes,
+        justificativa,
+        planoCorrecao,
+        estadoNovo,
+        decididoEm,
+        autor,
+      }: EntradaSelarAtaComite) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const cadeia = filtrarCadeia(Object.values(get().lacres), {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        });
+
+        const ata = montarAtaComite({
+          periodo,
+          buscarArquivo,
+          desfecho,
+          participantes,
+          justificativa,
+          planoCorrecao,
+          estadoAnterior: periodo.estado,
+          estadoNovo,
+          decididoEm,
+          hashLacreAnterior: encadearApos(cadeia),
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "saida",
+            tipoArtefato: "ata_comite",
+            conteudo: ata,
+            origemNome: `Ata do Comitê de Qualidade — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(ata),
             autor,
           }
         );

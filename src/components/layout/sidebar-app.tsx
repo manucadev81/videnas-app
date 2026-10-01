@@ -30,6 +30,7 @@ import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { calcularCompletude } from "@/lib/fornecimento";
 import { podeVerRota } from "@/lib/permissoes";
+import type { PerfilId } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
 interface ItemNavegacao {
@@ -39,6 +40,7 @@ interface ItemNavegacao {
   chaveAjuda: ChaveAjuda;
   candidato?: boolean;
   comPendenciasDoCliente?: boolean;
+  ocultoPara?: PerfilId[];
 }
 
 const ITENS_NAVEGACAO: ItemNavegacao[] = [
@@ -51,9 +53,9 @@ const ITENS_NAVEGACAO: ItemNavegacao[] = [
     chaveAjuda: "nav.fornecimento",
     comPendenciasDoCliente: true,
   },
-  { href: "/app/acam212", rotulo: "ACAM212", icone: ShieldCheck, chaveAjuda: "nav.acam212" },
-  { href: "/app/cadoc", rotulo: "Cadoc 5710/5711", icone: Vault, chaveAjuda: "nav.cadoc" },
-  { href: "/app/fiscal", rotulo: "Fiscal", icone: Wallet, chaveAjuda: "nav.fiscal", candidato: true },
+  { href: "/app/acam212", rotulo: "ACAM212", icone: ShieldCheck, chaveAjuda: "nav.acam212", ocultoPara: ["admin"] },
+  { href: "/app/cadoc", rotulo: "Cadoc 5710/5711", icone: Vault, chaveAjuda: "nav.cadoc", ocultoPara: ["admin"] },
+  { href: "/app/fiscal", rotulo: "Fiscal", icone: Wallet, chaveAjuda: "nav.fiscal", candidato: true, ocultoPara: ["admin"] },
   { href: "/app/entregas", rotulo: "Arquivos entregues", icone: PackageCheck, chaveAjuda: "nav.entregas" },
   { href: "/app/calendario", rotulo: "Calendário", icone: Calendar, chaveAjuda: "nav.calendario" },
   { href: "/app/auditoria", rotulo: "Auditoria", icone: History, chaveAjuda: "nav.auditoria" },
@@ -156,7 +158,9 @@ export function SidebarApp() {
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
 
   const itensVisiveis = perfilAtivo
-    ? ITENS_NAVEGACAO.filter((item) => podeVerRota(perfilAtivo, item.href))
+    ? ITENS_NAVEGACAO.filter(
+        (item) => podeVerRota(perfilAtivo, item.href) && !item.ocultoPara?.includes(perfilAtivo)
+      )
     : [];
 
   return (

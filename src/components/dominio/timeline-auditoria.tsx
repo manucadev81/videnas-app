@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EventoAuditoria } from "@/lib/tipos";
 import { formatarDataHora } from "@/lib/formatadores";
+import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
 
 export interface TimelineAuditoriaProps {
   eventos: EventoAuditoria[];
@@ -36,7 +37,10 @@ export function TimelineAuditoria({ eventos, className }: TimelineAuditoriaProps
                 ({evento.perfilId} · {evento.lado === "videnas" ? "Videnas" : "Cliente"})
               </span>
             </div>
-            <p className="mt-1 text-sm text-neutral-600">{evento.rotuloTipo}</p>
+            <p className="mt-1 text-sm text-neutral-600">
+              {evento.rotuloTipo}
+              {detalheLegivelDoEvento(evento) ? ` · ${detalheLegivelDoEvento(evento)?.resumo}` : ""}
+            </p>
             {evento.referencia ? (
               <p className="mt-0.5 font-mono text-xs text-neutral-400">Ref.: {evento.referencia}</p>
             ) : null}

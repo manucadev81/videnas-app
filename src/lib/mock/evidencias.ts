@@ -150,6 +150,58 @@ function sementesDePeriodosDemo(): SementeLacre[] {
     }
   }
 
+  for (const periodo of periodos) {
+    if (periodo.estado !== "em_comite_qualidade" || !periodo.emComiteDesde) {
+      continue;
+    }
+    const base = {
+      instituicaoId: periodo.instituicaoId,
+      moduloId: periodo.moduloId,
+      competencia: periodo.competencia,
+      periodoId: periodo.id,
+      insumoId: null,
+    };
+    const arquivoCorrente = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);
+    const diretor = buscarUsuario(periodo.negacoesAprovacao.at(-1)?.usuarioId ?? "usr-ricardo");
+    let anterior: string | null = null;
+
+    if (arquivoCorrente && arquivoCorrente.versao > 1) {
+      const gerador = buscarUsuario(arquivoCorrente.geradoPorUsuarioId);
+      const idNovaVersao = montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, 1);
+      sementes.push({
+        ...base,
+        id: idNovaVersao,
+        sentido: "saida",
+        seladoEm: arquivoCorrente.geradoEm,
+        seladoPorUsuarioId: arquivoCorrente.geradoPorUsuarioId,
+        seladoPorNome: gerador?.nome ?? arquivoCorrente.geradoPorUsuarioId,
+        perfilId: gerador?.perfilId ?? "executor",
+        origemNome: `Nova versão gerada após devolução do Diretor — ${arquivoCorrente.nomeArquivo}`,
+        tamanhoBytes: arquivoCorrente.tamanhoBytes,
+        resumoConteudo: arquivoCorrente.previewConteudo.replace(/\s+/g, " "),
+        encadeadoApos: anterior,
+        arquivoId: arquivoCorrente.id,
+        tipoArtefato: "arquivo_entregue",
+      });
+      anterior = idNovaVersao;
+    }
+
+    sementes.push({
+      ...base,
+      id: montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, anterior ? 2 : 1),
+      sentido: "saida",
+      seladoEm: periodo.emComiteDesde.replace(/:\d{2}(-03:00)$/, ":01$1"),
+      seladoPorUsuarioId: diretor?.id ?? "usr-ricardo",
+      seladoPorNome: diretor?.nome ?? "Ricardo Menezes",
+      perfilId: diretor?.perfilId ?? "diretor",
+      origemNome: `Dossiê de escalonamento ao Comitê — ${periodo.competenciaRotulo}`,
+      tamanhoBytes: 2_048,
+      resumoConteudo: `Dossiê de escalonamento ao Comitê de Qualidade: ${periodo.negacoesAprovacao.length} negativas, última versão ${arquivoCorrente?.nomeArquivo ?? "—"}`,
+      encadeadoApos: anterior,
+      tipoArtefato: "dossie_comite",
+    });
+  }
+
   return sementes;
 }
 

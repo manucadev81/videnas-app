@@ -1,4 +1,4 @@
-import type { EstadoPeriodo, ModuloId, PerfilId } from "@/lib/tipos";
+import type { DesfechoComite, EstadoPeriodo, ModuloId, PerfilId } from "@/lib/tipos";
 
 export interface ConfiguracaoContratoModulo {
   emissao?: boolean;
@@ -26,9 +26,39 @@ export interface ConfiguracaoFluxoModulo {
 }
 
 export interface ConfiguracaoComiteQualidade {
-  decisorPerfilId?: PerfilId;
-  desfechosPermitidos?: EstadoPeriodo[];
+  decisorPerfilId: PerfilId;
+  membrosPerfisElegiveis: PerfilId[];
+  quorum: number;
+  unanime: boolean;
+  prazoDiasUteisAposEscalada: number;
+  prazoDiasAntesDoPrazoRegulatorio: number;
+  destaqueCriticoDiasAntesDoPrazo: number;
+  desfechosPermitidos: DesfechoComite[];
 }
+
+export interface DefinicaoDesfechoComite {
+  rotulo: string;
+  descricao: string;
+  estadoDestino: EstadoPeriodo;
+  exigePlanoCorrecao: boolean;
+}
+
+export const DESFECHOS_COMITE: Record<DesfechoComite, DefinicaoDesfechoComite> = {
+  manter_negativa: {
+    rotulo: "Manter negativa e devolver ao Executor com plano de correção",
+    descricao:
+      "O período volta ao Executor, que precisa gerar uma nova versão do arquivo seguindo o plano de correção.",
+    estadoDestino: "devolvido_diretor",
+    exigePlanoCorrecao: true,
+  },
+  negativa_superada: {
+    rotulo: "Negativa superada/esclarecida, submeter novamente ao Diretor",
+    descricao:
+      "O período volta a Liberado e o Diretor vê a justificativa do Comitê ao decidir de novo. A decisão de aprovar continua sendo dele.",
+    estadoDestino: "liberado",
+    exigePlanoCorrecao: false,
+  },
+};
 
 export interface ConfiguracaoRetencao {
   anos: number;
@@ -36,8 +66,11 @@ export interface ConfiguracaoRetencao {
   marcoInicial: "aprovacao" | "retorno" | "arquivamento";
 }
 
+export type ContagemNegacoes = "por_periodo";
+
 export interface ConfiguracaoFluxo {
   limiarNegacoesComite: number;
+  contagemNegacoes: ContagemNegacoes;
   escaladaComiteAutomaticaHabilitada: boolean;
   devolucaoContadorContaComoNegacao?: boolean;
   reaproveitamentoAposDevolucaoDiretorExigeContador?: boolean;
@@ -53,7 +86,19 @@ export interface ConfiguracaoFluxo {
 
 export const configuracaoFluxo: ConfiguracaoFluxo = {
   limiarNegacoesComite: 2,
-  escaladaComiteAutomaticaHabilitada: false,
+  contagemNegacoes: "por_periodo",
+  escaladaComiteAutomaticaHabilitada: true,
+  devolucaoContadorContaComoNegacao: false,
+  comiteQualidade: {
+    decisorPerfilId: "admin",
+    membrosPerfisElegiveis: ["admin", "executor", "validador"],
+    quorum: 2,
+    unanime: true,
+    prazoDiasUteisAposEscalada: 2,
+    prazoDiasAntesDoPrazoRegulatorio: 3,
+    destaqueCriticoDiasAntesDoPrazo: 3,
+    desfechosPermitidos: ["manter_negativa", "negativa_superada"],
+  },
   arquivamentoPerfis: ["executor", "validador"],
   caminhosAposRessalvas: ["arquivar", "reabrir"],
   registroRetornoPerfis: ["executor", "validador"],

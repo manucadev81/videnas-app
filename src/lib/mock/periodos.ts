@@ -2747,10 +2747,20 @@ interface EntradaDemoR1 {
   arquivadoEm?: string;
   dataRetorno?: string;
   negacoes?: { motivo: string; ocorridoEm: string }[];
+  versoes?: { geradoEm: string; validadoEm: string; liberadoEm: string }[];
   protocolo?: { numeroProtocolo: string; canalEnvio: CanalEnvioBcb; dataHoraEnvio: string };
 }
 
 export const excecoesDemoRetorno: Excecao[] = [];
+
+export interface LiberacaoHistoricaDemo {
+  periodoId: string;
+  arquivoId: string;
+  liberadoEm: string;
+  liberadoPorUsuarioId: string;
+}
+
+export const liberacoesHistoricasDemo: LiberacaoHistoricaDemo[] = [];
 
 const SITUACAO_RETORNO_POR_ESTADO: Partial<Record<EntradaDemoR1["estado"], SituacaoRetornoBcb>> = {
   aguardando_retorno: "aguardando",
@@ -2779,26 +2789,68 @@ const USUARIO_DIRETOR_DEMO = "usr-ricardo";
 function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
   const modulo = buscarModulo(entrada.moduloId);
   const loteId = `lote-${entrada.id.slice(4)}-01`;
-  const arquivoId = `arq-${entrada.id.slice(4)}-v1`;
+  const versoes = entrada.versoes ?? [
+    { geradoEm: entrada.geradoEm, validadoEm: entrada.geradoEm, liberadoEm: entrada.liberadoEm },
+  ];
+  const ultimaVersao = versoes[versoes.length - 1];
+  const geradoEmAtual = ultimaVersao.geradoEm;
+  const liberadoEmAtual = ultimaVersao.liberadoEm;
+  const idDoArquivo = (versao: number) => `arq-${entrada.id.slice(4)}-v${versao}`;
+  const arquivoId = idDoArquivo(versoes.length);
+  const arquivoIds = versoes.map((_, indice) => idDoArquivo(indice + 1));
 
-  arquivos.push({
-    id: arquivoId,
-    periodoId: entrada.id,
-    versao: 1,
-    nomeArquivo: `${modulo.schema}_demo_${entrada.competencia.replace("-", "")}_v1.xml`,
-    formato: "xml",
-    hashSha256: gerarHashDeterministico(arquivoId),
-    algoritmoHash: "SHA-256",
-    tamanhoBytes: entrada.tamanhoBytes,
-    tamanhoLegivel: formatarTamanhoArquivo(entrada.tamanhoBytes),
-    schema: modulo.schema,
-    versaoSchema: modulo.versaoSchema,
-    quantidadeRegistros: entrada.quantidadeRegistros,
-    geradoEm: entrada.geradoEm,
-    geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
-    situacao: "corrente",
-    previewConteudo: `<${modulo.schema} versao="${modulo.versaoSchema}">\n  <Cabecalho competencia="${entrada.competencia}" registros="${entrada.quantidadeRegistros}" />\n</${modulo.schema}>`,
-    urlDownload: "#mock-download",
+  versoes.forEach((versao, indice) => {
+    const numeroVersao = indice + 1;
+    const idArquivoVersao = idDoArquivo(numeroVersao);
+    const ehCorrente = numeroVersao === versoes.length;
+    arquivos.push({
+      id: idArquivoVersao,
+      periodoId: entrada.id,
+      versao: numeroVersao,
+      nomeArquivo: `${modulo.schema}_demo_${entrada.competencia.replace("-", "")}_v${numeroVersao}.xml`,
+      formato: "xml",
+      hashSha256: gerarHashDeterministico(idArquivoVersao),
+      algoritmoHash: "SHA-256",
+      tamanhoBytes: entrada.tamanhoBytes,
+      tamanhoLegivel: formatarTamanhoArquivo(entrada.tamanhoBytes),
+      schema: modulo.schema,
+      versaoSchema: modulo.versaoSchema,
+      quantidadeRegistros: entrada.quantidadeRegistros,
+      geradoEm: versao.geradoEm,
+      geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
+      situacao: ehCorrente ? "corrente" : "substituida",
+      previewConteudo: `<${modulo.schema} versao="${modulo.versaoSchema}">\n  <Cabecalho competencia="${entrada.competencia}" registros="${entrada.quantidadeRegistros}" />\n</${modulo.schema}>`,
+      urlDownload: "#mock-download",
+    });
+
+    if (entrada.versoes) {
+      validacoes.push({
+        id: `val-${entrada.id.slice(4)}-${String(numeroVersao).padStart(3, "0")}`,
+        periodoId: entrada.id,
+        arquivoId: idArquivoVersao,
+        schema: modulo.schema,
+        versaoSchema: modulo.versaoSchema,
+        executadaEm: versao.validadoEm,
+        executadaPorUsuarioId: USUARIO_VALIDADOR_DEMO,
+        duracaoMs: 1620 + entrada.quantidadeRegistros,
+        totalErros: 0,
+        totalAvisos: 0,
+        resultado: "aprovado",
+        itens: [],
+        regrasDeterministicas: [
+          { regra: "Aderência ao schema oficial", aprovada: true },
+          { regra: "Unicidade de identificadores", aprovada: true },
+        ],
+      });
+      if (!ehCorrente) {
+        liberacoesHistoricasDemo.push({
+          periodoId: entrada.id,
+          arquivoId: idArquivoVersao,
+          liberadoEm: versao.liberadoEm,
+          liberadoPorUsuarioId: USUARIO_VALIDADOR_DEMO,
+        });
+      }
+    }
   });
 
   let protocoloId: string | null = null;
@@ -2890,7 +2942,7 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
         id: loteId,
         nomeArquivo: `dados_demo_${entrada.competencia.replace("-", "")}.csv`,
         tamanhoBytes: Math.round(entrada.tamanhoBytes * 0.6),
-        recebidoEm: entrada.geradoEm,
+        recebidoEm: versoes[0].geradoEm,
         recebidoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
         canal: "upload",
         linhasRecebidas: entrada.quantidadeRegistros,
@@ -2900,28 +2952,33 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
       },
     ],
     arquivoCorrenteId: arquivoId,
-    arquivoIds: [arquivoId],
-    validacaoId: null,
+    arquivoIds,
+    validacaoId: entrada.versoes
+      ? `val-${entrada.id.slice(4)}-${String(versoes.length).padStart(3, "0")}`
+      : null,
     protocoloId,
     excecaoIds,
     totaisResumo: { ...TOTAIS_INICIAIS_DEMO[entrada.moduloId] },
     geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
-    geradoEm: entrada.geradoEm,
+    geradoEm: geradoEmAtual,
     liberadoPorUsuarioId: USUARIO_VALIDADOR_DEMO,
-    liberadoEm: entrada.liberadoEm,
+    liberadoEm: liberadoEmAtual,
     aprovadoPorUsuarioId: entrada.aprovadoEm ? USUARIO_DIRETOR_DEMO : null,
     aprovadoEm: entrada.aprovadoEm ?? null,
     entregueEm: entrada.entregueEm ?? null,
     contadorStatus: entrada.moduloId === "fiscal" ? "confirmado" : "nao_aplicavel",
     contadorUsuarioId: entrada.moduloId === "fiscal" ? "usr-joao" : null,
-    contadorConfirmadoEm: entrada.moduloId === "fiscal" ? entrada.geradoEm : null,
-    negacoesAprovacao: (entrada.negacoes ?? []).map((negacao) => ({
+    contadorConfirmadoEm: entrada.moduloId === "fiscal" ? versoes[0].geradoEm : null,
+    negacoesAprovacao: (entrada.negacoes ?? []).map((negacao, indice) => ({
       motivo: negacao.motivo,
       usuarioId: USUARIO_DIRETOR_DEMO,
       ocorridoEm: negacao.ocorridoEm,
-      arquivoId,
+      arquivoId: entrada.versoes ? idDoArquivo(Math.min(indice + 1, versoes.length)) : arquivoId,
     })),
-    emComiteDesde: entrada.estado === "em_comite_qualidade" ? entrada.liberadoEm : null,
+    emComiteDesde:
+      entrada.estado === "em_comite_qualidade"
+        ? (entrada.negacoes?.at(-1)?.ocorridoEm ?? entrada.liberadoEm)
+        : null,
     emitidoFiscalEm: null,
     transmitidoEm: entrada.protocolo ? entrada.protocolo.dataHoraEnvio : null,
     retornoSituacao: situacaoRetorno === "aguardando" ? null : situacaoRetorno,
@@ -3021,6 +3078,76 @@ for (const moduloId of MODULOS_DEMO_R1) {
     })
   );
 
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r3negativa1`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2026-03",
+      competenciaRotulo: "Março/2026 (demo R3, 1 negativa)",
+      estado: "liberado",
+      quantidadeRegistros: 122,
+      tamanhoBytes: 244_000,
+      geradoEm: "2026-03-05T09:00:00-03:00",
+      liberadoEm: "2026-03-05T14:30:00-03:00",
+      versoes: [
+        {
+          geradoEm: "2026-03-03T09:00:00-03:00",
+          validadoEm: "2026-03-03T11:00:00-03:00",
+          liberadoEm: "2026-03-03T14:00:00-03:00",
+        },
+        {
+          geradoEm: "2026-03-05T09:00:00-03:00",
+          validadoEm: "2026-03-05T11:00:00-03:00",
+          liberadoEm: "2026-03-05T14:30:00-03:00",
+        },
+      ],
+      negacoes: [
+        {
+          motivo: "Totais do resumo divergem do arquivo gerado. Revisar a consolidação e reenviar.",
+          ocorridoEm: "2026-03-04T10:30:00-03:00",
+        },
+      ],
+    })
+  );
+
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: `per-meridian-${slug}-r1comite`,
+      instituicaoId: "inst-meridian",
+      moduloId,
+      competencia: "2025-09",
+      competenciaRotulo: "Setembro/2025 (demo R3, em comitê)",
+      estado: "em_comite_qualidade",
+      quantidadeRegistros: 115,
+      tamanhoBytes: 232_000,
+      geradoEm: "2025-10-06T09:00:00-03:00",
+      liberadoEm: "2025-10-06T14:00:00-03:00",
+      versoes: [
+        {
+          geradoEm: "2025-10-03T09:00:00-03:00",
+          validadoEm: "2025-10-03T11:00:00-03:00",
+          liberadoEm: "2025-10-03T14:00:00-03:00",
+        },
+        {
+          geradoEm: "2025-10-06T09:00:00-03:00",
+          validadoEm: "2025-10-06T11:00:00-03:00",
+          liberadoEm: "2025-10-06T14:00:00-03:00",
+        },
+      ],
+      negacoes: [
+        {
+          motivo: "Primeira devolução: divergência no grupo G10, valores incompatíveis com o extrato.",
+          ocorridoEm: "2025-10-04T10:00:00-03:00",
+        },
+        {
+          motivo: "Segunda devolução: inconsistência ainda presente após a correção enviada.",
+          ocorridoEm: "2025-10-07T11:00:00-03:00",
+        },
+      ],
+    })
+  );
+
   const variantesR2: {
     sufixo: string;
     estado: "retorno_aceito" | "retorno_com_ressalvas" | "retorno_rejeitado";
@@ -3108,31 +3235,6 @@ for (const moduloId of MODULOS_DEMO_R1) {
     );
   }
 }
-
-periodos.push(
-  construirPeriodoDemoR1({
-    id: "per-meridian-acam212-r1comite",
-    instituicaoId: "inst-meridian",
-    moduloId: "acam212",
-    competencia: "2025-09",
-    competenciaRotulo: "Setembro/2025 (demo R1)",
-    estado: "em_comite_qualidade",
-    quantidadeRegistros: 115,
-    tamanhoBytes: 232_000,
-    geradoEm: "2025-10-03T09:00:00-03:00",
-    liberadoEm: "2025-10-03T14:00:00-03:00",
-    negacoes: [
-      {
-        motivo: "Primeira devolução: divergência no grupo G10, valores incompatíveis com o extrato.",
-        ocorridoEm: "2025-10-04T10:00:00-03:00",
-      },
-      {
-        motivo: "Segunda devolução: inconsistência ainda presente após a correção enviada.",
-        ocorridoEm: "2025-10-07T11:00:00-03:00",
-      },
-    ],
-  })
-);
 
 export { periodos };
 

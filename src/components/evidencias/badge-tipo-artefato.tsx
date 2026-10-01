@@ -1,4 +1,4 @@
-import { Archive, FileCheck2, FileLock2, Paperclip, Upload } from "lucide-react";
+import { Archive, FileCheck2, FileLock2, FileSignature, Gavel, Paperclip, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ROTULOS_TIPO_ARTEFATO, tipoArtefatoDoLacre } from "@/lib/evidencias/lacre";
 import type { RegistroLacre, TipoArtefatoLacre } from "@/lib/tipos";
@@ -10,6 +10,8 @@ const ICONES: Record<TipoArtefatoLacre, LucideIcon> = {
   anexo_retorno: Paperclip,
   recibo_retorno: FileCheck2,
   dossie_arquivamento: Archive,
+  dossie_comite: Gavel,
+  ata_comite: FileSignature,
 };
 
 const CLASSES: Record<TipoArtefatoLacre, string> = {
@@ -18,6 +20,8 @@ const CLASSES: Record<TipoArtefatoLacre, string> = {
   anexo_retorno: "status-badge-warning",
   recibo_retorno: "status-badge-warning",
   dossie_arquivamento: "status-badge-neutral",
+  dossie_comite: "status-badge-warning",
+  ata_comite: "status-badge-info",
 };
 
 export function BadgeTipoArtefato({
