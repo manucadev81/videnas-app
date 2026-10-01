@@ -1,5 +1,5 @@
 import type { EventoAuditoria } from "@/lib/tipos";
-import { formatarDataHora, truncarHash } from "@/lib/formatadores";
+import { formatarData, formatarDataHora, truncarHash } from "@/lib/formatadores";
 
 export interface DetalheEventoLegivel {
   resumo: string;
@@ -115,6 +115,114 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
         payload.desfecho === "negativa_superada"
           ? "Negativa superada, devolvida ao Diretor"
           : "Negativa mantida, devolvida ao Executor com plano de correção",
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "PERIODO_APROVADO" && payload.contratoCongelado) {
+    const contrato = payload.contratoCongelado as Record<string, unknown>;
+    const congeladoEm = texto(contrato.congeladoEm);
+    const linhas = [
+      `Contrato congelado${congeladoEm ? ` em ${formatarData(congeladoEm)}` : ""}`,
+      `Emissão incluída: ${contrato.emissaoIncluida === true ? "sim" : "não"}`,
+      `Transmissão incluída: ${contrato.transmissaoIncluida === true ? "sim" : "não"}`,
+      `Responsável pela transmissão: ${contrato.responsavelTransmissao === "diretor" ? "Diretor da instituição" : "Videnas"}`,
+    ];
+    const cadastro = texto(contrato.cadastroId);
+    if (cadastro) {
+      linhas.push(`Cadastro prévio de referência: ${cadastro}`);
+    }
+    return { resumo: "Período aprovado com o contrato vigente congelado", linhas };
+  }
+
+  if (evento.tipo === "DOCUMENTO_FISCAL_EMITIDO") {
+    const linhas: string[] = [];
+    const hash = texto(payload.hashDocumento);
+    const lacre = texto(payload.lacreDocumentoId);
+    const nome = texto(payload.nomeDocumento);
+    if (nome) {
+      linhas.push(`Documento: ${nome}`);
+    }
+    if (lacre) {
+      linhas.push(`Lacre: ${lacre}${hash ? ` · hash ${truncarHash(hash)}` : ""}`);
+    }
+    const hashDps = texto(payload.hashArquivoDps);
+    if (hashDps) {
+      linhas.push(`DPS de origem: hash ${truncarHash(hashDps)}`);
+    }
+    return {
+      resumo: `Documento fiscal ${texto(payload.numeroDocumento) ?? "sem número"} emitido`,
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "TRANSMISSAO_REALIZADA") {
+    const linhas: string[] = [];
+    const responsavel = texto(payload.responsavelTransmissao);
+    linhas.push(
+      `Transmitido ${responsavel === "diretor" ? "pelo Diretor da instituição" : "pela Videnas"}`
+    );
+    const cadastro = texto(payload.cadastroIdentificador) ?? texto(payload.cadastroId);
+    if (cadastro) {
+      linhas.push(`Cadastro prévio: ${cadastro}`);
+    }
+    const lacre = texto(payload.lacreComprovanteId);
+    const hash = texto(payload.hashComprovante);
+    if (lacre) {
+      linhas.push(`Comprovante lacrado: ${lacre}${hash ? ` · hash ${truncarHash(hash)}` : ""}`);
+    }
+    return {
+      resumo: `Protocolo ${texto(payload.protocolo) ?? "sem número"}${
+        responsavel === "diretor" ? " (Diretor)" : " (Videnas)"
+      }`,
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "PROTOCOLO_MANUAL_REGISTRADO") {
+    const linhas: string[] = [];
+    const motivo = texto(payload.motivoTransmissaoManual);
+    if (motivo) {
+      linhas.push(`Transmissão automática indisponível: ${motivo}`);
+    }
+    const justificativa = texto(payload.justificativa);
+    if (justificativa) {
+      linhas.push(`Justificativa: ${justificativa}`);
+    }
+    const anexo = texto(payload.anexoNome);
+    linhas.push(anexo ? `Comprovante anexado: ${anexo}` : "Sem comprovante anexado");
+    const recibo = texto(payload.reciboLacreId);
+    if (recibo) {
+      linhas.push(`Recibo lacrado: ${recibo}`);
+    }
+    return {
+      resumo: `Protocolo manual ${texto(payload.protocolo) ?? "sem número"}`,
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "DPS_ENCAMINHADA_AO_EMISSOR" && texto(payload.reciboLacreId)) {
+    return {
+      resumo: `Encaminhada a ${texto(payload.emissor) ?? "emissor não informado"}`,
+      linhas: [`Recibo lacrado: ${texto(payload.reciboLacreId)}`],
+    };
+  }
+
+  if (evento.tipo === "MODULOS_CONTRATADOS_ALTERADOS" && payload.escopo === "contrato") {
+    const antes = (payload.antes ?? {}) as Record<string, unknown>;
+    const depois = (payload.depois ?? {}) as Record<string, unknown>;
+    const campos: [string, string][] = [
+      ["emissaoIncluida", "Emissão incluída"],
+      ["transmissaoIncluida", "Transmissão incluída"],
+      ["responsavelTransmissao", "Responsável pela transmissão"],
+    ];
+    const formatar = (valor: unknown) =>
+      valor === true ? "sim" : valor === false ? "não" : valor === "diretor" ? "Diretor" : valor === "videnas" ? "Videnas" : "—";
+    const linhas = campos
+      .filter(([chave]) => antes[chave] !== depois[chave])
+      .map(([chave, rotulo]) => `${rotulo}: ${formatar(antes[chave])} -> ${formatar(depois[chave])}`);
+    return {
+      resumo: `Contrato do módulo ${texto(payload.moduloId) ?? ""} alterado`.trim(),
       linhas,
     };
   }

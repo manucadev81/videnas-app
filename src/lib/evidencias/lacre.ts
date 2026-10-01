@@ -25,6 +25,11 @@ export const ROTULOS_TIPO_ARTEFATO: Record<TipoArtefatoLacre, string> = {
   dossie_arquivamento: "Dossiê de arquivamento",
   dossie_comite: "Dossiê de escalonamento ao Comitê",
   ata_comite: "Ata do Comitê de Qualidade",
+  documento_fiscal: "Documento fiscal emitido",
+  comprovante_transmissao: "Comprovante de transmissão",
+  anexo_protocolo_manual: "Anexo do protocolo manual",
+  recibo_protocolo_manual: "Recibo do protocolo manual",
+  recibo_encaminhamento: "Recibo de encaminhamento ao emissor",
 };
 
 export const TIPOS_ARTEFATO: TipoArtefatoLacre[] = [
@@ -35,6 +40,22 @@ export const TIPOS_ARTEFATO: TipoArtefatoLacre[] = [
   "dossie_arquivamento",
   "dossie_comite",
   "ata_comite",
+  "documento_fiscal",
+  "comprovante_transmissao",
+  "anexo_protocolo_manual",
+  "recibo_protocolo_manual",
+  "recibo_encaminhamento",
+];
+
+export const TIPOS_ARTEFATO_COM_CONTEUDO_BAIXAVEL: TipoArtefatoLacre[] = [
+  "recibo_retorno",
+  "dossie_arquivamento",
+  "dossie_comite",
+  "ata_comite",
+  "documento_fiscal",
+  "comprovante_transmissao",
+  "recibo_protocolo_manual",
+  "recibo_encaminhamento",
 ];
 
 export function tipoArtefatoDoLacre(

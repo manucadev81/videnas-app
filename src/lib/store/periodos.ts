@@ -17,6 +17,7 @@ import type {
   PerfilId,
   PeriodoObrigacao,
   ProtocoloBCB,
+  ResponsavelTransmissao,
   RetornoRegulador,
   TipoEventoAuditoria,
   ValidacaoItem,
@@ -48,6 +49,12 @@ import {
   rotuloRetornoDoModulo,
 } from "@/lib/mock/configuracao-fluxo";
 import { descricaoQuorumComite, impedimentosDoComite } from "@/lib/comite";
+import {
+  avaliarDisponibilidadeDoPeriodo,
+  congelarContrato,
+  validarEntradaEncaminhamento,
+  validarEntradaProtocoloManual,
+} from "@/lib/contrato";
 import {
   contarNegativas,
   devolucaoContadorContaComoNegacao,
@@ -98,6 +105,44 @@ export interface DadosDecisaoComite {
   decididoEm: string;
   lacreId?: string | null;
   hashAta?: string | null;
+}
+
+export interface DadosEmissaoFiscal {
+  numeroDocumento: string;
+  nomeArquivo: string;
+  hashDocumento: string;
+  lacreId: string;
+  emitidoEm: string;
+}
+
+export interface DadosTransmissao {
+  numeroProtocolo: string;
+  cadastroId: string;
+  responsavel: ResponsavelTransmissao;
+  lacreId: string;
+  hashComprovante: string;
+  hashObjeto: string;
+  transmitidoEm: string;
+}
+
+export interface DadosProtocoloManual {
+  numeroProtocolo: string;
+  dataInformada: string;
+  canalBcb: CanalEnvioBcb | null;
+  emissor: string | null;
+  justificativa: string;
+  anexoNome: string | null;
+  anexoHash: string | null;
+  anexoLacreId: string | null;
+  reciboLacreId: string;
+  reciboHash: string;
+}
+
+export interface DadosEncaminhamento {
+  emissor: string;
+  observacao: string | null;
+  reciboLacreId: string;
+  reciboHash: string;
 }
 
 export const TAMANHO_MINIMO_TEXTO_COMITE = 10;
@@ -327,16 +372,17 @@ export interface EstadoPeriodosStore {
 
   decidirComite: (periodoId: string, autor: AutorAcao, dados: DadosDecisaoComite) => ResultadoAcao;
 
-  registrarEntrega: (
+  emitirFiscal: (periodoId: string, autor: AutorAcao, dados: DadosEmissaoFiscal) => ResultadoAcao;
+
+  transmitir: (periodoId: string, autor: AutorAcao, dados: DadosTransmissao) => ResultadoAcao;
+
+  registrarProtocoloManual: (
     periodoId: string,
     autor: AutorAcao,
-    dados: {
-      numeroProtocolo?: string;
-      canalEnvio?: CanalEnvioBcb;
-      emissor?: string;
-      observacao?: string;
-    }
+    dados: DadosProtocoloManual
   ) => ResultadoAcao;
+
+  marcarEncaminhado: (periodoId: string, autor: AutorAcao, dados: DadosEncaminhamento) => ResultadoAcao;
 
   registrarRetorno: (
     periodoId: string,
@@ -391,7 +437,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 7;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 10;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
@@ -860,6 +906,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       estado: "aprovado",
       aprovadoPorUsuarioId: autor.usuarioId,
       aprovadoEm: agora,
+      contratoCongelado: congelarContrato(buscarInstituicao(periodo.instituicaoId), periodo.moduloId, agora),
     };
 
     const evento = construirEvento(autor, periodoAtualizado, "PERIODO_APROVADO", "Período aprovado", arquivo?.hashSha256 ?? null, {
@@ -870,6 +917,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       arquivoVersao: arquivo?.versao ?? null,
       estadoAnterior: "liberado",
       estadoNovo: "aprovado",
+      contratoCongelado: periodoAtualizado.contratoCongelado,
     });
 
     set((estado) => ({
@@ -880,29 +928,273 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     return { sucesso: true };
   },
 
-  registrarEntrega: (periodoId, autor, dados) => {
+  emitirFiscal: (periodoId, autor, dados) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
-    if (periodo.estado !== "aprovado") {
-      return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    const avaliacao = avaliarAcao(autor.perfilId, "emitir_fiscal", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
     }
 
-    const ehFiscal = periodo.moduloId === "fiscal";
+    const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const disponibilidade = avaliarDisponibilidadeDoPeriodo(
+      periodo,
+      buscarInstituicao(periodo.instituicaoId)
+    );
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "emitido_fiscal",
+      emitidoFiscalEm: dados.emitidoEm,
+      documentoFiscal: {
+        numero: dados.numeroDocumento,
+        nomeArquivo: dados.nomeArquivo,
+        hashSha256: dados.hashDocumento,
+        lacreId: dados.lacreId,
+        emitidoPorUsuarioId: autor.usuarioId,
+        emitidoEm: dados.emitidoEm,
+      },
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "DOCUMENTO_FISCAL_EMITIDO",
+      "Documento fiscal emitido",
+      dados.numeroDocumento,
+      {
+        numeroDocumento: dados.numeroDocumento,
+        nomeDocumento: dados.nomeArquivo,
+        lacreDocumentoId: dados.lacreId,
+        hashDocumento: dados.hashDocumento,
+        hashSha256: dados.hashDocumento,
+        hashArquivoDps: arquivo?.hashSha256 ?? null,
+        arquivoId: arquivo?.id ?? null,
+        cadastroId: disponibilidade.cadastro?.id ?? null,
+        estadoAnterior: "aprovado",
+        estadoNovo: "emitido_fiscal",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  transmitir: (periodoId, autor, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "transmitir", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+
+    const disponibilidade = avaliarDisponibilidadeDoPeriodo(
+      periodo,
+      buscarInstituicao(periodo.instituicaoId)
+    );
+    if (
+      !disponibilidade.disponivel ||
+      !disponibilidade.cadastro ||
+      disponibilidade.cadastro.id !== dados.cadastroId ||
+      disponibilidade.responsavel !== dados.responsavel
+    ) {
+      return {
+        sucesso: false,
+        motivo: disponibilidade.motivo ?? "O contrato ou o cadastro prévio mudou. Reabra o diálogo e tente de novo.",
+      };
+    }
+    if (dados.numeroProtocolo.trim().length < 6) {
+      return { sucesso: false, motivo: "Protocolo de transmissão inválido." };
+    }
+
+    const protocoloId = `prot-rt-${periodoId.slice(4)}-${Date.now()}`;
+    const canal: CanalEnvioBcb = disponibilidade.cadastro.canal ?? "outro";
+    const protocolo: ProtocoloBCB = {
+      id: protocoloId,
+      periodoId,
+      numeroProtocolo: dados.numeroProtocolo,
+      dataHoraEnvio: dados.transmitidoEm,
+      canalEnvio: canal,
+      registradoPorUsuarioId: autor.usuarioId,
+      reciboHash: dados.hashComprovante,
+      situacaoRetorno: "aguardando",
+      codigoRetorno: null,
+      mensagemRetorno: null,
+      dataRetorno: null,
+      observacao: null,
+      origem: dados.responsavel === "diretor" ? "transmissao_diretor" : "transmissao_videnas",
+      cadastroId: disponibilidade.cadastro.id,
+      emissor: disponibilidade.cadastro.emissor,
+      comprovanteLacreId: dados.lacreId,
+      comprovanteHash: dados.hashComprovante,
+    };
+
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "aguardando_retorno",
+      protocoloId,
+      entregueEm: dados.transmitidoEm,
+      transmitidoEm: dados.transmitidoEm,
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "TRANSMISSAO_REALIZADA",
+      "Transmissão realizada",
+      protocolo.numeroProtocolo,
+      {
+        protocolo: protocolo.numeroProtocolo,
+        canal: canal,
+        emissor: disponibilidade.cadastro.emissor,
+        cadastroId: disponibilidade.cadastro.id,
+        cadastroIdentificador: disponibilidade.cadastro.identificador,
+        responsavelTransmissao: dados.responsavel,
+        lacreComprovanteId: dados.lacreId,
+        hashComprovante: dados.hashComprovante,
+        hashSha256: dados.hashObjeto,
+        transmitidoEm: dados.transmitidoEm,
+        estadoAnterior: periodo.estado,
+        estadoNovo: "aguardando_retorno",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      protocolos: { ...estado.protocolos, [protocoloId]: protocolo },
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  registrarProtocoloManual: (periodoId, autor, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "registrar_protocolo_manual", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+    const validacao = validarEntradaProtocoloManual(periodo.moduloId, {
+      justificativa: dados.justificativa,
+      numeroProtocolo: dados.numeroProtocolo,
+      dataInformada: dados.dataInformada,
+      canal: dados.canalBcb,
+      emissor: dados.emissor ?? "",
+    });
+    if (!validacao.sucesso) {
+      return { sucesso: false, motivo: validacao.motivo };
+    }
+
+    const disponibilidade = avaliarDisponibilidadeDoPeriodo(
+      periodo,
+      buscarInstituicao(periodo.instituicaoId)
+    );
+    const agora = new Date().toISOString();
+    const protocoloId = `prot-rt-${periodoId.slice(4)}-${Date.now()}`;
+    const dataHoraEnvio = `${dados.dataInformada}T12:00:00-03:00`;
+    const protocolo: ProtocoloBCB = {
+      id: protocoloId,
+      periodoId,
+      numeroProtocolo: dados.numeroProtocolo.trim(),
+      dataHoraEnvio,
+      canalEnvio: dados.canalBcb ?? "outro",
+      registradoPorUsuarioId: autor.usuarioId,
+      reciboHash: dados.reciboHash,
+      situacaoRetorno: "aguardando",
+      codigoRetorno: null,
+      mensagemRetorno: null,
+      dataRetorno: null,
+      observacao: dados.justificativa.trim(),
+      origem: "manual",
+      cadastroId: disponibilidade.cadastro?.id ?? null,
+      emissor: dados.emissor?.trim() || null,
+      comprovanteLacreId: dados.reciboLacreId,
+      comprovanteHash: dados.reciboHash,
+    };
+
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "aguardando_retorno",
+      protocoloId,
+      entregueEm: agora,
+      transmitidoEm: dataHoraEnvio,
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "PROTOCOLO_MANUAL_REGISTRADO",
+      "Protocolo manual registrado",
+      protocolo.numeroProtocolo,
+      {
+        protocolo: protocolo.numeroProtocolo,
+        dataInformada: dados.dataInformada,
+        canal: dados.canalBcb,
+        emissor: protocolo.emissor,
+        justificativa: dados.justificativa.trim(),
+        motivoTransmissaoManual: disponibilidade.motivo,
+        anexoNome: dados.anexoNome,
+        anexoHash: dados.anexoHash,
+        anexoLacreId: dados.anexoLacreId,
+        reciboLacreId: dados.reciboLacreId,
+        reciboHash: dados.reciboHash,
+        estadoAnterior: periodo.estado,
+        estadoNovo: "aguardando_retorno",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      protocolos: { ...estado.protocolos, [protocoloId]: protocolo },
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  marcarEncaminhado: (periodoId, autor, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "marcar_encaminhado", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+    const validacao = validarEntradaEncaminhamento(dados.emissor);
+    if (!validacao.sucesso) {
+      return { sucesso: false, motivo: validacao.motivo };
+    }
+
     const agora = new Date().toISOString();
     const protocoloId = `prot-rt-${periodoId.slice(4)}-${Date.now()}`;
     const protocolo: ProtocoloBCB = {
       id: protocoloId,
       periodoId,
-      numeroProtocolo: dados.numeroProtocolo ?? `ENC-DPS-${periodo.competencia.replace("-", "")}`,
+      numeroProtocolo: `ENC-DPS-${periodo.competencia.replace("-", "")}`,
       dataHoraEnvio: agora,
-      canalEnvio: dados.canalEnvio ?? "outro",
+      canalEnvio: "outro",
       registradoPorUsuarioId: autor.usuarioId,
-      reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
+      reciboHash: dados.reciboHash,
       situacaoRetorno: "aguardando",
       codigoRetorno: null,
       mensagemRetorno: null,
       dataRetorno: null,
-      observacao: dados.observacao ?? null,
+      observacao: dados.observacao,
+      origem: "encaminhamento",
+      emissor: dados.emissor.trim(),
+      comprovanteLacreId: dados.reciboLacreId,
+      comprovanteHash: dados.reciboHash,
     };
 
     const periodoAtualizado: PeriodoObrigacao = {
@@ -916,24 +1208,17 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const evento = construirEvento(
       autor,
       periodoAtualizado,
-      ehFiscal ? "DPS_ENCAMINHADA_AO_EMISSOR" : "ENTREGA_REGISTRADA",
-      ehFiscal ? "DPS encaminhada ao emissor" : "Entrega registrada",
+      "DPS_ENCAMINHADA_AO_EMISSOR",
+      "DPS encaminhada ao emissor",
       protocolo.numeroProtocolo,
-      ehFiscal
-        ? {
-            emissor: dados.emissor ?? "Não informado",
-            observacao: dados.observacao ?? null,
-            estadoAnterior: "aprovado",
-            estadoNovo: "aguardando_retorno",
-          }
-        : {
-            protocoloBcb: protocolo.numeroProtocolo,
-            dataHoraEnvio: agora,
-            canal: protocolo.canalEnvio,
-            reciboHash: protocolo.reciboHash,
-            estadoAnterior: "aprovado",
-            estadoNovo: "aguardando_retorno",
-          }
+      {
+        emissor: protocolo.emissor,
+        observacao: dados.observacao,
+        reciboLacreId: dados.reciboLacreId,
+        reciboHash: dados.reciboHash,
+        estadoAnterior: "aprovado",
+        estadoNovo: "aguardando_retorno",
+      }
     );
 
     set((estado) => ({
@@ -1354,6 +1639,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       liberadoEm: null,
       aprovadoPorUsuarioId: null,
       aprovadoEm: null,
+      contratoCongelado: null,
       entregueEm: null,
       transmitidoEm: reabreDoRetorno ? null : periodo.transmitidoEm,
       retornoSituacao: reabreDoRetorno ? null : periodo.retornoSituacao,

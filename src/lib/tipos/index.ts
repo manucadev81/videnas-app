@@ -170,6 +170,38 @@ export interface ResponsavelBcb {
   telefone: string;
 }
 
+export type ResponsavelTransmissao = "videnas" | "diretor";
+
+export type StatusCadastroPrevio = "ativo" | "pendente" | "expirado";
+
+export interface CadastroPrevio {
+  id: string;
+  moduloIds: ModuloId[];
+  canal: CanalEnvioBcb | null;
+  emissor: string | null;
+  responsavel: ResponsavelTransmissao;
+  status: StatusCadastroPrevio;
+  identificador: string | null;
+  registradoEm: string;
+  validoAte: string | null;
+}
+
+export interface ContratoModulo {
+  emissaoIncluida: boolean;
+  transmissaoIncluida: boolean;
+  responsavelTransmissao: ResponsavelTransmissao;
+}
+
+export interface ContratoCongelado extends ContratoModulo {
+  congeladoEm: string;
+  cadastroId: string | null;
+}
+
+export interface ContratoInstituicao {
+  modulos: Partial<Record<ModuloId, ContratoModulo>>;
+  cadastros: CadastroPrevio[];
+}
+
 export interface Instituicao {
   id: string;
   razaoSocial: string;
@@ -188,6 +220,7 @@ export interface Instituicao {
   etapaOnboardingAtual: number;
   criadoEm: string;
   statusImplantacao: StatusImplantacao;
+  contrato?: ContratoInstituicao;
 }
 
 export interface Usuario {
@@ -276,6 +309,15 @@ export interface DecisaoComiteQualidade {
   hashAta: string | null;
 }
 
+export interface DocumentoFiscalEmitido {
+  numero: string;
+  nomeArquivo: string;
+  hashSha256: string;
+  lacreId: string;
+  emitidoPorUsuarioId: string;
+  emitidoEm: string;
+}
+
 export interface PeriodoObrigacao {
   id: string;
   instituicaoId: string;
@@ -306,6 +348,8 @@ export interface PeriodoObrigacao {
   emComiteDesde: string | null;
   decisoesComite?: DecisaoComiteQualidade[];
   emitidoFiscalEm: string | null;
+  documentoFiscal?: DocumentoFiscalEmitido | null;
+  contratoCongelado?: ContratoCongelado | null;
   transmitidoEm: string | null;
   retornoSituacao: SituacaoRetornoBcb | null;
   retornoRegistradoPorUsuarioId?: string | null;
@@ -486,6 +530,12 @@ export interface RetornoRegulador {
   reciboLacreId: string | null;
 }
 
+export type OrigemProtocolo =
+  | "transmissao_videnas"
+  | "transmissao_diretor"
+  | "manual"
+  | "encaminhamento";
+
 export interface ProtocoloBCB {
   id: string;
   periodoId: string;
@@ -500,6 +550,11 @@ export interface ProtocoloBCB {
   dataRetorno: string | null;
   observacao: string | null;
   retornoRegulador?: RetornoRegulador | null;
+  origem?: OrigemProtocolo;
+  cadastroId?: string | null;
+  emissor?: string | null;
+  comprovanteLacreId?: string | null;
+  comprovanteHash?: string | null;
 }
 
 export interface Excecao {
@@ -579,7 +634,12 @@ export type TipoArtefatoLacre =
   | "recibo_retorno"
   | "dossie_arquivamento"
   | "dossie_comite"
-  | "ata_comite";
+  | "ata_comite"
+  | "documento_fiscal"
+  | "comprovante_transmissao"
+  | "anexo_protocolo_manual"
+  | "recibo_protocolo_manual"
+  | "recibo_encaminhamento";
 
 export interface CampoFormularioInsumo {
   chave: string;

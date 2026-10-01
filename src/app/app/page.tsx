@@ -25,6 +25,7 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { calcularPeriodoDerivado, HOJE_ISO } from "@/lib/mock/periodos";
 import { buscarPerfil, podeVerRota } from "@/lib/permissoes";
+import { rotuloProximoPassoDaEntrega } from "@/lib/contrato";
 import { formatarCNPJ, formatarCompetencia, formatarCompetenciaCurta, formatarData, formatarDataHora } from "@/lib/formatadores";
 import type {
   EstadoPeriodo,
@@ -84,8 +85,14 @@ function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao):
   if (perfil === "diretor" && periodo.estado === "liberado") {
     return "Aprovar";
   }
-  if (perfil === "diretor" && periodo.estado === "aprovado") {
-    return periodo.moduloId === "fiscal" ? "Marcar encaminhado" : "Registrar protocolo";
+  if (
+    (perfil === "diretor" || perfil === "executor" || perfil === "validador") &&
+    (periodo.estado === "aprovado" || periodo.estado === "emitido_fiscal")
+  ) {
+    return (
+      rotuloProximoPassoDaEntrega(periodo, perfil, buscarInstituicao(periodo.instituicaoId)) ??
+      "Ver entrega"
+    );
   }
   if (perfil === "contador" && periodo.estado === "aguardando_contador") {
     return "Confirmar enquadramento";
@@ -494,7 +501,9 @@ function PainelCompliance({
   periodos: PeriodoObrigacao[];
 }) {
   const paraAprovar = periodos.filter((periodo) => periodo.estado === "liberado");
-  const paraRegistrar = periodos.filter((periodo) => periodo.estado === "aprovado");
+  const paraRegistrar = periodos.filter(
+    (periodo) => periodo.estado === "aprovado" || periodo.estado === "emitido_fiscal"
+  );
   const atrasados = periodos.filter(
     (periodo) => periodo.estado !== "arquivado" && calcularPeriodoDerivado(periodo).atrasado
   );
@@ -538,8 +547,9 @@ function PainelCompliance({
           {instituicao ? `${instituicao.nomeFantasia} · ${formatarCNPJ(instituicao.cnpj)}` : "Painel da instituição"}
         </h1>
         <p className="text-sm text-neutral-500">
-          Sua atuação: aprovar o arquivo que a Videnas já validou e registrar a transmissão ao órgão.
-          A Videnas não envia o arquivo ao regulador.
+          Sua atuação: aprovar o arquivo que a Videnas já validou e acompanhar a entrega ao órgão. A
+          transmissão é feita pela Videnas ou por você, conforme o contrato e o cadastro prévio da sua
+          instituição.
         </p>
       </header>
 
@@ -547,9 +557,10 @@ function PainelCompliance({
         role="note"
         className="rounded-lg border border-status-info-border bg-status-info-bg p-4 text-sm text-status-info-text"
       >
-        A Videnas gera e valida o arquivo. Você, pela instituição cliente, assume a obrigação e
-        transmite fora da plataforma (Sisbacen, PSTAW10 ou o emissor de NFS-e). Depois, registra aqui
-        o protocolo recebido.
+        A Videnas gera e valida o arquivo. Você, pela instituição cliente, assume a obrigação. Se o
+        contrato inclui a transmissão e há cadastro prévio ativo, a transmissão é feita pela plataforma
+        (pela Videnas ou por você, conforme o cadastro). Sem transmissão disponível, você registra
+        aqui o protocolo manualmente, com justificativa.
       </div>
 
       {atrasados.length > 0 ? (
@@ -605,18 +616,20 @@ function PainelCompliance({
 
       <section className="rounded-lg border border-neutral-200 bg-white p-5" aria-labelledby="compliance-registrar">
         <h2 id="compliance-registrar" className="mb-3 font-display text-base font-bold text-neutral-700">
-          Registrar a transmissão ao órgão
+          Transmissão e registro de protocolo
         </h2>
         {paraRegistrar.length === 0 ? (
           <p className="text-sm text-neutral-500">
-            Nada a registrar. Depois de transmitir fora da Videnas, o protocolo aparece aqui.
+            Nada a transmitir ou registrar. Competências aprovadas aguardando transmissão, emissão ou
+            registro de protocolo aparecem aqui.
           </p>
         ) : (
           <ul className="space-y-2">
             {paraRegistrar.map((periodo) =>
               linhaAcao(
                 periodo,
-                periodo.moduloId === "fiscal" ? "Marcar encaminhado" : "Registrar protocolo"
+                rotuloProximoPassoDaEntrega(periodo, "diretor", buscarInstituicao(periodo.instituicaoId)) ??
+                  "Ver entrega"
               )
             )}
           </ul>

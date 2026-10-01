@@ -1,9 +1,12 @@
 import type {
   ArquivoGerado,
+  CadastroPrevio,
+  CanalEnvioBcb,
   DesfechoComite,
   EstadoPeriodo,
   PeriodoObrigacao,
   ProtocoloBCB,
+  ResponsavelTransmissao,
 } from "@/lib/tipos";
 import {
   calcularRetencaoAte,
@@ -15,6 +18,11 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { limiarNegativas, montarHistoricoNegativas } from "@/lib/negacoes";
+import {
+  ROTULO_CANAL_BCB,
+  ROTULO_RESPONSAVEL_TRANSMISSAO,
+  rotuloCanalCompletoDoCadastro,
+} from "@/lib/contrato";
 
 export interface EntradaDossieArquivamento {
   periodo: PeriodoObrigacao;
@@ -30,6 +38,21 @@ function nomeDoUsuario(usuarioId: string | null): string | null {
     return null;
   }
   return buscarUsuario(usuarioId)?.nome ?? usuarioId;
+}
+
+function descreverContratoCongelado(periodo: PeriodoObrigacao) {
+  const congelado = periodo.contratoCongelado;
+  if (!congelado) {
+    return null;
+  }
+  return {
+    congeladoEm: congelado.congeladoEm,
+    emissaoIncluida: congelado.emissaoIncluida,
+    transmissaoIncluida: congelado.transmissaoIncluida,
+    responsavelTransmissao: ROTULO_RESPONSAVEL_TRANSMISSAO[congelado.responsavelTransmissao],
+    responsavelTransmissaoCodigo: congelado.responsavelTransmissao,
+    cadastroPrevioReferencia: congelado.cadastroId,
+  };
 }
 
 export function montarDossieArquivamento(entrada: EntradaDossieArquivamento): string {
@@ -53,6 +76,7 @@ export function montarDossieArquivamento(entrada: EntradaDossieArquivamento): st
       razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
       cnpj: instituicao?.cnpj ?? null,
     },
+    contratoVigenteNaAprovacao: descreverContratoCongelado(periodo),
     arquivo: arquivo
       ? {
           identificador: arquivo.id,
@@ -297,6 +321,224 @@ export function montarAtaComite(entrada: EntradaAtaComite): string {
     },
     cadeia: {
       hashLacreAnterior: entrada.hashLacreAnterior,
+    },
+  };
+
+  return JSON.stringify(documento, null, 2);
+}
+
+function escaparXml(valor: string): string {
+  return valor
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export interface EntradaDocumentoFiscal {
+  periodo: PeriodoObrigacao;
+  arquivo: ArquivoGerado | undefined;
+  numeroDocumento: string;
+  emitidoEm: string;
+  emitidoPorUsuarioId: string;
+  cadastro: CadastroPrevio | null;
+}
+
+export function montarDocumentoFiscal(entrada: EntradaDocumentoFiscal): string {
+  const { periodo, arquivo } = entrada;
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const totais = periodo.totaisResumo;
+
+  const linhas = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<NFSeDemonstracao versao="1.0" ambiente="demonstracao">',
+    `  <Numero>${escaparXml(entrada.numeroDocumento)}</Numero>`,
+    `  <Competencia>${escaparXml(periodo.competencia)}</Competencia>`,
+    "  <Prestador>",
+    `    <RazaoSocial>${escaparXml(instituicao?.razaoSocial ?? periodo.instituicaoId)}</RazaoSocial>`,
+    `    <CNPJ>${escaparXml(instituicao?.cnpj ?? "")}</CNPJ>`,
+    `    <InscricaoMunicipal>${escaparXml(instituicao?.inscricaoMunicipal ?? "")}</InscricaoMunicipal>`,
+    `    <Municipio>${escaparXml(instituicao?.municipio ?? "")}</Municipio>`,
+    "  </Prestador>",
+    "  <DPSOrigem>",
+    `    <Arquivo>${escaparXml(arquivo?.nomeArquivo ?? "")}</Arquivo>`,
+    `    <HashSha256>${escaparXml(arquivo?.hashSha256 ?? "")}</HashSha256>`,
+    `    <Registros>${arquivo?.quantidadeRegistros ?? 0}</Registros>`,
+    "  </DPSOrigem>",
+    "  <Totais>",
+    `    <DPS>${escaparXml(String(totais.dps ?? 0))}</DPS>`,
+    `    <ValorServicos>${escaparXml(String(totais.valorServicos ?? 0))}</ValorServicos>`,
+    `    <ValorIss>${escaparXml(String(totais.valorIss ?? 0))}</ValorIss>`,
+    "  </Totais>",
+    `  <EmitidoEm>${escaparXml(entrada.emitidoEm)}</EmitidoEm>`,
+    `  <EmitidoPor>${escaparXml(nomeDoUsuario(entrada.emitidoPorUsuarioId) ?? entrada.emitidoPorUsuarioId)}</EmitidoPor>`,
+    `  <EmissorCadastro>${escaparXml(entrada.cadastro?.identificador ?? "")}</EmissorCadastro>`,
+    "  <Aviso>Documento fiscal de demonstração. Nenhuma NFS-e real foi emitida.</Aviso>",
+    "</NFSeDemonstracao>",
+  ];
+
+  return linhas.join("\n");
+}
+
+export interface EntradaComprovanteTransmissao {
+  periodo: PeriodoObrigacao;
+  objeto: { tipo: "arquivo" | "documento_fiscal"; nome: string; hashSha256: string };
+  numeroProtocolo: string;
+  canalBcb: CanalEnvioBcb | null;
+  cadastro: CadastroPrevio;
+  responsavel: ResponsavelTransmissao;
+  transmitidoEm: string;
+  transmitidoPorUsuarioId: string;
+  hashLacreAnterior: string | null;
+}
+
+export function montarComprovanteTransmissao(entrada: EntradaComprovanteTransmissao): string {
+  const { periodo, cadastro } = entrada;
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const modulo = buscarModulo(periodo.moduloId);
+
+  const documento = {
+    documento: "Comprovante de transmissão (simulada) — Videnas",
+    periodo: {
+      identificador: periodo.id,
+      modulo: modulo.nome,
+      moduloIdentificador: periodo.moduloId,
+      competencia: periodo.competencia,
+      competenciaRotulo: periodo.competenciaRotulo,
+    },
+    instituicao: {
+      identificador: periodo.instituicaoId,
+      razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
+      cnpj: instituicao?.cnpj ?? null,
+    },
+    contratoVigenteNaAprovacao: descreverContratoCongelado(periodo),
+    transmissao: {
+      protocolo: entrada.numeroProtocolo,
+      canal: entrada.canalBcb ? ROTULO_CANAL_BCB[entrada.canalBcb] : rotuloCanalCompletoDoCadastro(cadastro),
+      transmitidoEm: entrada.transmitidoEm,
+      responsavel: ROTULO_RESPONSAVEL_TRANSMISSAO[entrada.responsavel],
+      responsavelCodigo: entrada.responsavel,
+      executadoPor: nomeDoUsuario(entrada.transmitidoPorUsuarioId),
+    },
+    cadastroPrevioUtilizado: {
+      identificador: cadastro.id,
+      codigoDoCadastro: cadastro.identificador,
+      canal: rotuloCanalCompletoDoCadastro(cadastro),
+      responsavel: ROTULO_RESPONSAVEL_TRANSMISSAO[cadastro.responsavel],
+      registradoEm: cadastro.registradoEm,
+      validoAte: cadastro.validoAte,
+    },
+    objetoTransmitido: {
+      tipo: entrada.objeto.tipo,
+      nome: entrada.objeto.nome,
+      hashSha256: entrada.objeto.hashSha256,
+    },
+    cadeia: {
+      hashLacreAnterior: entrada.hashLacreAnterior,
+    },
+    aviso: "Transmissão simulada: nenhum arquivo foi enviado a um órgão real nesta demonstração.",
+  };
+
+  return JSON.stringify(documento, null, 2);
+}
+
+export interface EntradaReciboProtocoloManual {
+  periodo: PeriodoObrigacao;
+  numeroProtocolo: string;
+  dataInformada: string;
+  canalBcb: CanalEnvioBcb | null;
+  emissor: string | null;
+  justificativa: string;
+  motivoIndisponibilidade: string | null;
+  objeto: { nome: string; hashSha256: string } | null;
+  anexoNome: string | null;
+  anexoTamanhoBytes: number | null;
+  anexoHash: string | null;
+  anexoLacreId: string | null;
+  registradoEm: string;
+  registradoPorUsuarioId: string;
+}
+
+export function montarReciboProtocoloManual(entrada: EntradaReciboProtocoloManual): string {
+  const { periodo } = entrada;
+  const modulo = buscarModulo(periodo.moduloId);
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+
+  const documento = {
+    documento: "Recibo de registro manual de protocolo — Videnas",
+    periodo: {
+      identificador: periodo.id,
+      modulo: modulo.nome,
+      competencia: periodo.competencia,
+      competenciaRotulo: periodo.competenciaRotulo,
+    },
+    instituicao: {
+      identificador: periodo.instituicaoId,
+      razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
+    },
+    protocolo: {
+      numero: entrada.numeroProtocolo,
+      dataInformada: entrada.dataInformada,
+      canal: entrada.canalBcb ? ROTULO_CANAL_BCB[entrada.canalBcb] : null,
+      emissor: entrada.emissor,
+    },
+    objetoRegistrado: entrada.objeto,
+    justificativa: entrada.justificativa,
+    motivoDaTransmissaoManual: entrada.motivoIndisponibilidade,
+    anexo: entrada.anexoNome
+      ? {
+          nome: entrada.anexoNome,
+          tamanhoBytes: entrada.anexoTamanhoBytes,
+          hashSha256: entrada.anexoHash,
+          lacreIdentificador: entrada.anexoLacreId,
+        }
+      : null,
+    contratoVigenteNaAprovacao: descreverContratoCongelado(periodo),
+    registro: {
+      registradoEm: entrada.registradoEm,
+      registradoPor: nomeDoUsuario(entrada.registradoPorUsuarioId),
+    },
+  };
+
+  return JSON.stringify(documento, null, 2);
+}
+
+export interface EntradaReciboEncaminhamento {
+  periodo: PeriodoObrigacao;
+  emissor: string;
+  observacao: string | null;
+  objeto: { nome: string; hashSha256: string } | null;
+  registradoEm: string;
+  registradoPorUsuarioId: string;
+}
+
+export function montarReciboEncaminhamento(entrada: EntradaReciboEncaminhamento): string {
+  const { periodo } = entrada;
+  const modulo = buscarModulo(periodo.moduloId);
+  const instituicao = buscarInstituicao(periodo.instituicaoId);
+
+  const documento = {
+    documento: "Recibo de encaminhamento da DPS ao emissor — Videnas",
+    periodo: {
+      identificador: periodo.id,
+      modulo: modulo.nome,
+      competencia: periodo.competencia,
+      competenciaRotulo: periodo.competenciaRotulo,
+    },
+    instituicao: {
+      identificador: periodo.instituicaoId,
+      razaoSocial: instituicao?.razaoSocial ?? periodo.instituicaoId,
+    },
+    encaminhamento: {
+      emissor: entrada.emissor,
+      observacao: entrada.observacao,
+      motivo: "Emissão da NFS-e não contratada: a DPS é encaminhada ao emissor definido pelo cliente.",
+    },
+    objetoEncaminhado: entrada.objeto,
+    contratoVigenteNaAprovacao: descreverContratoCongelado(periodo),
+    registro: {
+      registradoEm: entrada.registradoEm,
+      registradoPor: nomeDoUsuario(entrada.registradoPorUsuarioId),
     },
   };
 

@@ -9,11 +9,12 @@ export async function baixarConteudoLacrado(lacre: RegistroLacre): Promise<void>
     lacre.envelopeCifrado,
     lacre.vetorInicializacao
   );
-  const blob = new Blob([conteudo], { type: "application/json" });
+  const ehXml = conteudo.trimStart().startsWith("<?xml");
+  const blob = new Blob([conteudo], { type: ehXml ? "application/xml" : "application/json" });
   const url = URL.createObjectURL(blob);
   const ancora = document.createElement("a");
   ancora.href = url;
-  ancora.download = `${lacre.id}.json`;
+  ancora.download = `${lacre.id}.${ehXml ? "xml" : "json"}`;
   document.body.append(ancora);
   ancora.click();
   ancora.remove();

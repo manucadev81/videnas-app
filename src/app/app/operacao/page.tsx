@@ -71,19 +71,47 @@ export default function OperacaoPage() {
   const aLiberar = filaBase.filter((periodo) => periodo.estado === "validado");
   const aTratarExcecoes = filaBase.filter((periodo) => periodo.estado === "com_excecoes");
   const aReabrirRejeitados = filaBase.filter((periodo) => periodo.estado === "retorno_rejeitado");
+  const aEmitirOuTransmitir = filaBase.filter(
+    (periodo) => periodo.estado === "aprovado" || periodo.estado === "emitido_fiscal"
+  );
   const aguardandoRetorno = filaBase.filter((periodo) => periodo.estado === "aguardando_retorno");
   const emComite = filaBase.filter((periodo) => periodo.estado === "em_comite_qualidade");
   const arquivadosOcultos = filaBase.filter((periodo) => periodo.estado === "arquivado");
   const arquivadosVisiveis = mostrarArquivados ? arquivadosOcultos : [];
 
   const filaDoPerfil = ehExecutor
-    ? [...emComite, ...aRegerarDevolvidos, ...aReabrirRejeitados, ...aGerar, ...aEnviar, ...aTratarExcecoes]
-    : [...emComite, ...emValidacao, ...aTratarExcecoes, ...aLiberar, ...aguardandoRetorno];
+    ? [
+        ...emComite,
+        ...aRegerarDevolvidos,
+        ...aReabrirRejeitados,
+        ...aGerar,
+        ...aEnviar,
+        ...aTratarExcecoes,
+        ...aEmitirOuTransmitir,
+      ]
+    : [...emComite, ...emValidacao, ...aTratarExcecoes, ...aLiberar, ...aEmitirOuTransmitir, ...aguardandoRetorno];
 
   const estadosFila: EstadoPeriodo[] =
     perfilAtivo === "executor"
-      ? ["em_comite_qualidade", "devolvido_diretor", "retorno_rejeitado", "dados_ingeridos", "gerado", "com_excecoes"]
-      : ["em_comite_qualidade", "em_validacao", "com_excecoes", "validado", "aguardando_retorno"];
+      ? [
+          "em_comite_qualidade",
+          "devolvido_diretor",
+          "retorno_rejeitado",
+          "dados_ingeridos",
+          "gerado",
+          "com_excecoes",
+          "aprovado",
+          "emitido_fiscal",
+        ]
+      : [
+          "em_comite_qualidade",
+          "em_validacao",
+          "com_excecoes",
+          "validado",
+          "aprovado",
+          "emitido_fiscal",
+          "aguardando_retorno",
+        ];
 
   const contadorPorInstituicao = tenants.map((instituicao) => ({
     instituicao,
@@ -257,6 +285,12 @@ export default function OperacaoPage() {
                 usuarioId={usuarioId}
               />
               <GrupoFila
+                titulo="Aprovados: emitir ou transmitir"
+                periodos={aEmitirOuTransmitir}
+                rotuloAcao="Abrir entrega"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
                 titulo="Exceções a tratar"
                 periodos={aTratarExcecoes}
                 rotuloAcao="Tratar exceção"
@@ -281,6 +315,12 @@ export default function OperacaoPage() {
                 titulo="A liberar"
                 periodos={aLiberar}
                 rotuloAcao="Liberar"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="Aprovados: emitir ou transmitir"
+                periodos={aEmitirOuTransmitir}
+                rotuloAcao="Abrir entrega"
                 usuarioId={usuarioId}
               />
               <GrupoFila

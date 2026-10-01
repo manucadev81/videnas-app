@@ -6,7 +6,8 @@ import { Download, FileCheck2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PainelArquivo } from "@/components/dominio/painel-arquivo";
-import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
+import { BannerFiscalContrato } from "@/components/dominio/banner-fiscal-contrato";
+import { BlocoContratoEntrega } from "@/components/contrato/bloco-contrato-entrega";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { PainelArquivamento, PainelRetorno } from "@/components/dominio/modulo-retorno-arquivamento";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
@@ -23,7 +24,8 @@ import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarPerfil } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, formatarTamanhoArquivo } from "@/lib/formatadores";
-import type { ArquivoGerado, EstadoPeriodo, ProtocoloBCB } from "@/lib/tipos";
+import { ROTULO_CANAL_BCB_CURTO } from "@/lib/contrato";
+import type { ArquivoGerado, EstadoPeriodo, PeriodoObrigacao, ProtocoloBCB } from "@/lib/tipos";
 
 const ESTADOS_COM_PROVA_DE_ENTREGA: EstadoPeriodo[] = [
   "liberado",
@@ -243,6 +245,117 @@ export interface EtapaEntregaProps {
   competenciaRotulo: string;
 }
 
+function textoOrigemDoProtocolo(protocolo: ProtocoloBCB): string {
+  switch (protocolo.origem) {
+    case "transmissao_videnas":
+      return "Transmitido pela Videnas com o cadastro prévio da instituição.";
+    case "transmissao_diretor":
+      return "Transmitido pelo Diretor da instituição com o cadastro prévio dele.";
+    case "manual":
+      return "Registrado manualmente pelo Diretor, com justificativa e recibo lacrado.";
+    case "encaminhamento":
+      return `DPS encaminhada ao emissor ${protocolo.emissor ?? "definido pela instituição"}, com recibo lacrado.`;
+    default:
+      return "Registrado pela instituição.";
+  }
+}
+
+function PainelProtocolo({ protocolo, ehFiscal }: { protocolo: ProtocoloBCB; ehFiscal: boolean }) {
+  const encaminhamento = protocolo.origem === "encaminhamento";
+  return (
+    <div className="rounded-lg border border-status-success-border bg-status-success-bg p-5">
+      <h2 className="mb-2 font-display text-lg font-bold text-status-success-text">
+        {encaminhamento ? "Encaminhamento registrado" : "Protocolo registrado"}
+      </h2>
+      <p className="text-sm text-status-success-text">{textoOrigemDoProtocolo(protocolo)}</p>
+      {!encaminhamento ? (
+        <p className="mt-1 font-mono text-sm text-status-success-text">{protocolo.numeroProtocolo}</p>
+      ) : protocolo.observacao ? (
+        <p className="mt-1 text-sm text-status-success-text">{protocolo.observacao}</p>
+      ) : null}
+      <p className="text-xs text-status-success-text">
+        {formatarDataHora(protocolo.dataHoraEnvio)}
+        {!encaminhamento ? ` · ${ehFiscal ? "emissor" : "canal"} ${rotuloCanalDoProtocolo(protocolo)}` : ""} ·
+        registrado por {buscarUsuario(protocolo.registradoPorUsuarioId)?.nome ?? "—"}
+      </p>
+      {protocolo.origem === "manual" && protocolo.observacao ? (
+        <p className="mt-1 text-xs text-status-success-text">Justificativa: {protocolo.observacao}</p>
+      ) : null}
+      {protocolo.comprovanteLacreId ? (
+        <p className="mt-1 text-xs text-status-success-text">
+          {protocolo.origem === "transmissao_videnas" || protocolo.origem === "transmissao_diretor"
+            ? "Comprovante de transmissão lacrado"
+            : "Recibo lacrado"}
+          : <span className="font-mono">{protocolo.comprovanteLacreId}</span>
+        </p>
+      ) : null}
+      <p className="mt-2 text-sm text-status-success-text">
+        Situação do retorno:{" "}
+        {protocolo.situacaoRetorno === "aguardando"
+          ? "Aguardando retorno"
+          : protocolo.situacaoRetorno === "aceito"
+            ? "Aceito"
+            : protocolo.situacaoRetorno === "aceito_com_ressalvas"
+              ? "Aceito com ressalvas"
+              : "Rejeitado"}
+      </p>
+      {protocolo.mensagemRetorno ? (
+        <p className="text-xs text-status-success-text">
+          {protocolo.codigoRetorno} — {protocolo.mensagemRetorno}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function rotuloCanalDoProtocolo(protocolo: ProtocoloBCB): string {
+  if (protocolo.emissor) {
+    return protocolo.emissor;
+  }
+  return ROTULO_CANAL_BCB_CURTO[protocolo.canalEnvio];
+}
+
+function PainelDocumentoFiscal({ periodo }: { periodo: PeriodoObrigacao }) {
+  const documento = periodo.documentoFiscal;
+  if (!documento) {
+    return null;
+  }
+  return (
+    <section data-tour="entrega-documento-fiscal" className="space-y-3 rounded-lg border border-neutral-200 bg-white p-5">
+      <h2 className="flex items-center gap-1.5 font-display text-lg font-bold text-neutral-700">
+        <FileCheck2 className="size-5 text-brand-700" aria-hidden="true" />
+        Documento fiscal emitido
+      </h2>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-neutral-500">Número (demonstração)</dt>
+          <dd className="mt-0.5 font-mono text-xs break-all text-neutral-700">{documento.numero}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-neutral-500">Emitido em</dt>
+          <dd className="mt-0.5 text-sm text-neutral-700">
+            {formatarDataHora(documento.emitidoEm)} · {buscarUsuario(documento.emitidoPorUsuarioId)?.nome ?? "—"}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-neutral-500">Lacre do documento</dt>
+          <dd className="mt-0.5 font-mono text-xs break-all text-neutral-700">{documento.lacreId}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-medium text-neutral-500">Hash SHA-256</dt>
+          <dd className="mt-1">
+            <ValorHash hash={documento.hashSha256} descricao="hash do documento fiscal" />
+          </dd>
+        </div>
+      </dl>
+      <p className="text-xs text-neutral-500">
+        O conteúdo lacrado pode ser baixado em Evidências, no detalhe do lacre, e conferido em Verificar
+        integridade.
+      </p>
+    </section>
+  );
+}
+
 export function EtapaEntrega({
   periodoId,
   ehFiscal,
@@ -250,72 +363,42 @@ export function EtapaEntrega({
   protocoloCorrente,
   competenciaRotulo,
 }: EtapaEntregaProps) {
+  const periodo = usePeriodosStore((estado) => estado.periodos[periodoId]);
+
   return (
     <>
-      {!ehFiscal ? (
-        <div data-tour="entrega-conteudo" className="space-y-4">
-          {arquivoCorrente ? (
-            <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={competenciaRotulo} />
-          ) : null}
-          <BannerPosicionamento variante="info" titulo="Transmissão ao Banco Central">
-            O arquivo está pronto e íntegro. A transmissão ao Banco Central é feita pela instituição, fora do
-            Videnas. Depois de enviar, registre aqui o protocolo recebido para manter a trilha de
-            auditoria completa.
-          </BannerPosicionamento>
-          {protocoloCorrente ? (
-            <div className="rounded-lg border border-status-success-border bg-status-success-bg p-5">
-              <h2 className="mb-2 font-display text-lg font-bold text-status-success-text">Protocolo registrado</h2>
-              <p className="font-mono text-sm text-status-success-text">{protocoloCorrente.numeroProtocolo}</p>
-              <p className="text-xs text-status-success-text">
-                {formatarDataHora(protocoloCorrente.dataHoraEnvio)} · canal {protocoloCorrente.canalEnvio} ·
-                registrado por {buscarUsuario(protocoloCorrente.registradoPorUsuarioId)?.nome ?? "—"}
-              </p>
-              <p className="mt-2 text-sm text-status-success-text">
-                Situação do retorno:{" "}
-                {protocoloCorrente.situacaoRetorno === "aguardando"
-                  ? "Aguardando retorno do BCB"
-                  : protocoloCorrente.situacaoRetorno === "aceito"
-                    ? "Aceito"
-                    : protocoloCorrente.situacaoRetorno === "aceito_com_ressalvas"
-                      ? "Aceito com ressalvas"
-                      : "Rejeitado"}
-              </p>
-              {protocoloCorrente.mensagemRetorno ? (
-                <p className="text-xs text-status-success-text">
-                  {protocoloCorrente.codigoRetorno} — {protocoloCorrente.mensagemRetorno}
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <EstadoVazio
-              titulo="A entrega será liberada após a aprovação do Responsável de Compliance da instituição"
-              mensagem="Assim que o período for aprovado, o protocolo do Banco Central pode ser registrado por aqui."
-            />
-          )}
-        </div>
-      ) : (
-        <>
-          <BannerPosicionamento variante="atencao" />
-          {arquivoCorrente ? (
-            <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={competenciaRotulo} />
-          ) : null}
-          {protocoloCorrente ? (
-            <div className="rounded-lg border border-status-success-border bg-status-success-bg p-5">
-              <h2 className="mb-2 font-display text-lg font-bold text-status-success-text">Encaminhamento registrado</h2>
-              <p className="text-sm text-status-success-text">{protocoloCorrente.observacao}</p>
-              <p className="text-xs text-status-success-text">
-                {formatarDataHora(protocoloCorrente.dataHoraEnvio)} · registrado por{" "}
-                {buscarUsuario(protocoloCorrente.registradoPorUsuarioId)?.nome ?? "—"}
-              </p>
-            </div>
-          ) : (
-            <EstadoVazio
-              titulo="A entrega será liberada após a aprovação do Responsável de Compliance da instituição"
-              mensagem="A emissão da NFS-e ocorre fora da Videnas, pelo emissor definido pela instituição."
-            />
-          )}
-        </>
-      )}
+      <div data-tour="entrega-conteudo" className="space-y-4">
+        {ehFiscal ? <BannerFiscalContrato
+            instituicaoId={periodo?.instituicaoId}
+            emissaoIncluidaDoPeriodo={periodo?.contratoCongelado?.emissaoIncluida}
+          /> : null}
+        <BlocoContratoEntrega periodoId={periodoId} />
+        {arquivoCorrente ? (
+          <PainelArquivo arquivo={arquivoCorrente} competenciaRotulo={competenciaRotulo} />
+        ) : null}
+        {periodo ? <PainelDocumentoFiscal periodo={periodo} /> : null}
+        {protocoloCorrente ? (
+          <PainelProtocolo protocolo={protocoloCorrente} ehFiscal={ehFiscal} />
+        ) : periodo?.estado === "aprovado" || periodo?.estado === "emitido_fiscal" ? (
+          <EstadoVazio
+            titulo={
+              periodo.estado === "emitido_fiscal"
+                ? "Documento fiscal emitido: falta transmitir ou registrar o protocolo"
+                : "Aprovado: falta a entrega ao órgão"
+            }
+            mensagem="A ação disponível para o seu perfil aparece na barra de ações, conforme o contrato e o cadastro prévio descritos acima."
+          />
+        ) : (
+          <EstadoVazio
+            titulo="A entrega será liberada após a aprovação do Responsável de Compliance da instituição"
+            mensagem={
+              ehFiscal
+                ? "Depois da aprovação, o documento fiscal é emitido (se a emissão estiver no contrato) ou a DPS é encaminhada ao emissor definido pela instituição."
+                : "Depois da aprovação, a transmissão é feita conforme o contrato e o cadastro prévio, ou o Diretor registra o protocolo manualmente."
+            }
+          />
+        )}
+      </div>
 
       <PainelRetorno periodoId={periodoId} />
 

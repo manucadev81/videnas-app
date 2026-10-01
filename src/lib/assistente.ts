@@ -136,7 +136,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     ],
     resposta: [
       "A Videnas é uma prestadora de serviços tecnológicos (RegTech). Ela recebe os dados que a instituição envia, estrutura os arquivos no formato exigido pelo regulador, valida contra o schema oficial e registra a trilha de auditoria de cada etapa.",
-      "A Videnas não é instituição financeira, PSAV ou SPSAV, não custodia ativos virtuais, não transmite o arquivo ao Banco Central em nome da instituição, não emite NFS-e e não substitui contador ou advogado.",
+      "A Videnas não é instituição financeira, PSAV ou SPSAV, não custodia ativos virtuais e não substitui contador ou advogado. A transmissão ao Banco Central e a emissão de NFS-e só acontecem quando previstas no contrato da instituição e com cadastro prévio válido; fora disso, são feitas pela própria instituição.",
       "A responsabilidade pela obrigação regulatória perante o Banco Central, o município e a Receita Federal permanece da instituição cliente.",
       "A plataforma é organizada por obrigação: cada módulo tem suas competências (uma por mês) e cada competência percorre as mesmas etapas.",
     ].join("\n\n"),
@@ -221,7 +221,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     resposta: [
       textoModulo("fiscal"),
       "É o único módulo com a etapa Contador: depois de estruturada, a DPS vai para o Contador / Fiscal confirmar alíquota de ISS, retenção na fonte e enquadramento tributário. A Videnas calcula a sugestão a partir dos dicionários configurados, mas a decisão é sempre do contador responsável.",
-      "Limite importante: a Videnas estrutura a DPS, mas não emite a NFS-e. A emissão acontece fora da plataforma, pelo emissor que a instituição definir. Na etapa Entrega o registro é \"Marcar como encaminhado ao emissor\", e não o protocolo do BCB.",
+      "Limite importante: a emissão da NFS-e depende do contrato. Com emissão incluída, depois da aprovação o Executor ou o Validador que não gerou o arquivo emite o documento fiscal (lacrado) e ele segue para transmissão por outra pessoa, que também não pode ter gerado o arquivo. Sem emissão, a DPS é encaminhada ao emissor que a instituição definir e, na etapa Entrega, o registro é \"Marcar como encaminhado ao emissor\", e não o protocolo do BCB.",
     ].join("\n\n"),
     relacionados: ["etapa-contador", "perfis", "etapa-entrega"],
   },
@@ -342,8 +342,8 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
     palavrasChave: ["auditoria", "aprovar", "aprovacao", "diretor aprova", "assumir responsabilidade"],
     resposta: [
       "A Auditoria consolida a evidência da competência: o card de segregação de funções mostra quem gerou, quem liberou e quem aprovou — nunca a mesma pessoa.",
-      "O botão \"Aprovar e assumir responsabilidade\" é exclusivo do Responsável de Compliance da instituição cliente e só aparece depois que o Validador libera a competência (estado Liberado). A Videnas não transmite o arquivo ao órgão.",
-      "Ao aprovar, o Responsável de Compliance da instituição declara que revisou o conteúdo e assume a obrigação perante o órgão. Isso fica registrado na trilha com nome, cargo e o hash. A transmissão ao órgão a instituição faz fora da Videnas.",
+      "O botão \"Aprovar e assumir responsabilidade\" é exclusivo do Responsável de Compliance da instituição cliente e só aparece depois que o Validador libera a competência (estado Liberado). A transmissão ao órgão depende do contrato e do cadastro prévio.",
+      "Ao aprovar, o Responsável de Compliance da instituição declara que revisou o conteúdo e assume a obrigação perante o órgão. Isso fica registrado na trilha com nome, cargo e o hash. Depois, a transmissão é feita pela Videnas, pelo Diretor ou registrada manualmente, conforme o contrato.",
     ].join("\n\n"),
     relacionados: ["segregacao-funcoes", "trilha-auditoria", "etapa-entrega"],
   },
@@ -363,8 +363,8 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "encaminhado ao emissor",
     ],
     resposta: [
-      "A transmissão ao Banco Central é feita pela própria instituição, fora da Videnas. Depois de enviar, é na etapa Entrega que se registra o protocolo recebido — número, canal e data/hora — para manter a trilha completa.",
-      "No módulo Fiscal não há protocolo do BCB: o registro equivalente é \"Marcar como encaminhado ao emissor\", já que a emissão da NFS-e acontece fora da plataforma.",
+      "Quem transmite ao Banco Central depende do contrato: com transmissão incluída e cadastro prévio ativo, a Videnas (Executor ou Validador, nunca quem gerou o arquivo ou emitiu o documento fiscal) ou o próprio Diretor transmite pela plataforma e o comprovante é lacrado. O que vale é o contrato congelado na aprovação do período; mudanças posteriores só valem para períodos aprovados depois. Sem transmissão disponível (não contratada, cadastro pendente ou expirado), o Diretor registra o protocolo manualmente na etapa Entrega — justificativa, número, data, canal e comprovante opcional.",
+      "No módulo Fiscal não há protocolo do BCB: com emissão incluída o documento é emitido e depois transmitido (ou registrado manualmente); sem emissão, o registro é \"Marcar como encaminhado ao emissor\".",
       "Se o órgão devolver o arquivo, \"Registrar retorno do BCB\" leva a competência para o estado \"Retorno com erro\", e a partir daí ela pode ser reaberta para correção.",
     ].join("\n\n"),
     relacionados: ["estados-periodo", "prazos", "modulo-fiscal"],

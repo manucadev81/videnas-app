@@ -45,8 +45,24 @@ import {
   situacaoPrazoComite,
   usuariosImpedidosDoComite,
 } from "@/lib/comite";
-import { useEvidenciasStore } from "@/lib/store/evidencias";
+import { hashDoArquivoEntregue, useEvidenciasStore } from "@/lib/store/evidencias";
 import { useSessaoStore } from "@/lib/store/sessao";
+import { useTenantsStore } from "@/lib/store/tenants";
+import {
+  CANAIS_BCB_OFERECIDOS,
+  ROTULO_CANAL_BCB,
+  ROTULO_RESPONSAVEL_TRANSMISSAO,
+  TAMANHO_MINIMO_JUSTIFICATIVA_MANUAL,
+  avaliarDisponibilidadeDoPeriodo,
+  rotuloCanalCompletoDoCadastro,
+  validarEntradaEncaminhamento,
+  validarEntradaProtocoloManual,
+} from "@/lib/contrato";
+import {
+  gerarNumeroDocumentoFiscal,
+  gerarNumeroProtocoloTransmissao,
+  nomeArquivoDocumentoFiscal,
+} from "@/lib/transmissao";
 import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
@@ -84,8 +100,10 @@ const CANDIDATOS_BARRA: AcaoId[] = [
   "devolver_fiscal",
   "executar_validacao",
   "liberar",
-  "registrar_protocolo",
+  "emitir_fiscal",
+  "transmitir",
   "marcar_encaminhado",
+  "registrar_protocolo_manual",
   "registrar_retorno",
   "arquivar",
   "aprovar",
@@ -102,8 +120,10 @@ const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrut
   devolver_fiscal: "destrutivo-suave",
   executar_validacao: "primario",
   liberar: "primario",
-  registrar_protocolo: "primario",
+  emitir_fiscal: "primario",
+  transmitir: "primario",
   marcar_encaminhado: "primario",
+  registrar_protocolo_manual: "secundario",
   registrar_retorno: "secundario",
   arquivar: "secundario",
   aprovar: "primario",
@@ -172,7 +192,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const reprocessar = usePeriodosStore((estado) => estado.reprocessar);
   const liberar = usePeriodosStore((estado) => estado.liberar);
   const aprovar = usePeriodosStore((estado) => estado.aprovar);
-  const registrarEntrega = usePeriodosStore((estado) => estado.registrarEntrega);
+  const emitirFiscal = usePeriodosStore((estado) => estado.emitirFiscal);
+  const transmitir = usePeriodosStore((estado) => estado.transmitir);
+  const registrarProtocoloManual = usePeriodosStore((estado) => estado.registrarProtocoloManual);
+  const marcarEncaminhado = usePeriodosStore((estado) => estado.marcarEncaminhado);
+  const tenants = useTenantsStore((estado) => estado.tenants);
   const registrarRetorno = usePeriodosStore((estado) => estado.registrarRetorno);
   const reabrir = usePeriodosStore((estado) => estado.reabrir);
   const negarAprovacao = usePeriodosStore((estado) => estado.negarAprovacao);
@@ -183,6 +207,10 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const selarArquivamento = useEvidenciasStore((estado) => estado.selarArquivamento);
   const selarEscalaComite = useEvidenciasStore((estado) => estado.selarEscalaComite);
   const selarAtaComite = useEvidenciasStore((estado) => estado.selarAtaComite);
+  const selarDocumentoFiscal = useEvidenciasStore((estado) => estado.selarDocumentoFiscal);
+  const selarTransmissao = useEvidenciasStore((estado) => estado.selarTransmissao);
+  const selarProtocoloManual = useEvidenciasStore((estado) => estado.selarProtocoloManual);
+  const selarEncaminhamento = useEvidenciasStore((estado) => estado.selarEncaminhamento);
   const validarDecisaoComite = usePeriodosStore((estado) => estado.validarDecisaoComite);
   const decidirComite = usePeriodosStore((estado) => estado.decidirComite);
   const eventosStore = usePeriodosStore((estado) => estado.eventos);
@@ -210,7 +238,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
 
   const perfilMetadados = buscarPerfil(perfilAtivo);
   const autor = { usuarioId, perfilId: perfilAtivo };
-  const instituicao = buscarInstituicao(periodo.instituicaoId);
+  const instituicao = tenants.find((tenant) => tenant.id === periodo.instituicaoId) ?? buscarInstituicao(periodo.instituicaoId);
+  const disponibilidadeTransmissao = avaliarDisponibilidadeDoPeriodo(periodo, instituicao);
+  const ehFiscalPeriodo = periodo.moduloId === "fiscal";
   const arquivoCorrente = periodo.arquivoCorrenteId ? arquivos[periodo.arquivoCorrenteId] : undefined;
   const usuarioGerador = periodo.geradoPorUsuarioId ? buscarUsuario(periodo.geradoPorUsuarioId) : undefined;
   const usuarioLiberador = periodo.liberadoPorUsuarioId ? buscarUsuario(periodo.liberadoPorUsuarioId) : undefined;
@@ -231,8 +261,10 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     setCampoMembro("");
     setCampoDesfecho("");
     setCampoPlano("");
-    if (acaoId === "registrar_protocolo") {
-      setCampoSelect("pstaw10");
+    if (acaoId === "registrar_protocolo_manual") {
+      setCampoSelect(disponibilidadeTransmissao.cadastro?.canal ?? "sisbacen");
+      setCampoTexto2(disponibilidadeTransmissao.cadastro?.emissor ?? "");
+      setCampoData(new Date().toISOString().slice(0, 10));
     }
     if (acaoId === "marcar_encaminhado") {
       setCampoSelect("ERP do cliente");
@@ -531,6 +563,236 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     }
   }
 
+  function autorLacre() {
+    return { usuarioId: autor.usuarioId, nome: usuarioAtual?.nome ?? autor.usuarioId, perfilId: autor.perfilId };
+  }
+
+  function objetoDaEntrega(): { tipo: "arquivo" | "documento_fiscal"; nome: string; hashSha256: string } | null {
+    if (ehFiscalPeriodo) {
+      return periodo.documentoFiscal
+        ? {
+            tipo: "documento_fiscal",
+            nome: periodo.documentoFiscal.nomeArquivo,
+            hashSha256: periodo.documentoFiscal.hashSha256,
+          }
+        : null;
+    }
+    return arquivoCorrente
+      ? { tipo: "arquivo", nome: arquivoCorrente.nomeArquivo, hashSha256: hashEntregaDoArquivo() }
+      : null;
+  }
+
+  function hashEntregaDoArquivo(): string {
+    return arquivoCorrente
+      ? hashDoArquivoEntregue(useEvidenciasStore.getState().lacres, arquivoCorrente)
+      : "";
+  }
+
+  async function confirmarEmissaoFiscal() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "emitir_fiscal", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    const instante = new Date();
+    const numeroDocumento = gerarNumeroDocumentoFiscal(periodo.competencia, instante);
+    setProcessando(true);
+    try {
+      const selagem = await selarDocumentoFiscal({
+        periodo,
+        arquivo: arquivoCorrente ? { ...arquivoCorrente, hashSha256: hashEntregaDoArquivo() } : undefined,
+        numeroDocumento,
+        emitidoEm: instante.toISOString(),
+        cadastro: disponibilidadeTransmissao.cadastro,
+        autor: autorLacre(),
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o documento fiscal.");
+        return;
+      }
+      const resultado = emitirFiscal(periodoId, autor, {
+        numeroDocumento,
+        nomeArquivo: nomeArquivoDocumentoFiscal(numeroDocumento),
+        hashDocumento: selagem.lacre.hashSha256,
+        lacreId: selagem.lacre.id,
+        emitidoEm: instante.toISOString(),
+      });
+      tratarResultado(resultado, `Documento fiscal ${numeroDocumento} emitido e lacrado na cadeia do período.`);
+    } catch {
+      toast.error("Não foi possível emitir o documento fiscal.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function confirmarTransmissao() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "transmitir", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+    const cadastro = disponibilidadeTransmissao.cadastro;
+    const objeto = objetoDaEntrega();
+    if (!cadastro || !objeto) {
+      toast.error(
+        ehFiscalPeriodo
+          ? "O documento fiscal ainda não foi emitido."
+          : "O arquivo corrente do período não foi encontrado."
+      );
+      return;
+    }
+
+    const instante = new Date();
+    const numeroProtocolo = gerarNumeroProtocoloTransmissao(periodo.moduloId, periodo.competencia, instante);
+    setProcessando(true);
+    try {
+      const selagem = await selarTransmissao({
+        periodo,
+        objeto,
+        numeroProtocolo,
+        canalBcb: cadastro.canal,
+        cadastro,
+        responsavel: disponibilidadeTransmissao.responsavel,
+        transmitidoEm: instante.toISOString(),
+        autor: autorLacre(),
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o comprovante de transmissão.");
+        return;
+      }
+      const resultado = transmitir(periodoId, autor, {
+        numeroProtocolo,
+        cadastroId: cadastro.id,
+        responsavel: disponibilidadeTransmissao.responsavel,
+        lacreId: selagem.lacre.id,
+        hashComprovante: selagem.lacre.hashSha256,
+        hashObjeto: objeto.hashSha256,
+        transmitidoEm: instante.toISOString(),
+      });
+      tratarResultado(
+        resultado,
+        `Transmissão simulada concluída (protocolo ${numeroProtocolo}). Comprovante lacrado na cadeia do período.`
+      );
+    } catch {
+      toast.error("Não foi possível transmitir.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function confirmarProtocoloManual() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    const canalBcb = ehFiscalPeriodo ? null : ((campoSelect || null) as CanalEnvioBcb | null);
+    const emissor = ehFiscalPeriodo ? campoTexto2.trim() : null;
+    const validacao = validarEntradaProtocoloManual(periodo.moduloId, {
+      justificativa: campoTextarea,
+      numeroProtocolo: campoTexto,
+      dataInformada: campoData,
+      canal: canalBcb,
+      emissor: emissor ?? "",
+    });
+    if (!validacao.sucesso) {
+      toast.error(validacao.motivo ?? "Dados do protocolo inválidos.");
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "registrar_protocolo_manual", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    const objeto = objetoDaEntrega();
+    setProcessando(true);
+    try {
+      const selagem = await selarProtocoloManual({
+        periodo,
+        numeroProtocolo: campoTexto.trim(),
+        dataInformada: campoData,
+        canalBcb,
+        emissor,
+        justificativa: campoTextarea.trim(),
+        motivoIndisponibilidade: disponibilidadeTransmissao.motivo,
+        objeto: objeto ? { nome: objeto.nome, hashSha256: objeto.hashSha256 } : null,
+        anexo: campoAnexo,
+        autor: autorLacre(),
+      });
+      if (!selagem.sucesso || !selagem.reciboLacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o recibo do protocolo manual.");
+        return;
+      }
+      const resultado = registrarProtocoloManual(periodoId, autor, {
+        numeroProtocolo: campoTexto.trim(),
+        dataInformada: campoData,
+        canalBcb,
+        emissor,
+        justificativa: campoTextarea.trim(),
+        anexoNome: campoAnexo?.name ?? null,
+        anexoHash: selagem.anexoLacre?.hashSha256 ?? null,
+        anexoLacreId: selagem.anexoLacre?.id ?? null,
+        reciboLacreId: selagem.reciboLacre.id,
+        reciboHash: selagem.reciboLacre.hashSha256,
+      });
+      tratarResultado(resultado, `Protocolo ${campoTexto.trim()} registrado e lacrado na cadeia do período.`);
+    } catch {
+      toast.error("Não foi possível registrar o protocolo manual.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function confirmarEncaminhamento() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    const emissor = campoTexto2 ? `${campoSelect} — ${campoTexto2}` : campoSelect || "Outro";
+    const validacao = validarEntradaEncaminhamento(emissor);
+    if (!validacao.sucesso) {
+      toast.error(validacao.motivo ?? "Dados do encaminhamento inválidos.");
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "marcar_encaminhado", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    const observacao = campoTextarea.trim() ? campoTextarea.trim() : null;
+    setProcessando(true);
+    try {
+      const selagem = await selarEncaminhamento({
+        periodo,
+        emissor,
+        observacao,
+        objeto: arquivoCorrente ? { nome: arquivoCorrente.nomeArquivo, hashSha256: hashEntregaDoArquivo() } : null,
+        autor: autorLacre(),
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o recibo de encaminhamento.");
+        return;
+      }
+      const resultado = marcarEncaminhado(periodoId, autor, {
+        emissor,
+        observacao,
+        reciboLacreId: selagem.lacre.id,
+        reciboHash: selagem.lacre.hashSha256,
+      });
+      tratarResultado(resultado, "DPS encaminhada ao emissor definido pela instituição. Recibo lacrado.");
+    } catch {
+      toast.error("Não foi possível registrar o encaminhamento.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
   function confirmarDialogo() {
     if (!dialogoAberto) return;
 
@@ -590,27 +852,20 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         tratarResultado(resultado, `Competência aprovada por ${usuarioAtual?.nome ?? "você"}. Arquivo disponível para transmissão.`);
         return;
       }
-      case "registrar_protocolo": {
-        if (campoTexto.trim().length < 6) {
-          toast.error("Informe o número do protocolo recebido do Banco Central.");
-          return;
-        }
-        const resultado = registrarEntrega(periodoId, autor, {
-          numeroProtocolo: campoTexto,
-          canalEnvio: (campoSelect || "outro") as CanalEnvioBcb,
-          observacao: campoTextarea || undefined,
-        });
-        tratarResultado(resultado, `Protocolo ${campoTexto} registrado.`);
+      case "emitir_fiscal": {
+        void confirmarEmissaoFiscal();
+        return;
+      }
+      case "transmitir": {
+        void confirmarTransmissao();
+        return;
+      }
+      case "registrar_protocolo_manual": {
+        void confirmarProtocoloManual();
         return;
       }
       case "marcar_encaminhado": {
-        const emissor = campoTexto2 ? `${campoSelect} — ${campoTexto2}` : campoSelect || "Outro";
-        const resultado = registrarEntrega(periodoId, autor, {
-          emissor,
-          canalEnvio: "outro",
-          observacao: `Encaminhado para ${emissor}.${campoTextarea ? ` ${campoTextarea}` : ""}`,
-        });
-        tratarResultado(resultado, "DPS encaminhada ao emissor definido pela instituição.");
+        void confirmarEncaminhamento();
         return;
       }
       case "registrar_retorno": {
@@ -1155,55 +1410,204 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
               </>
             ) : null}
 
-            {dialogoAberto === "registrar_protocolo" ? (
+            {dialogoAberto === "emitir_fiscal" ? (
               <>
                 <DialogHeader>
-                  <DialogTitle>Registrar protocolo do BCB</DialogTitle>
+                  <DialogTitle>Emitir o documento fiscal?</DialogTitle>
                   <DialogDescription>
-                    Registre o protocolo recebido após a transmissão feita pela instituição, fora do
-                    Videnas.
+                    A emissão da NFS-e está incluída no contrato desta instituição. A plataforma gera um
+                    documento fiscal de demonstração (XML), lacra e encadeia à cadeia do período e leva a
+                    competência para Documento fiscal emitido. Nenhuma nota real é emitida.
                   </DialogDescription>
                 </DialogHeader>
+                {arquivoCorrente ? (
+                  <dl className="grid gap-3 rounded-md bg-neutral-50 p-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs text-neutral-500">DPS de origem</dt>
+                      <dd className="break-all text-neutral-700">{arquivoCorrente.nomeArquivo}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-neutral-500">Hash do arquivo</dt>
+                      <dd className="font-mono text-xs text-neutral-700">{truncarHash(hashEntregaDoArquivo())}</dd>
+                    </div>
+                  </dl>
+                ) : null}
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Emitir e lacrar"}
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "transmitir" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Transmitir ao órgão?</DialogTitle>
+                  <DialogDescription>
+                    Transmissão simulada: nenhum arquivo real é enviado. A plataforma gera o protocolo,
+                    lacra o comprovante na cadeia do período e leva a competência para Aguardando retorno.
+                  </DialogDescription>
+                </DialogHeader>
+                <dl className="grid gap-3 rounded-md bg-neutral-50 p-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-neutral-500">Objeto transmitido</dt>
+                    <dd className="break-all text-neutral-700">
+                      {objetoDaEntrega()?.nome ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-neutral-500">Hash</dt>
+                    <dd className="font-mono text-xs text-neutral-700">
+                      {objetoDaEntrega() ? truncarHash(objetoDaEntrega()?.hashSha256 ?? "") : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-neutral-500">Canal</dt>
+                    <dd className="text-neutral-700">
+                      {disponibilidadeTransmissao.cadastro
+                        ? rotuloCanalCompletoDoCadastro(disponibilidadeTransmissao.cadastro)
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-neutral-500">Responsável pela transmissão</dt>
+                    <dd className="text-neutral-700">
+                      {ROTULO_RESPONSAVEL_TRANSMISSAO[disponibilidadeTransmissao.responsavel]}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs text-neutral-500">Cadastro prévio utilizado</dt>
+                    <dd className="text-neutral-700">
+                      {disponibilidadeTransmissao.cadastro
+                        ? `${disponibilidadeTransmissao.cadastro.identificador ?? disponibilidadeTransmissao.cadastro.id} · ${
+                            disponibilidadeTransmissao.cadastro.validoAte
+                              ? `válido até ${formatarData(disponibilidadeTransmissao.cadastro.validoAte)}`
+                              : "sem validade informada"
+                          }`
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Transmitir e lacrar comprovante"}
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "registrar_protocolo_manual" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Registrar protocolo manualmente</DialogTitle>
+                  <DialogDescription>
+                    Use quando a transmissão automática não está disponível. O registro exige
+                    justificativa, fica na trilha de auditoria e gera um recibo lacrado.
+                  </DialogDescription>
+                </DialogHeader>
+                {disponibilidadeTransmissao.motivo ? (
+                  <p
+                    role="note"
+                    className="rounded-md border border-status-warning-border bg-status-warning-bg p-3 text-sm text-status-warning-text"
+                  >
+                    Por que manual: {disponibilidadeTransmissao.motivo}.
+                  </p>
+                ) : null}
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="numero-protocolo">Protocolo</Label>
-                    <Input
-                      id="numero-protocolo"
-                      value={campoTexto}
-                      placeholder="BCB-C212-2026091612345678"
-                      onChange={(evento) => setCampoTexto(evento.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="canal-envio">Canal</Label>
-                    <Select value={campoSelect} onValueChange={(valor) => setCampoSelect(valor ?? "")}>
-                      <SelectTrigger id="canal-envio" className="w-full">
-                        <SelectValue placeholder="Selecione o canal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sisbacen">Sisbacen</SelectItem>
-                        <SelectItem value="pstaw10">PSTAW10</SelectItem>
-                        <SelectItem value="portal_cidadao">Portal do Cidadão</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="observacao-protocolo">Observação (opcional)</Label>
+                    <Label htmlFor="justificativa-manual">Justificativa</Label>
                     <Textarea
-                      id="observacao-protocolo"
+                      id="justificativa-manual"
                       value={campoTextarea}
                       onChange={(evento) => setCampoTextarea(evento.target.value)}
                       rows={3}
+                      placeholder={`Explique o envio fora da plataforma (mínimo ${TAMANHO_MINIMO_JUSTIFICATIVA_MANUAL} caracteres).`}
                     />
+                    {campoTextarea.trim().length > 0 &&
+                    campoTextarea.trim().length < TAMANHO_MINIMO_JUSTIFICATIVA_MANUAL ? (
+                      <p className="text-xs text-status-error-text">
+                        Descreva a justificativa com pelo menos {TAMANHO_MINIMO_JUSTIFICATIVA_MANUAL}{" "}
+                        caracteres.
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="numero-protocolo-manual">Número do protocolo</Label>
+                      <Input
+                        id="numero-protocolo-manual"
+                        value={campoTexto}
+                        placeholder={ehFiscalPeriodo ? "Protocolo do emissor" : "BCB-C212-2026091612345678"}
+                        onChange={(evento) => setCampoTexto(evento.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="data-protocolo-manual">Data do protocolo</Label>
+                      <Input
+                        id="data-protocolo-manual"
+                        type="date"
+                        value={campoData}
+                        onChange={(evento) => setCampoData(evento.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {ehFiscalPeriodo ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="emissor-manual">Nome do emissor</Label>
+                      <Input
+                        id="emissor-manual"
+                        value={campoTexto2}
+                        placeholder="Ex.: NFS-e Prefeitura de São Paulo"
+                        onChange={(evento) => setCampoTexto2(evento.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="canal-manual">Canal</Label>
+                      <Select value={campoSelect} onValueChange={(valor) => setCampoSelect(valor ?? "")}>
+                        <SelectTrigger id="canal-manual" className="w-full">
+                          <SelectValue placeholder="Selecione o canal">
+                            {(valor: string | null) =>
+                              valor ? ROTULO_CANAL_BCB[valor as CanalEnvioBcb] : "Selecione o canal"
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CANAIS_BCB_OFERECIDOS.map((canal) => (
+                            <SelectItem key={canal} value={canal}>
+                              {ROTULO_CANAL_BCB[canal]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="anexo-manual">Comprovante do protocolo (opcional)</Label>
+                    <Input
+                      id="anexo-manual"
+                      type="file"
+                      className="h-auto py-1.5"
+                      onChange={(evento) => setCampoAnexo(evento.currentTarget.files?.[0] ?? null)}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      Se anexado, o arquivo é lacrado e encadeado junto com o recibo do registro manual.
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={fecharDialogo}>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
                     Cancelar
                   </Button>
-                  <Button type="button" onClick={confirmarDialogo}>
-                    Registrar
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Registrar e lacrar"}
                   </Button>
                 </DialogFooter>
               </>
@@ -1214,7 +1618,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                 <DialogHeader>
                   <DialogTitle>Confirmar o encaminhamento?</DialogTitle>
                   <DialogDescription>
-                    A emissão da NFS-e é feita pelo emissor escolhido, fora da Videnas.
+                    A emissão da NFS-e não faz parte do contrato desta instituição: a DPS é encaminhada ao
+                    emissor definido pelo cliente. O encaminhamento gera um recibo lacrado na cadeia do
+                    período.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
@@ -1254,11 +1660,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={fecharDialogo}>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
                     Cancelar
                   </Button>
-                  <Button type="button" onClick={confirmarDialogo}>
-                    Confirmar
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Confirmar e lacrar"}
                   </Button>
                 </DialogFooter>
               </>

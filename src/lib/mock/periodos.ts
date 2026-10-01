@@ -17,8 +17,12 @@ import { montarIdentificadorLacre } from "@/lib/evidencias/lacre";
 import { calcularRetencaoAte, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
 import { buscarModulo } from "@/lib/mock/modulos";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { congelarContrato } from "@/lib/contrato";
 
-export const HOJE_ISO = "2026-09-16";
+import { HOJE_ISO } from "@/lib/mock/data-referencia";
+
+export { HOJE_ISO };
 
 export const arquivos: ArquivoGerado[] = [];
 export const validacoes: ValidacaoResultado[] = [];
@@ -2731,6 +2735,7 @@ interface EntradaDemoR1 {
   competenciaRotulo: string;
   estado:
     | "liberado"
+    | "aprovado"
     | "devolvido_diretor"
     | "em_comite_qualidade"
     | "aguardando_retorno"
@@ -2749,6 +2754,7 @@ interface EntradaDemoR1 {
   negacoes?: { motivo: string; ocorridoEm: string }[];
   versoes?: { geradoEm: string; validadoEm: string; liberadoEm: string }[];
   protocolo?: { numeroProtocolo: string; canalEnvio: CanalEnvioBcb; dataHoraEnvio: string };
+  diretorId?: string;
 }
 
 export const excecoesDemoRetorno: Excecao[] = [];
@@ -2873,7 +2879,7 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
       numeroProtocolo: entrada.protocolo.numeroProtocolo,
       dataHoraEnvio: entrada.protocolo.dataHoraEnvio,
       canalEnvio: entrada.protocolo.canalEnvio,
-      registradoPorUsuarioId: USUARIO_DIRETOR_DEMO,
+      registradoPorUsuarioId: entrada.diretorId ?? USUARIO_DIRETOR_DEMO,
       reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
       situacaoRetorno: situacaoRetorno ?? "aguardando",
       codigoRetorno: situacaoFinal ? CODIGO_RETORNO_DEMO[situacaoFinal] : null,
@@ -2963,7 +2969,7 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
     geradoEm: geradoEmAtual,
     liberadoPorUsuarioId: USUARIO_VALIDADOR_DEMO,
     liberadoEm: liberadoEmAtual,
-    aprovadoPorUsuarioId: entrada.aprovadoEm ? USUARIO_DIRETOR_DEMO : null,
+    aprovadoPorUsuarioId: entrada.aprovadoEm ? (entrada.diretorId ?? USUARIO_DIRETOR_DEMO) : null,
     aprovadoEm: entrada.aprovadoEm ?? null,
     entregueEm: entrada.entregueEm ?? null,
     contadorStatus: entrada.moduloId === "fiscal" ? "confirmado" : "nao_aplicavel",
@@ -3234,6 +3240,145 @@ for (const moduloId of MODULOS_DEMO_R1) {
       })
     );
   }
+}
+
+interface VarianteR4 {
+  id: string;
+  instituicaoId: string;
+  moduloId: ModuloId;
+  competencia: string;
+  rotulo: string;
+  diretorId: string;
+  registros: number;
+}
+
+const VARIANTES_R4: VarianteR4[] = [
+  {
+    id: "per-meridian-acam212-r4videnas",
+    instituicaoId: "inst-meridian",
+    moduloId: "acam212",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, transmissão pela Videnas)",
+    diretorId: "usr-ricardo",
+    registros: 124,
+  },
+  {
+    id: "per-meridian-cadoc5711-r4videnas",
+    instituicaoId: "inst-meridian",
+    moduloId: "cadoc5711",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, transmissão pela Videnas)",
+    diretorId: "usr-ricardo",
+    registros: 131,
+  },
+  {
+    id: "per-meridian-cadoc5710-r4expirado",
+    instituicaoId: "inst-meridian",
+    moduloId: "cadoc5710",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, cadastro expirado)",
+    diretorId: "usr-ricardo",
+    registros: 126,
+  },
+  {
+    id: "per-meridian-fiscal-r4emissao",
+    instituicaoId: "inst-meridian",
+    moduloId: "fiscal",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, emissão incluída)",
+    diretorId: "usr-ricardo",
+    registros: 118,
+  },
+  {
+    id: "per-cofre-atlantico-cadoc5711-r4diretor",
+    instituicaoId: "inst-cofre-atlantico",
+    moduloId: "cadoc5711",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, transmissão pelo Diretor)",
+    diretorId: "usr-helena",
+    registros: 129,
+  },
+  {
+    id: "per-cofre-atlantico-cadoc5710-r4semcontrato",
+    instituicaoId: "inst-cofre-atlantico",
+    moduloId: "cadoc5710",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, transmissão não contratada)",
+    diretorId: "usr-helena",
+    registros: 122,
+  },
+  {
+    id: "per-cofre-atlantico-fiscal-r4encaminhar",
+    instituicaoId: "inst-cofre-atlantico",
+    moduloId: "fiscal",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, emissão não contratada)",
+    diretorId: "usr-helena",
+    registros: 116,
+  },
+  {
+    id: "per-pampulha-acam212-r4pendente",
+    instituicaoId: "inst-pampulha",
+    moduloId: "acam212",
+    competencia: "2026-10",
+    rotulo: "Outubro/2026 (demo R4, cadastro pendente)",
+    diretorId: "usr-sergio",
+    registros: 112,
+  },
+];
+
+for (const variante of VARIANTES_R4) {
+  periodos.push(
+    construirPeriodoDemoR1({
+      id: variante.id,
+      instituicaoId: variante.instituicaoId,
+      moduloId: variante.moduloId,
+      competencia: variante.competencia,
+      competenciaRotulo: variante.rotulo,
+      estado: "aprovado",
+      quantidadeRegistros: variante.registros,
+      tamanhoBytes: variante.registros * 1_950,
+      geradoEm: `2026-09-14T09:00:00-03:00`,
+      liberadoEm: `2026-09-14T14:00:00-03:00`,
+      aprovadoEm: `2026-09-15T09:00:00-03:00`,
+      diretorId: variante.diretorId,
+      versoes: [
+        {
+          geradoEm: `2026-09-14T09:00:00-03:00`,
+          validadoEm: `2026-09-14T11:00:00-03:00`,
+          liberadoEm: `2026-09-14T14:00:00-03:00`,
+        },
+      ],
+    })
+  );
+}
+
+for (const periodo of periodos) {
+  if (periodo.aprovadoEm && !periodo.contratoCongelado) {
+    periodo.contratoCongelado = congelarContrato(
+      buscarInstituicao(periodo.instituicaoId),
+      periodo.moduloId,
+      periodo.aprovadoEm
+    );
+  }
+}
+
+function validarUnicidadeDePeriodos(lista: PeriodoObrigacao[]): void {
+  const vistos = new Map<string, string>();
+  for (const periodo of lista) {
+    const chave = `${periodo.instituicaoId}|${periodo.moduloId}|${periodo.competencia}`;
+    const existente = vistos.get(chave);
+    if (existente) {
+      throw new Error(
+        `Seed inválido: ${existente} e ${periodo.id} compartilham instituição, módulo e competência (${chave}).`
+      );
+    }
+    vistos.set(chave, periodo.id);
+  }
+}
+
+if (process.env.NODE_ENV !== "production") {
+  validarUnicidadeDePeriodos(periodos);
 }
 
 export { periodos };

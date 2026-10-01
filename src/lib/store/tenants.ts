@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type {
+  ContratoModulo,
   Instituicao,
   ModuloId,
   StatusImplantacao,
@@ -19,8 +20,10 @@ import {
 } from "@/lib/tenants/registro";
 import { usePeriodosStore, type AutorAcao } from "@/lib/store/periodos";
 import { formatarCNPJ } from "@/lib/formatadores";
+import { contratoDoModulo } from "@/lib/contrato";
 
 export const NOME_ARMAZENAMENTO_TENANTS = "videnas-tenants";
+const VERSAO_ARMAZENAMENTO_TENANTS = 1;
 
 export interface ContatoInicial {
   nome: string;
@@ -72,6 +75,12 @@ export interface EstadoTenants {
     modulos: ModuloId[],
     autor: AutorAcao
   ) => ResultadoTenant;
+  alterarContratoModulo: (
+    tenantId: string,
+    moduloId: ModuloId,
+    alteracao: Partial<ContratoModulo>,
+    autor: AutorAcao
+  ) => ResultadoTenant;
   concluirOnboarding: (tenantId: string, autor: AutorAcao) => ResultadoTenant;
   reiniciarTenants: () => void;
 }
@@ -94,9 +103,13 @@ export const CLASSE_STATUS_IMPLANTACAO: Record<StatusImplantacao, string> = {
 
 const SITUACAO_REGULATORIA_INICIAL = "Cadastro em análise — Res. BCB 519/2025";
 
+function clonarInstituicao(instituicao: Instituicao): Instituicao {
+  return JSON.parse(JSON.stringify(instituicao)) as Instituicao;
+}
+
 function estadoInicial(): TenantsPersistidos {
   return {
-    tenants: instituicoesSemente.map((instituicao) => ({ ...instituicao })),
+    tenants: instituicoesSemente.map(clonarInstituicao),
     usuariosProvisionados: [],
   };
 }
@@ -518,6 +531,57 @@ export const useTenantsStore = create<EstadoTenants>()(
         return { sucesso: true };
       },
 
+      alterarContratoModulo: (tenantId, moduloId, alteracao, autor) => {
+        const tenant = buscarTenant(get().tenants, tenantId);
+        if (!tenant) {
+          return { sucesso: false, motivo: "Cliente não encontrado." };
+        }
+        if (!tenant.modulosContratados.includes(moduloId)) {
+          return { sucesso: false, motivo: "Este módulo não está contratado pelo cliente." };
+        }
+
+        const antes = contratoDoModulo(tenant, moduloId);
+        const depois: ContratoModulo = {
+          emissaoIncluida:
+            moduloId === "fiscal" ? (alteracao.emissaoIncluida ?? antes.emissaoIncluida) : false,
+          transmissaoIncluida: alteracao.transmissaoIncluida ?? antes.transmissaoIncluida,
+          responsavelTransmissao: alteracao.responsavelTransmissao ?? antes.responsavelTransmissao,
+        };
+
+        if (
+          antes.emissaoIncluida === depois.emissaoIncluida &&
+          antes.transmissaoIncluida === depois.transmissaoIncluida &&
+          antes.responsavelTransmissao === depois.responsavelTransmissao
+        ) {
+          return { sucesso: false, motivo: "Nenhuma alteração no contrato do módulo." };
+        }
+
+        set((estado) => ({
+          tenants: estado.tenants.map((item) =>
+            item.id === tenantId
+              ? {
+                  ...item,
+                  contrato: {
+                    cadastros: item.contrato?.cadastros ?? [],
+                    modulos: { ...(item.contrato?.modulos ?? {}), [moduloId]: depois },
+                  },
+                }
+              : item
+          ),
+        }));
+
+        registrarAuditoria(
+          autor,
+          tenantId,
+          "MODULOS_CONTRATADOS_ALTERADOS",
+          "Módulos contratados alterados",
+          `${tenantId}:${moduloId}`,
+          { escopo: "contrato", moduloId, antes, depois }
+        );
+
+        return { sucesso: true };
+      },
+
       concluirOnboarding: (tenantId, autor) => {
         const tenant = buscarTenant(get().tenants, tenantId);
         if (!tenant) {
@@ -558,8 +622,15 @@ export const useTenantsStore = create<EstadoTenants>()(
     }),
     {
       name: NOME_ARMAZENAMENTO_TENANTS,
+      version: VERSAO_ARMAZENAMENTO_TENANTS,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
+      migrate: (persistido, versao) => {
+        if (versao !== VERSAO_ARMAZENAMENTO_TENANTS) {
+          return estadoInicial();
+        }
+        return persistido as TenantsPersistidos;
+      },
       partialize: (estado) => ({
         tenants: estado.tenants,
         usuariosProvisionados: estado.usuariosProvisionados,

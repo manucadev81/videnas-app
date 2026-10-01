@@ -241,6 +241,7 @@ for (const periodo of periodos) {
           textoCiencia:
             "Declaro que revisei o conteúdo deste arquivo e assumo a responsabilidade pela obrigação perante o órgão competente.",
           hashSha256: arquivoCorrente?.hashSha256 ?? null,
+          contratoCongelado: periodo.contratoCongelado ?? null,
         },
       })
     );

@@ -48,6 +48,7 @@ interface SementeLacre {
 function sementesDePeriodosDemo(): SementeLacre[] {
   const sementes: SementeLacre[] = [];
   const estadosComCadeia = [
+    "aprovado",
     "aguardando_retorno",
     "retorno_aceito",
     "retorno_com_ressalvas",
@@ -56,12 +57,12 @@ function sementesDePeriodosDemo(): SementeLacre[] {
   ];
 
   for (const periodo of periodos) {
-    if (!/-(r1|r2)[a-z]+$/.test(periodo.id) || !estadosComCadeia.includes(periodo.estado)) {
+    if (!/-(r1|r2|r4)[a-z]+$/.test(periodo.id) || !estadosComCadeia.includes(periodo.estado)) {
       continue;
     }
     const arquivo = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);
     const protocolo = protocolos.find((item) => item.id === periodo.protocoloId);
-    if (!arquivo || !protocolo || !periodo.liberadoEm) {
+    if (!arquivo || !periodo.liberadoEm || (periodo.estado !== "aprovado" && !protocolo)) {
       continue;
     }
 
@@ -93,8 +94,8 @@ function sementesDePeriodosDemo(): SementeLacre[] {
     });
     anterior = idArquivo;
 
-    const retorno = protocolo.retornoRegulador;
-    if (retorno && protocolo.dataRetorno) {
+    const retorno = protocolo?.retornoRegulador;
+    if (protocolo && retorno && protocolo.dataRetorno) {
       if (retorno.anexoLacreId && retorno.anexoNome) {
         sementes.push({
           ...base,
@@ -131,7 +132,7 @@ function sementesDePeriodosDemo(): SementeLacre[] {
       }
     }
 
-    if (periodo.arquivamentoLacreId && periodo.arquivadoEm && periodo.arquivadoPorUsuarioId) {
+    if (protocolo && periodo.arquivamentoLacreId && periodo.arquivadoEm && periodo.arquivadoPorUsuarioId) {
       const arquivador = buscarUsuario(periodo.arquivadoPorUsuarioId);
       sementes.push({
         ...base,

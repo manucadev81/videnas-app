@@ -9,6 +9,7 @@ export interface BannerPosicionamentoProps {
   titulo?: string;
   children?: ReactNode;
   className?: string;
+  emissaoIncluida?: boolean;
 }
 
 const TEXTO_PADRAO: Record<VarianteBanner, { titulo: string; corpo: ReactNode }> = {
@@ -19,9 +20,10 @@ const TEXTO_PADRAO: Record<VarianteBanner, { titulo: string; corpo: ReactNode }>
         A Videnas é uma prestadora de serviços tecnológicos: uma RegTech. Recebemos os dados
         que a sua instituição nos envia, estruturamos os arquivos no formato exigido pelo
         regulador, validamos contra o schema oficial e registramos a trilha de auditoria de cada
-        etapa. A Videnas não é instituição financeira, não custodia ativos virtuais, não
-        transmite o arquivo ao Banco Central em nome da instituição, não emite NFS-e e não
-        substitui o trabalho do seu contador ou do seu advogado.
+etapa. A Videnas não é instituição financeira, não custodia ativos virtuais e não
+        substitui o trabalho do seu contador ou do seu advogado. A transmissão ao regulador e a
+        emissão de NFS-e só acontecem quando estão previstas no contrato da instituição e há
+        cadastro prévio válido; fora disso, são feitas pela própria instituição.
       </>
     ),
   },
@@ -30,22 +32,50 @@ const TEXTO_PADRAO: Record<VarianteBanner, { titulo: string; corpo: ReactNode }>
     corpo: (
       <>
         Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas
-        estrutura os dados do serviço prestado no formato da DPS. A emissão da NFS-e acontece fora
-        da Videnas, pelo emissor que a sua instituição definir. A definição de alíquota,
-        retenção e enquadramento tributário é do contador responsável, cuja validação é
-        obrigatória antes da liberação.
+        estrutura os dados do serviço prestado no formato da DPS. A emissão da NFS-e depende do
+        contrato de cada instituição: quando está incluída, a Videnas emite o documento fiscal
+        depois da aprovação do Diretor; quando não está, a DPS é encaminhada ao emissor que a
+        instituição definir. A definição de alíquota, retenção e enquadramento tributário é do
+        contador responsável, cuja validação é obrigatória antes da liberação.
       </>
     ),
   },
 };
+
+const CORPO_FISCAL_COM_EMISSAO = (
+  <>
+    Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas estrutura os
+    dados do serviço prestado no formato da DPS e, como a emissão da NFS-e está incluída no contrato
+    desta instituição, emite o documento fiscal depois da aprovação do Diretor. A definição de
+    alíquota, retenção e enquadramento tributário é do contador responsável, cuja validação é
+    obrigatória antes da liberação.
+  </>
+);
+
+const CORPO_FISCAL_SEM_EMISSAO = (
+  <>
+    Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas estrutura os
+    dados do serviço prestado no formato da DPS, mas a emissão da NFS-e não faz parte do contrato desta
+    instituição: depois da aprovação, o Diretor encaminha a DPS ao emissor que a instituição definir. A
+    definição de alíquota, retenção e enquadramento tributário é do contador responsável, cuja
+    validação é obrigatória antes da liberação.
+  </>
+);
 
 export function BannerPosicionamento({
   variante = "info",
   titulo,
   children,
   className,
+  emissaoIncluida,
 }: BannerPosicionamentoProps) {
   const conteudoPadrao = TEXTO_PADRAO[variante];
+  const corpoFiscal =
+    variante === "atencao" && emissaoIncluida !== undefined
+      ? emissaoIncluida
+        ? CORPO_FISCAL_COM_EMISSAO
+        : CORPO_FISCAL_SEM_EMISSAO
+      : undefined;
   const Icone = variante === "info" ? Info : TriangleAlert;
 
   return (
@@ -68,7 +98,7 @@ export function BannerPosicionamento({
       />
       <div className={cn("text-sm", variante === "info" ? "text-status-info-text" : "text-status-warning-text")}>
         <p className="font-medium">{titulo ?? conteudoPadrao.titulo}</p>
-        <div className="mt-1 leading-relaxed">{children ?? conteudoPadrao.corpo}</div>
+        <div className="mt-1 leading-relaxed">{children ?? corpoFiscal ?? conteudoPadrao.corpo}</div>
       </div>
     </div>
   );

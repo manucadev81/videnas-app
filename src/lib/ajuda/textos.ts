@@ -29,7 +29,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Fiscal (DPS)",
     pergunta: "O que é o módulo Fiscal?",
     descricao:
-      "Estruturação da Declaração de Prestação de Serviços (NFS-e / DPS) para conferência do contador antes do encaminhamento ao emissor definido pelo cliente. O prazo é o dia 5 e é o único módulo com etapa de Contador. Está marcado como candidato: o escopo ainda está em validação com o cliente.",
+      "Estruturação da Declaração de Prestação de Serviços (NFS-e / DPS) para conferência do contador. Depois da aprovação, a Videnas emite o documento fiscal se a emissão estiver no contrato; caso contrário, a DPS é encaminhada ao emissor definido pelo cliente. O prazo é o dia 5 e é o único módulo com etapa de Contador. Está marcado como candidato: o escopo ainda está em validação com o cliente.",
   },
 
   "etapa.ingestao": {
@@ -66,7 +66,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Etapa Entrega",
     pergunta: "O que é a etapa Entrega?",
     descricao:
-      "Fecha o ciclo depois que o Responsável de Compliance da instituição aprovou. Nas obrigações do Banco Central, registra-se o protocolo devolvido pelo órgão; no módulo Fiscal, marca-se o encaminhamento ao emissor. A transmissão em si acontece fora da Videnas. Um retorno com erro reabre o período para correção.",
+      "Fecha o ciclo depois que o Responsável de Compliance da instituição aprovou. O que acontece aqui depende do contrato do cliente e do cadastro prévio do canal: a transmissão pode ser feita pela Videnas ou pelo próprio Diretor, e o módulo Fiscal pode ter a emissão da NFS-e incluída. Sem transmissão disponível (não contratada, cadastro pendente ou expirado), o Diretor registra o protocolo manualmente, com justificativa; no Fiscal sem emissão, a DPS é encaminhada ao emissor definido pelo cliente. Um retorno com erro reabre o período para correção.",
   },
 
   "estado.aguardando_dados": {
@@ -103,7 +103,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Validado",
     pergunta: "O que significa o status Validado?",
     descricao:
-      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para a instituição. Depois disso, o Responsável de Compliance da casa cliente aprova e transmite ao órgão — a Videnas não envia o arquivo.",
+      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para a instituição. Depois disso, o Responsável de Compliance da casa cliente aprova. A transmissão ao órgão segue o contrato do cliente: feita pela Videnas, pelo próprio Diretor ou registrada manualmente.",
   },
   "estado.com_excecoes": {
     titulo: "Com exceções",
@@ -115,13 +115,13 @@ export const TEXTOS_AJUDA = {
     titulo: "Liberado",
     pergunta: "O que significa o status Liberado?",
     descricao:
-      "O Validador Videnas liberou o arquivo para a instituição. Cabe ao Responsável de Compliance da casa cliente aprovar — assumindo a obrigação — e transmitir ao órgão fora da Videnas.",
+      "O Validador Videnas liberou o arquivo para a instituição. Cabe ao Responsável de Compliance da casa cliente aprovar, assumindo a obrigação. Depois, a transmissão segue o contrato do cliente.",
   },
   "estado.aprovado": {
     titulo: "Aprovado",
     pergunta: "O que significa o status Aprovado?",
     descricao:
-      "O Diretor aprovou o arquivo e assumiu a responsabilidade pela obrigação. Falta registrar o protocolo do Banco Central ou, no módulo Fiscal, marcar o encaminhamento ao emissor.",
+      "O Diretor aprovou o arquivo e assumiu a responsabilidade pela obrigação. Conforme o contrato e o cadastro prévio, falta transmitir (pela Videnas ou pelo Diretor), emitir o documento fiscal (Fiscal com emissão incluída), registrar o protocolo manualmente ou, no Fiscal sem emissão, marcar o encaminhamento ao emissor.",
   },
   "estado.devolvido_diretor": {
     titulo: "Devolvido pelo Diretor",
@@ -139,7 +139,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Documento fiscal emitido",
     pergunta: "O que significa o status Documento fiscal emitido?",
     descricao:
-      "O documento fiscal foi emitido depois da aprovação, conforme o contrato da instituição. Falta transmitir ou registrar o protocolo para seguir para o retorno do órgão.",
+      "O documento fiscal foi emitido pela Videnas depois da aprovação, porque a emissão está no contrato da instituição. Falta transmitir ou registrar o protocolo manualmente para seguir para o retorno do emissor.",
   },
   "estado.aguardando_retorno": {
     titulo: "Aguardando retorno",
@@ -287,7 +287,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Usuários iniciais do cliente",
     pergunta: "Por que o Responsável de Compliance é obrigatório no cadastro?",
     descricao:
-      "O Responsável de Compliance é obrigatório no cadastro porque ele é o destinatário do convite inicial e a única pessoa que conclui a configuração guiada: sem ele, o tenant fica parado em Provisionado. Depois, é ele quem aprova o que a Videnas validou e transmite ao órgão — a Videnas não envia o arquivo. O responsável pelo envio de dados é opcional nesse momento; o Operacional do cliente o designa depois, em Configurações → Usuários e papéis.",
+      "O Responsável de Compliance é obrigatório no cadastro porque ele é o destinatário do convite inicial e a única pessoa que conclui a configuração guiada: sem ele, o tenant fica parado em Provisionado. Depois, é ele quem aprova o que a Videnas validou e, conforme o contrato, transmite ao órgão ou registra o protocolo manualmente. O responsável pelo envio de dados é opcional nesse momento; o Operacional do cliente o designa depois, em Configurações → Usuários e papéis.",
   },
 
   "fornecimento.checklist": {

@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
+import { PainelContratoCadastros } from "@/components/contrato/painel-contrato";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { responsavelEnvioDoTenant, useTenantsStore } from "@/lib/store/tenants";
@@ -23,8 +24,11 @@ const ROTULO_TIPO: Record<string, string> = { exchange: "Exchange", custodiante:
 
 export default function ConfiguracoesInstituicaoPage() {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
+  const tenants = useTenantsStore((estado) => estado.tenants);
   const instituicao =
-    instituicaoAtivaId && instituicaoAtivaId !== "todas" ? buscarInstituicao(instituicaoAtivaId) : undefined;
+    instituicaoAtivaId && instituicaoAtivaId !== "todas"
+      ? (tenants.find((tenant) => tenant.id === instituicaoAtivaId) ?? buscarInstituicao(instituicaoAtivaId))
+      : undefined;
 
   const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
   const podeEditar = false;
@@ -155,6 +159,8 @@ export default function ConfiguracoesInstituicaoPage() {
           })}
         </div>
       </section>
+
+      <PainelContratoCadastros instituicao={instituicao} />
 
       <BannerPosicionamento />
 

@@ -98,12 +98,12 @@ const FAQ = [
   {
     pergunta: "A Videnas envia o arquivo ao Banco Central por mim?",
     resposta:
-      "Não. A Videnas entrega o arquivo pronto, íntegro e com hash calculado. A transmissão ao Banco Central é feita pela própria instituição, fora da plataforma.",
+      "Depende do contrato. A Videnas entrega o arquivo pronto, íntegro e com hash calculado. Quando o contrato inclui a transmissão e há cadastro prévio válido, a transmissão é feita pela Videnas ou pelo Diretor da instituição; caso contrário, a instituição transmite por conta própria e registra o protocolo na plataforma.",
   },
   {
     pergunta: "A Videnas emite a NFS-e?",
     resposta:
-      "Não. No módulo Fiscal (candidato) a Videnas estrutura a DPS a partir dos dados enviados. A emissão da nota em si ocorre fora da Videnas, pelo emissor que a instituição definir.",
+      "Depende do contrato. No módulo Fiscal (candidato) a Videnas estrutura a DPS a partir dos dados enviados. Se a emissão estiver contratada, a Videnas emite o documento fiscal depois da aprovação; senão, a DPS segue ao emissor que a instituição definir.",
   },
   {
     pergunta: "A Videnas substitui meu contador?",
@@ -219,7 +219,7 @@ export default function LandingPage() {
 
                 {modulo.candidato ? (
                   <p className="rounded-md bg-status-candidate-bg px-3 py-2 text-xs text-status-candidate-text">
-                    A emissão da NFS-e ocorre fora da Videnas.
+                    A emissão da NFS-e depende do contrato do cliente.
                   </p>
                 ) : null}
               </div>
@@ -285,8 +285,8 @@ export default function LandingPage() {
               <ShieldCheck className="mx-auto size-8 text-brand-700" aria-hidden="true" />
               <p className="mt-3 font-display text-base font-bold text-neutral-700">Instituição aprova e envia</p>
               <p className="mt-1 text-sm text-neutral-500">
-                O Responsável de Compliance da casa cliente assume a obrigação e transmite ao órgão.
-                A Videnas não envia o arquivo ao regulador.
+                O Responsável de Compliance da casa cliente assume a obrigação. A transmissão ao órgão
+                segue o contrato: feita pela Videnas, pelo Diretor ou registrada manualmente.
               </p>
             </div>
           </div>
@@ -403,7 +403,7 @@ export default function LandingPage() {
             <LogoVidenas className="h-6 w-auto text-brand-700" />
             <p className="mt-3 text-xs leading-relaxed text-neutral-500">
               A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
-              SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado.
+              SPSAV, não realiza custódia de ativos virtuais, só emite NFS-e quando contratado e não substitui contador ou advogado.
               A responsabilidade pela obrigação regulatória perante o Banco Central do Brasil, o município e a
               Receita Federal é da instituição cliente.
             </p>

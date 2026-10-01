@@ -171,7 +171,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-boas-vindas",
     titulo: "Bem-vindo, Responsável de Compliance",
     descricao:
-      "Você atua pela instituição cliente: aprova o arquivo que a Videnas já validou e registra a transmissão ao órgão. A Videnas não envia nada ao regulador. A instituição já está fixa — você não escolhe tenant.",
+      "Você atua pela instituição cliente: aprova o arquivo que a Videnas já validou e acompanha a entrega ao órgão, que segue o contrato da instituição. A instituição já está fixa — você não escolhe tenant.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -180,7 +180,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-dashboard-prazos",
     titulo: "O que pede a sua atuação hoje",
     descricao:
-      "O painel lista só o que é seu: competências liberadas pela Videnas aguardando aprovação, e as já aprovadas em que falta registrar o protocolo da transmissão — que a sua instituição faz fora da plataforma.",
+      "O painel lista só o que é seu: competências liberadas pela Videnas aguardando aprovação, e as já aprovadas em que falta transmitir, emitir ou registrar o protocolo, conforme o contrato e o cadastro prévio da instituição.",
     seletor: '[data-tour="dashboard-prazos"]',
     rota: "/app",
     posicao: "top",
@@ -227,7 +227,7 @@ const PASSOS_DIRETOR: PassoTour[] = [
     id: "diretor-protocolo-bcb",
     titulo: "Protocolo do Banco Central na entrega",
     descricao:
-      "A transmissão ao Banco Central é feita pela sua instituição, fora da Videnas. Depois de enviar, é aqui na etapa Entrega que você registra o protocolo recebido — número, canal e data/hora — para manter a trilha de auditoria completa.",
+      "Aqui na etapa Entrega você vê o contrato e o cadastro prévio da instituição. Com transmissão disponível, a Videnas ou você transmite pela plataforma; senão, você registra o protocolo manualmente — justificativa, número, data e canal — e a trilha fica completa.",
     seletor: '[data-tour="entrega-conteudo"]',
     rota: "/app/cadoc/per-meridian-cadoc5710-202608",
     posicao: "top",
@@ -266,7 +266,7 @@ const PASSOS_CONTADOR: PassoTour[] = [
     id: "contador-selo-candidato",
     titulo: "Selo \"Candidato\" e o limite do módulo",
     descricao:
-      "O Fiscal ainda é uma funcionalidade candidata, sujeita a decisão de produto. E há um limite importante: a Videnas estrutura a DPS, mas não emite a NFS-e. A emissão acontece fora da plataforma, pelo emissor que a sua instituição definir.",
+      "O Fiscal ainda é uma funcionalidade candidata, sujeita a decisão de produto. E há um limite importante: a emissão da NFS-e depende do contrato. Com emissão incluída, a Videnas emite o documento depois da aprovação; sem emissão, a DPS segue ao emissor que a sua instituição definir.",
     seletor: '[data-tour="fiscal-banner"]',
     rota: "/app/fiscal",
     posicao: "bottom",

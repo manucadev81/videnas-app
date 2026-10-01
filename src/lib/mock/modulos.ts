@@ -57,7 +57,7 @@ export const modulos: Modulo[] = [
     nome: "Fiscal",
     nomeCompleto: "Fiscal — NFS-e / DPS",
     descricaoCurta:
-      "Estruturação da Declaração de Prestação de Serviços (DPS) para validação do contador.",
+      "Estruturação da Declaração de Prestação de Serviços (DPS) para validação do contador. Emissão da NFS-e conforme o contrato do cliente; sem emissão contratada, a DPS segue ao emissor que o cliente definir.",
     orgaoDestino: "Emissor definido pelo cliente",
     cadencia: "mensal",
     diaPrazo: 5,

@@ -12,6 +12,7 @@ import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { PainelArquivo } from "@/components/dominio/painel-arquivo";
 import { TimelineAuditoria } from "@/components/dominio/timeline-auditoria";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
+import { BannerFiscalContrato } from "@/components/dominio/banner-fiscal-contrato";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
@@ -39,6 +40,7 @@ import {
   type RegistroHistoricoNegativa,
 } from "@/lib/negacoes";
 import { descricaoQuorumComite, situacaoPrazoComite, type SituacaoPrazoComite } from "@/lib/comite";
+import { contratoEfetivoDoPeriodo } from "@/lib/contrato";
 import { operacoesPorPeriodo } from "@/lib/mock/operacoes";
 import { posicoesDiariasPorPeriodo, posicoesMensaisPorPeriodo } from "@/lib/mock/custodia";
 import { servicosPorPeriodo } from "@/lib/mock/fiscal";
@@ -396,7 +398,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
           </nav>
           <h1 className="flex items-center gap-2 font-display text-2xl font-bold text-neutral-700">
             {modulo.nome} · Competência {periodo.competenciaRotulo}
-            {ehFiscal ? <SeloCandidato tamanho="sm" /> : null}
+            {ehFiscal ? <SeloCandidato tamanho="sm" emissaoIncluida={instituicao ? contratoEfetivoDoPeriodo(periodo, instituicao).emissaoIncluida : undefined} /> : null}
           </h1>
           <div data-tour="periodo-cabecalho" className="mt-2 flex flex-wrap items-center gap-2">
             <BadgeStatus estado={periodo.estado} comAjuda />
@@ -616,7 +618,10 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         {modulo.etapas.includes("contador") ? (
           <TabsContent value="contador" className="space-y-4">
             <div data-tour="fiscal-banner">
-              <BannerPosicionamento variante="atencao" />
+              <BannerFiscalContrato
+                instituicaoId={periodo.instituicaoId}
+                emissaoIncluidaDoPeriodo={periodo.contratoCongelado?.emissaoIncluida}
+              />
             </div>
             <div data-tour="contador-resumo" className="rounded-lg border border-neutral-200 bg-white p-5">
               <h2 className="mb-3 font-display text-lg font-bold text-neutral-700">Resumo para o contador</h2>

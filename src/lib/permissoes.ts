@@ -1,6 +1,8 @@
 import type { Acao, AcaoId, EstadoPeriodo, ModuloId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
 import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { avaliarParticipantesDoComite, type ImpedimentosComite } from "@/lib/comite";
+import { avaliarAcaoDeEntrega, type AcaoDeEntrega } from "@/lib/contrato";
 
 export interface PerfilMetadados {
   id: PerfilId;
@@ -35,7 +37,7 @@ export const PERFIS: PerfilMetadados[] = [
     rotulo: "Compliance",
     rotuloCompleto: "Responsável de Compliance",
     descricao:
-      "Na instituição cliente: aprova o que a Videnas já validou e registra a transmissão ao órgão. A Videnas não envia o arquivo ao regulador.",
+      "Na instituição cliente: aprova o que a Videnas já validou e acompanha a entrega ao órgão. Conforme o contrato e o cadastro prévio, a transmissão é feita pela Videnas ou pelo próprio Diretor; sem transmissão disponível, ele registra o protocolo manualmente.",
     lado: "cliente",
     corBadge: "brand",
     icone: "ShieldCheck",
@@ -49,11 +51,13 @@ export const PERFIS: PerfilMetadados[] = [
       "/app/calendario",
       "/app/auditoria",
       "/app/evidencias",
+      "/app/configuracoes",
+      "/app/configuracoes/instituicao",
     ],
     acoesPermitidas: [
       "aprovar",
       "negar_aprovacao",
-      "registrar_protocolo",
+      "transmitir",
       "marcar_encaminhado",
       "registrar_protocolo_manual",
       "arquivar",
@@ -204,6 +208,8 @@ export const PERFIS: PerfilMetadados[] = [
     acoesPermitidas: [
       "executar_validacao",
       "liberar",
+      "emitir_fiscal",
+      "transmitir",
       "registrar_retorno",
       "arquivar",
       "trocar_tenant",
@@ -323,6 +329,13 @@ interface RegraAcao {
 }
 
 const MODULOS_NAO_FISCAIS: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710"];
+
+const ACOES_DE_ENTREGA: AcaoId[] = [
+  "emitir_fiscal",
+  "transmitir",
+  "registrar_protocolo_manual",
+  "marcar_encaminhado",
+];
 const TODOS_ESTADOS_LEITURA: EstadoPeriodo[] = [
   "aguardando_dados",
   "dados_ingeridos",
@@ -391,20 +404,21 @@ function acaoOcultaPorConfiguracao(
   periodo: PeriodoObrigacao,
   perfil: PerfilId
 ): boolean {
-  const moduloId = periodo.moduloId;
-  const configuracaoModulo = configuracaoFluxo.modulos[moduloId];
   switch (acaoId) {
     case "decidir_comite":
       return configuracaoFluxo.comiteQualidade?.decisorPerfilId !== perfil;
+    case "registrar_protocolo":
+      return true;
     case "emitir_fiscal":
-      return configuracaoModulo?.contrato?.emissao !== true;
     case "transmitir":
-      return (
-        configuracaoModulo?.contrato?.transmissao !== true ||
-        configuracaoModulo?.registroPrevio?.responsavel !== "videnas"
-      );
     case "registrar_protocolo_manual":
-      return !configuracaoFluxo.registroProtocoloManualHabilitado;
+    case "marcar_encaminhado":
+      return !avaliarAcaoDeEntrega(
+        acaoId as AcaoDeEntrega,
+        perfil,
+        periodo,
+        buscarInstituicao(periodo.instituicaoId)
+      ).visivel;
     case "registrar_retorno":
       return !configuracaoFluxo.registroRetornoPerfis.includes(perfil);
     case "arquivar":
@@ -493,6 +507,23 @@ export function podeExecutar(
       visivel: true,
       motivo: "Ação indisponível no estado atual do período.",
     };
+  }
+
+  if (ACOES_DE_ENTREGA.includes(acaoId)) {
+    const avaliacaoEntrega = avaliarAcaoDeEntrega(
+      acaoId as AcaoDeEntrega,
+      perfil,
+      periodo,
+      buscarInstituicao(periodo.instituicaoId),
+      contexto.usuarioAtualId
+    );
+    if (!avaliacaoEntrega.permitido) {
+      return {
+        permitido: false,
+        visivel: avaliacaoEntrega.visivel,
+        motivo: avaliacaoEntrega.motivo ?? "Ação indisponível para este contrato.",
+      };
+    }
   }
 
   if (acaoId === "gerar" && periodo.lotes.length === 0) {

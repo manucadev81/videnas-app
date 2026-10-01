@@ -24,6 +24,7 @@ import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { BadgeSentido } from "@/components/evidencias/badge-sentido";
+import { PainelContratoCadastros } from "@/components/contrato/painel-contrato";
 import { useSessaoStore } from "@/lib/store/sessao";
 import {
   CLASSE_STATUS_IMPLANTACAO,
@@ -45,7 +46,7 @@ import {
   formatarDataHora,
   truncarHash,
 } from "@/lib/formatadores";
-import type { ModuloId, TipoInstituicao, Usuario } from "@/lib/tipos";
+import type { ContratoModulo, ModuloId, TipoInstituicao, Usuario } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
 
 const TODOS_MODULOS: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710", "fiscal"];
@@ -75,6 +76,7 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
   const tenants = useTenantsStore((estado) => estado.tenants);
   const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
   const alterarModulosContratados = useTenantsStore((estado) => estado.alterarModulosContratados);
+  const alterarContratoModulo = useTenantsStore((estado) => estado.alterarContratoModulo);
   const alterarStatusTenant = useTenantsStore((estado) => estado.alterarStatusTenant);
   const enviarConviteInicial = useTenantsStore((estado) => estado.enviarConviteInicial);
   const reenviarConvite = useTenantsStore((estado) => estado.reenviarConvite);
@@ -158,6 +160,16 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
         ? `${buscarModulo(moduloId).nome} passou a ser um módulo contratado deste cliente.`
         : `${buscarModulo(moduloId).nome} deixou de ser um módulo contratado deste cliente.`
     );
+  }
+
+  function alterarContrato(moduloId: ModuloId, alteracao: Partial<ContratoModulo>) {
+    if (!tenant) return;
+    const resultado = alterarContratoModulo(tenant.id, moduloId, alteracao, autor);
+    if (!resultado.sucesso) {
+      toast.error(resultado.motivo ?? "Não foi possível alterar o contrato do módulo.");
+      return;
+    }
+    toast.success(`Contrato de ${buscarModulo(moduloId).nome} atualizado e registrado na trilha de auditoria.`);
   }
 
   function convidarNovamente() {
@@ -387,6 +399,10 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
           })}
         </div>
       </section>
+
+      <div data-tour="cliente-detalhe-contrato">
+        <PainelContratoCadastros instituicao={tenant} onAlterarContrato={alterarContrato} />
+      </div>
 
       <section
         data-tour="cliente-detalhe-usuarios"

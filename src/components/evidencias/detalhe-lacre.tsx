@@ -23,7 +23,11 @@ import {
   baixarComprovante,
   contextoComprovanteDoLacre,
 } from "@/components/evidencias/comprovante";
-import { filtrarCadeia, tipoArtefatoDoLacre } from "@/lib/evidencias/lacre";
+import {
+  filtrarCadeia,
+  tipoArtefatoDoLacre,
+  TIPOS_ARTEFATO_COM_CONTEUDO_BAIXAVEL,
+} from "@/lib/evidencias/lacre";
 import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
@@ -213,10 +217,7 @@ export function DetalheLacre({
 
               <VerificadorIntegridade key={lacre.id} lacre={lacre} dataTour="evidencias-verificar" />
 
-              {tipoArtefatoDoLacre(lacre) === "recibo_retorno" ||
-              tipoArtefatoDoLacre(lacre) === "dossie_arquivamento" ||
-              tipoArtefatoDoLacre(lacre) === "dossie_comite" ||
-              tipoArtefatoDoLacre(lacre) === "ata_comite" ? (
+              {TIPOS_ARTEFATO_COM_CONTEUDO_BAIXAVEL.includes(tipoArtefatoDoLacre(lacre)) ? (
                 <Button type="button" variant="outline" className="w-full" onClick={baixarConteudo}>
                   <Download aria-hidden="true" />
                   Baixar conteúdo lacrado

@@ -1,16 +1,5 @@
 import type { DesfechoComite, EstadoPeriodo, ModuloId, PerfilId } from "@/lib/tipos";
 
-export interface ConfiguracaoContratoModulo {
-  emissao?: boolean;
-  transmissao?: boolean;
-}
-
-export interface RegistroPrevioModulo {
-  responsavel: "videnas" | "diretor" | null;
-  registradoEm?: string;
-  identificador?: string;
-}
-
 export interface ConfiguracaoRetornoModulo {
   rotuloArtefato?: string;
 }
@@ -20,8 +9,6 @@ export type CaminhoAposRessalvas = "arquivar" | "reabrir";
 export const ROTULO_RETORNO_GENERICO = "Retorno do regulador/emissor";
 
 export interface ConfiguracaoFluxoModulo {
-  contrato?: ConfiguracaoContratoModulo;
-  registroPrevio?: RegistroPrevioModulo;
   retorno?: ConfiguracaoRetornoModulo;
 }
 
@@ -78,6 +65,8 @@ export interface ConfiguracaoFluxo {
   arquivamentoPerfis: PerfilId[];
   caminhosAposRessalvas?: CaminhoAposRessalvas[];
   registroRetornoPerfis: PerfilId[];
+  emissaoFiscalPerfis: PerfilId[];
+  transmissaoPerfisVidenas: PerfilId[];
   registroProtocoloManualHabilitado: boolean;
   enviarContadorAposNegacaoFiscalHabilitado?: boolean;
   retencao?: ConfiguracaoRetencao;
@@ -102,7 +91,9 @@ export const configuracaoFluxo: ConfiguracaoFluxo = {
   arquivamentoPerfis: ["executor", "validador"],
   caminhosAposRessalvas: ["arquivar", "reabrir"],
   registroRetornoPerfis: ["executor", "validador"],
-  registroProtocoloManualHabilitado: false,
+  emissaoFiscalPerfis: ["executor", "validador"],
+  transmissaoPerfisVidenas: ["executor", "validador"],
+  registroProtocoloManualHabilitado: true,
   retencao: { anos: 5, marcoInicial: "arquivamento" },
   modulos: {
     acam212: { retorno: { rotuloArtefato: "ACAM213" } },

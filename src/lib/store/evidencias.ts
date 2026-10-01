@@ -5,6 +5,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type {
   ArquivoGerado,
+  CadastroPrevio,
+  CanalEnvioBcb,
   FornecimentoInsumo,
   PeriodoObrigacao,
   ProtocoloBCB,
@@ -13,6 +15,7 @@ import type {
   SituacaoRetornoBcb,
   DesfechoComite,
   EstadoPeriodo,
+  ResponsavelTransmissao,
   TipoArtefatoLacre,
 } from "@/lib/tipos";
 import {
@@ -28,8 +31,12 @@ import {
 import { criptografiaDisponivel } from "@/lib/evidencias/cripto";
 import {
   montarAtaComite,
+  montarComprovanteTransmissao,
+  montarDocumentoFiscal,
   montarDossieArquivamento,
   montarDossieComite,
+  montarReciboEncaminhamento,
+  montarReciboProtocoloManual,
   montarReciboRetorno,
   type ParticipanteAtaComite,
 } from "@/lib/evidencias/dossie";
@@ -69,6 +76,10 @@ export interface EstadoEvidencias {
   selarArquivamento: (entrada: EntradaSelarArquivamento) => Promise<ResultadoEvidencia>;
   selarEscalaComite: (entrada: EntradaSelarEscalaComite) => Promise<ResultadoEvidencia>;
   selarAtaComite: (entrada: EntradaSelarAtaComite) => Promise<ResultadoEvidencia>;
+  selarDocumentoFiscal: (entrada: EntradaSelarDocumentoFiscal) => Promise<ResultadoEvidencia>;
+  selarTransmissao: (entrada: EntradaSelarTransmissao) => Promise<ResultadoEvidencia>;
+  selarProtocoloManual: (entrada: EntradaSelarProtocoloManual) => Promise<ResultadoSelagemRetorno>;
+  selarEncaminhamento: (entrada: EntradaSelarEncaminhamento) => Promise<ResultadoEvidencia>;
   registrarVerificacao: (lacreId: string, confere: boolean, hashCalculado: string) => void;
   reiniciarEvidencias: () => void;
 }
@@ -145,6 +156,47 @@ export interface EntradaSelarAtaComite {
   planoCorrecao: string | null;
   estadoNovo: EstadoPeriodo;
   decididoEm: string;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarDocumentoFiscal {
+  periodo: PeriodoObrigacao;
+  arquivo: ArquivoGerado | undefined;
+  numeroDocumento: string;
+  emitidoEm: string;
+  cadastro: CadastroPrevio | null;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarTransmissao {
+  periodo: PeriodoObrigacao;
+  objeto: { tipo: "arquivo" | "documento_fiscal"; nome: string; hashSha256: string };
+  numeroProtocolo: string;
+  canalBcb: CanalEnvioBcb | null;
+  cadastro: CadastroPrevio;
+  responsavel: ResponsavelTransmissao;
+  transmitidoEm: string;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarProtocoloManual {
+  periodo: PeriodoObrigacao;
+  numeroProtocolo: string;
+  dataInformada: string;
+  canalBcb: CanalEnvioBcb | null;
+  emissor: string | null;
+  justificativa: string;
+  motivoIndisponibilidade: string | null;
+  objeto: { nome: string; hashSha256: string } | null;
+  anexo: File | null;
+  autor: AutorLacre;
+}
+
+export interface EntradaSelarEncaminhamento {
+  periodo: PeriodoObrigacao;
+  emissor: string;
+  observacao: string | null;
+  objeto: { nome: string; hashSha256: string } | null;
   autor: AutorLacre;
 }
 
@@ -237,6 +289,13 @@ export function lacreDeSaidaDoArquivo(
     )
     .sort((a, b) => a.seladoEm.localeCompare(b.seladoEm))
     .at(-1);
+}
+
+export function hashDoArquivoEntregue(
+  lacres: Record<string, RegistroLacre>,
+  arquivo: ArquivoGerado
+): string {
+  return lacreDeSaidaDoArquivo(lacres, arquivo.id)?.hashSha256 ?? arquivo.hashSha256;
 }
 
 function proximaSequenciaDaCadeia(
@@ -844,6 +903,191 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
             conteudo: ata,
             origemNome: `Ata do Comitê de Qualidade — ${periodo.competenciaRotulo}`,
             tamanhoBytes: tamanhoEmBytesDoConteudo(ata),
+            autor,
+          }
+        );
+      },
+
+      selarDocumentoFiscal: async ({
+        periodo,
+        arquivo,
+        numeroDocumento,
+        emitidoEm,
+        cadastro,
+        autor,
+      }: EntradaSelarDocumentoFiscal) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const documento = montarDocumentoFiscal({
+          periodo,
+          arquivo,
+          numeroDocumento,
+          emitidoEm,
+          emitidoPorUsuarioId: autor.usuarioId,
+          cadastro,
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "saida",
+            tipoArtefato: "documento_fiscal",
+            conteudo: documento,
+            origemNome: `Documento fiscal ${numeroDocumento} — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(documento),
+            autor,
+          }
+        );
+      },
+
+      selarTransmissao: async ({
+        periodo,
+        objeto,
+        numeroProtocolo,
+        canalBcb,
+        cadastro,
+        responsavel,
+        transmitidoEm,
+        autor,
+      }: EntradaSelarTransmissao) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const cadeia = filtrarCadeia(Object.values(get().lacres), {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        });
+
+        const comprovante = montarComprovanteTransmissao({
+          periodo,
+          objeto,
+          numeroProtocolo,
+          canalBcb,
+          cadastro,
+          responsavel,
+          transmitidoEm,
+          transmitidoPorUsuarioId: autor.usuarioId,
+          hashLacreAnterior: encadearApos(cadeia),
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "saida",
+            tipoArtefato: "comprovante_transmissao",
+            conteudo: comprovante,
+            origemNome: `Comprovante de transmissão ${numeroProtocolo} — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(comprovante),
+            autor,
+          }
+        );
+      },
+
+      selarProtocoloManual: async ({
+        periodo,
+        numeroProtocolo,
+        dataInformada,
+        canalBcb,
+        emissor,
+        justificativa,
+        motivoIndisponibilidade,
+        objeto,
+        anexo,
+        autor,
+      }: EntradaSelarProtocoloManual) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const acessores: AcessoresEvidencias = { get, set };
+        let anexoLacre: RegistroLacre | undefined;
+
+        if (anexo) {
+          const bytes = await anexo.arrayBuffer();
+          const resultadoAnexo = await selarNaCadeia(acessores, {
+            periodo,
+            sentido: "entrada",
+            tipoArtefato: "anexo_protocolo_manual",
+            conteudo: bytes,
+            origemNome: anexo.name,
+            tamanhoBytes: anexo.size,
+            autor,
+          });
+          if (!resultadoAnexo.sucesso || !resultadoAnexo.lacre) {
+            return { sucesso: false, motivo: resultadoAnexo.motivo };
+          }
+          anexoLacre = resultadoAnexo.lacre;
+        }
+
+        const recibo = montarReciboProtocoloManual({
+          periodo,
+          numeroProtocolo,
+          dataInformada,
+          canalBcb,
+          emissor,
+          justificativa,
+          motivoIndisponibilidade,
+          objeto,
+          anexoNome: anexo?.name ?? null,
+          anexoTamanhoBytes: anexo?.size ?? null,
+          anexoHash: anexoLacre?.hashSha256 ?? null,
+          anexoLacreId: anexoLacre?.id ?? null,
+          registradoEm: new Date().toISOString(),
+          registradoPorUsuarioId: autor.usuarioId,
+        });
+
+        const resultadoRecibo = await selarNaCadeia(acessores, {
+          periodo,
+          sentido: "entrada",
+          tipoArtefato: "recibo_protocolo_manual",
+          conteudo: recibo,
+          origemNome: `Recibo do protocolo manual ${numeroProtocolo} — ${periodo.competenciaRotulo}`,
+          tamanhoBytes: tamanhoEmBytesDoConteudo(recibo),
+          autor,
+        });
+        if (!resultadoRecibo.sucesso || !resultadoRecibo.lacre) {
+          return { sucesso: false, motivo: resultadoRecibo.motivo, anexoLacre };
+        }
+
+        return { sucesso: true, anexoLacre, reciboLacre: resultadoRecibo.lacre };
+      },
+
+      selarEncaminhamento: async ({
+        periodo,
+        emissor,
+        observacao,
+        objeto,
+        autor,
+      }: EntradaSelarEncaminhamento) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const recibo = montarReciboEncaminhamento({
+          periodo,
+          emissor,
+          observacao,
+          objeto,
+          registradoEm: new Date().toISOString(),
+          registradoPorUsuarioId: autor.usuarioId,
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "entrada",
+            tipoArtefato: "recibo_encaminhamento",
+            conteudo: recibo,
+            origemNome: `Recibo de encaminhamento ao emissor ${emissor} — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(recibo),
             autor,
           }
         );

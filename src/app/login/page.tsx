@@ -26,6 +26,16 @@ const ATALHOS: AtalhoDemo[] = [
     instituicao: "Meridian Digital Assets",
   },
   {
+    email: "helena.drummond@cofreatlantico.com.br",
+    rotulo: "Responsável de Compliance (transmite pelo próprio cadastro)",
+    instituicao: "Cofre Atlântico",
+  },
+  {
+    email: "sergio.bittencourt@pampulhacapital.com.br",
+    rotulo: "Responsável de Compliance (cadastro pendente)",
+    instituicao: "Pampulha Capital",
+  },
+  {
     email: "paula.arantes@meridiandigital.com.br",
     rotulo: "Operacional / Suporte ao cliente",
     instituicao: "Meridian Digital Assets",
@@ -228,7 +238,7 @@ export default function LoginPage() {
 
           <p className="mt-8 text-center text-[11px] leading-relaxed text-neutral-400">
             A Videnas é prestadora de serviços tecnológicos (RegTech). Não é instituição financeira, PSAV ou
-            SPSAV, não realiza custódia de ativos virtuais, não emite NFS-e e não substitui contador ou advogado.
+            SPSAV, não realiza custódia de ativos virtuais, só emite NFS-e quando contratado e não substitui contador ou advogado.
           </p>
         </div>
       </div>

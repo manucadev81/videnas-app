@@ -7,7 +7,7 @@ import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
 import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
-import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
+import { BannerFiscalContrato } from "@/components/dominio/banner-fiscal-contrato";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
 import { ProtocoloComRetorno } from "@/components/dominio/protocolo-retorno";
@@ -69,7 +69,7 @@ export default function FiscalPage() {
         </span>
       </header>
       <div data-tour="fiscal-banner">
-        <BannerPosicionamento variante="atencao" />
+        <BannerFiscalContrato instituicaoId={instituicaoAtivaId} />
       </div>
 
       {periodosModulo.length === 0 ? (

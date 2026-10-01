@@ -30,6 +30,49 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-11T14:22:00-03:00",
     statusImplantacao: "ativo",
+    contrato: {
+      modulos: {
+        acam212: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
+        cadoc5711: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
+        cadoc5710: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
+        fiscal: { emissaoIncluida: true, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
+      },
+      cadastros: [
+        {
+          id: "cad-meridian-sta",
+          moduloIds: ["acam212", "cadoc5711"],
+          canal: "sisbacen",
+          emissor: null,
+          responsavel: "videnas",
+          status: "ativo",
+          identificador: "STA-VID-0041872",
+          registradoEm: "2026-03-20",
+          validoAte: "2027-03-20",
+        },
+        {
+          id: "cad-meridian-sta-5710",
+          moduloIds: ["cadoc5710"],
+          canal: "sisbacen",
+          emissor: null,
+          responsavel: "videnas",
+          status: "ativo",
+          identificador: "STA-VID-0041873",
+          registradoEm: "2025-08-15",
+          validoAte: "2026-08-15",
+        },
+        {
+          id: "cad-meridian-nfse-sp",
+          moduloIds: ["fiscal"],
+          canal: null,
+          emissor: "NFS-e Prefeitura de São Paulo",
+          responsavel: "videnas",
+          status: "ativo",
+          identificador: "NFSE-SP-VID-90214",
+          registradoEm: "2026-03-25",
+          validoAte: "2027-03-25",
+        },
+      ],
+    },
   },
   {
     id: "inst-cofre-atlantico",
@@ -55,6 +98,26 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-18T09:40:00-03:00",
     statusImplantacao: "ativo",
+    contrato: {
+      modulos: {
+        cadoc5711: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "diretor" },
+        cadoc5710: { emissaoIncluida: false, transmissaoIncluida: false, responsavelTransmissao: "videnas" },
+        fiscal: { emissaoIncluida: false, transmissaoIncluida: false, responsavelTransmissao: "videnas" },
+      },
+      cadastros: [
+        {
+          id: "cad-cofre-sta-diretor",
+          moduloIds: ["cadoc5711"],
+          canal: "sisbacen",
+          emissor: null,
+          responsavel: "diretor",
+          status: "ativo",
+          identificador: "STA-HDRUMMOND-0192",
+          registradoEm: "2026-04-02",
+          validoAte: "2027-04-02",
+        },
+      ],
+    },
   },
   {
     id: "inst-pampulha",
@@ -80,6 +143,25 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 4,
     criadoEm: "2026-08-25T11:05:00-03:00",
     statusImplantacao: "onboarding_em_andamento",
+    contrato: {
+      modulos: {
+        acam212: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
+        fiscal: { emissaoIncluida: false, transmissaoIncluida: false, responsavelTransmissao: "videnas" },
+      },
+      cadastros: [
+        {
+          id: "cad-pampulha-sta",
+          moduloIds: ["acam212"],
+          canal: "sisbacen",
+          emissor: null,
+          responsavel: "videnas",
+          status: "pendente",
+          identificador: null,
+          registradoEm: "2026-08-26",
+          validoAte: null,
+        },
+      ],
+    },
   },
 ];
 
