@@ -203,6 +203,7 @@ export interface EntradaSelarEncaminhamento {
 type EvidenciasPersistidas = Pick<EstadoEvidencias, "lacres" | "fornecimentos" | "verificacoes">;
 
 export const NOME_ARMAZENAMENTO_EVIDENCIAS = "videnas-evidencias";
+const VERSAO_ARMAZENAMENTO_EVIDENCIAS = 1;
 
 const MOTIVO_SEM_CRIPTOGRAFIA =
   "Este navegador não expõe a Web Crypto API. O lacre criptográfico não pode ser gerado agora.";
@@ -1108,6 +1109,7 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
     }),
     {
       name: NOME_ARMAZENAMENTO_EVIDENCIAS,
+      version: VERSAO_ARMAZENAMENTO_EVIDENCIAS,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
       partialize: (estado) => ({
@@ -1115,6 +1117,12 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
         fornecimentos: estado.fornecimentos,
         verificacoes: estado.verificacoes,
       }),
+      migrate: (persistido, versao) => {
+        if (versao !== VERSAO_ARMAZENAMENTO_EVIDENCIAS) {
+          return estadoInicial();
+        }
+        return persistido as EvidenciasPersistidas;
+      },
       merge: (persistido, atual) => {
         const parcial = (persistido ?? {}) as Partial<EvidenciasPersistidas>;
         return {

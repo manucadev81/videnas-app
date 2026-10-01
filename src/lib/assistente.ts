@@ -445,7 +445,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "colunas",
     ],
     resposta: [
-      "O nome do arquivo segue sempre o padrão {modulo}_{instituicao}_{AAAAMM}.{ext} — sem sufixos, espaços ou segmentos extras. Exemplo: acam212_meridian_202609.csv.",
+      "O nome do arquivo segue sempre o padrão {modulo}_{instituicao}_{AAAAMM}.{ext} — sem sufixos, espaços ou segmentos extras. Exemplo: acam212_meridian_202610.csv.",
       "Formatos aceitos por obrigação:",
       modulos
         .map((modulo) => {

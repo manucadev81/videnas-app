@@ -437,7 +437,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 10;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 11;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(

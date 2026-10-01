@@ -19,7 +19,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Responsável de Compliance",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T08:12:44-03:00",
+    ultimoAcesso: "2026-10-01T08:12:44-03:00",
     avatarIniciais: "RM",
   },
   {
@@ -34,7 +34,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Backoffice",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T07:48:02-03:00",
+    ultimoAcesso: "2026-10-01T07:48:02-03:00",
     avatarIniciais: "PA",
   },
   {
@@ -49,7 +49,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Contador Responsável",
     registroProfissional: "CRC 1SP-284.117/O-3",
     situacao: "ativo",
-    ultimoAcesso: "2026-09-15T18:20:11-03:00",
+    ultimoAcesso: "2026-09-30T18:20:11-03:00",
     avatarIniciais: "JB",
   },
   {
@@ -64,7 +64,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Operação Regulatória",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T08:41:37-03:00",
+    ultimoAcesso: "2026-10-01T08:41:37-03:00",
     avatarIniciais: "TN",
   },
   {
@@ -79,7 +79,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Especialista de Validação Regulatória",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T09:15:52-03:00",
+    ultimoAcesso: "2026-10-01T09:15:52-03:00",
     avatarIniciais: "CV",
   },
   {
@@ -94,7 +94,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Responsável de Compliance",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-15T16:33:09-03:00",
+    ultimoAcesso: "2026-09-30T16:33:09-03:00",
     avatarIniciais: "HD",
   },
   {
@@ -109,7 +109,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Custódia",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T07:05:31-03:00",
+    ultimoAcesso: "2026-10-01T07:05:31-03:00",
     avatarIniciais: "WP",
   },
   {
@@ -124,7 +124,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Responsável de Compliance",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-14T10:02:47-03:00",
+    ultimoAcesso: "2026-09-29T10:02:47-03:00",
     avatarIniciais: "SB",
   },
   {
@@ -139,7 +139,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Assistente Operacional",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T08:58:14-03:00",
+    ultimoAcesso: "2026-10-01T08:58:14-03:00",
     avatarIniciais: "AR",
   },
   {
@@ -154,7 +154,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Operação Regulatória",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-12T13:27:40-03:00",
+    ultimoAcesso: "2026-09-27T13:27:40-03:00",
     avatarIniciais: "IS",
   },
   {
@@ -169,7 +169,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Dados Regulatórios",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T09:03:27-03:00",
+    ultimoAcesso: "2026-10-01T09:03:27-03:00",
     avatarIniciais: "NQ",
   },
   {
@@ -184,7 +184,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Dados Regulatórios",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-15T14:41:06-03:00",
+    ultimoAcesso: "2026-09-30T14:41:06-03:00",
     avatarIniciais: "DV",
   },
   {
@@ -199,7 +199,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Analista de Dados Regulatórios",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-14T11:22:53-03:00",
+    ultimoAcesso: "2026-09-29T11:22:53-03:00",
     avatarIniciais: "CA",
   },
   {
@@ -214,7 +214,7 @@ export const usuariosSemente: Usuario[] = [
     cargo: "Administradora da Plataforma",
     registroProfissional: null,
     situacao: "ativo",
-    ultimoAcesso: "2026-09-16T09:47:18-03:00",
+    ultimoAcesso: "2026-10-01T09:47:18-03:00",
     avatarIniciais: "MF",
   },
 ];

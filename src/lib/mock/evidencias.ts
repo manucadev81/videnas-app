@@ -47,6 +47,7 @@ interface SementeLacre {
 
 function sementesDePeriodosDemo(): SementeLacre[] {
   const sementes: SementeLacre[] = [];
+  const idsEmUso = new Set<string>(SEMENTES.map((semente) => semente.id));
   const estadosComCadeia = [
     "aprovado",
     "aguardando_retorno",
@@ -76,7 +77,13 @@ function sementesDePeriodosDemo(): SementeLacre[] {
     };
     let anterior: string | null = null;
 
-    const idArquivo = montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, 1);
+    let sequenciaArquivo = 1;
+    let idArquivo = montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, sequenciaArquivo);
+    while (idsEmUso.has(idArquivo)) {
+      sequenciaArquivo += 1;
+      idArquivo = montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, sequenciaArquivo);
+    }
+    idsEmUso.add(idArquivo);
     sementes.push({
       ...base,
       id: idArquivo,
@@ -618,14 +625,14 @@ export const fornecimentosSemente: Record<string, Record<string, FornecimentoIns
       "usr-natalia"
     ),
   },
-  "per-meridian-acam212-202609": {
+  "per-meridian-acam212-202610": {
     "acam212-cadastro-clientes": fornecimentoArquivo(
-      "per-meridian-acam212-202609",
+      "per-meridian-acam212-202610",
       "acam212-cadastro-clientes",
-      "acam212_clientes_meridian_202609.csv",
+      "acam212_clientes_meridian_202610.csv",
       76_004,
       421,
-      "2026-09-15T17:22:09-03:00",
+      "2026-10-01T08:22:09-03:00",
       "usr-natalia",
       null
     ),

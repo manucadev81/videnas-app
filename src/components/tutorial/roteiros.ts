@@ -48,9 +48,9 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     id: "operacional-periodo-aguardando",
     titulo: "Competência aguardando dados",
     descricao:
-      "Setembro/2026 do ACAM212 ainda está em branco — o Cliente ainda não forneceu nenhum insumo. Sem dados fornecidos por ele, o Executor da Videnas não tem o que gerar; seu papel aqui é acompanhar esse fornecimento e cobrar o cliente quando algo atrasar.",
+      "Outubro/2026 do ACAM212 ainda está em branco — o Cliente ainda não forneceu nenhum insumo. Sem dados fornecidos por ele, o Executor da Videnas não tem o que gerar; seu papel aqui é acompanhar esse fornecimento e cobrar o cliente quando algo atrasar.",
     seletor: '[data-tour="periodo-cabecalho"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
+    rota: "/app/acam212/per-meridian-acam212-202610",
     posicao: "bottom",
   },
   {
@@ -59,7 +59,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     descricao:
       "Ingestão → Geração → Validação → Auditoria → Entrega. Quem alimenta a Ingestão é sempre o Cliente / Fornecedor de dados; você acompanha esse fornecimento e trata as exceções que aparecerem. As demais etapas são conduzidas pelo time da Videnas e ficam visíveis aqui para acompanhamento.",
     seletor: '[data-tour="stepper-etapas"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
+    rota: "/app/acam212/per-meridian-acam212-202610",
     posicao: "bottom",
   },
   {
@@ -68,7 +68,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     descricao:
       "Como você não sobe dados em nome do cliente, esta é a sua tela na etapa Ingestão: completude da competência, o checklist de insumos exigidos × já fornecidos, o que ainda falta e as evidências de entrada já lacradas por quem enviou.",
     seletor: '[data-tour="acompanhamento-fornecimento"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
+    rota: "/app/acam212/per-meridian-acam212-202610",
     posicao: "top",
   },
   {
@@ -77,7 +77,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     descricao:
       "O botão \"Notificar cliente do que falta\" registra um evento na trilha de auditoria — é o seu jeito de cobrar prazo sem precisar sair da plataforma nem subir nada em nome do cliente. Ele fica desabilitado quando não há pendência para cobrar.",
     seletor: '[data-tour="acompanhamento-notificar-cliente"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
+    rota: "/app/acam212/per-meridian-acam212-202610",
     posicao: "bottom",
   },
   {
@@ -86,7 +86,7 @@ const PASSOS_OPERACIONAL: PassoTour[] = [
     descricao:
       "Esta tabela lista somente os lotes que o Cliente enviou e que entraram nesta competência — arquivo, tamanho, data de recebimento, canal e o status Aceito. A conferência de formato e de layout acontece no ato do envio, na tela do Cliente; nada que não tenha sido aceito por ele chega até aqui. Quando a tabela está vazia, é porque o Cliente ainda não forneceu os dados desta competência.",
     seletor: '[data-tour="recepcao-tabela-arquivos"]',
-    rota: "/app/acam212/per-meridian-acam212-202609",
+    rota: "/app/acam212/per-meridian-acam212-202610",
     posicao: "top",
   },
 ];

@@ -1544,7 +1544,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                       <Input
                         id="numero-protocolo-manual"
                         value={campoTexto}
-                        placeholder={ehFiscalPeriodo ? "Protocolo do emissor" : "BCB-C212-2026091612345678"}
+                        placeholder={ehFiscalPeriodo ? "Protocolo do emissor" : "BCB-C212-2026100112345678"}
                         onChange={(evento) => setCampoTexto(evento.target.value)}
                       />
                     </div>

@@ -47,7 +47,7 @@ export default function CalendarioPage() {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
   const periodos = usePeriodosStore((estado) => estado.periodos);
 
-  const [mesAtual, setMesAtual] = useState("2026-09");
+  const [mesAtual, setMesAtual] = useState(HOJE_ISO.slice(0, 7));
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [modulosVisiveis, setModulosVisiveis] = useState<Set<ModuloId>>(

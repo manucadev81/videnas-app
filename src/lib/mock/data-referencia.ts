@@ -1,1 +1,1 @@
-export const HOJE_ISO = "2026-09-16";
+export const HOJE_ISO = "2026-10-01";
