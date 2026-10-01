@@ -40,6 +40,7 @@ import { buscarModulo } from "@/lib/mock/modulos";
 import { formatarCNPJ, formatarData } from "@/lib/formatadores";
 import type { Instituicao, ModuloId, StatusImplantacao, TipoInstituicao, Usuario } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
+import { buscarPerfil } from "@/lib/permissoes";
 
 const TODOS = "todos";
 
@@ -186,7 +187,7 @@ export default function ClientesPage() {
     },
     {
       id: "diretor",
-      cabecalho: "Compliance",
+      cabecalho: buscarPerfil("diretor").rotulo,
       renderizar: (tenant) => <Contato usuario={diretorDoTenant(usuariosProvisionados, tenant.id)} />,
     },
     {

@@ -66,7 +66,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Etapa Entrega",
     pergunta: "O que é a etapa Entrega?",
     descricao:
-      "Fecha o ciclo depois que o Responsável de Compliance da instituição aprovou. O que acontece aqui depende do contrato do cliente e do cadastro prévio do canal: a transmissão pode ser feita pela Videnas ou pelo próprio Diretor, e o módulo Fiscal pode ter a emissão da NFS-e incluída. Sem transmissão disponível (não contratada, cadastro pendente ou expirado), o Diretor registra o protocolo manualmente, com justificativa; no Fiscal sem emissão, a DPS é encaminhada ao emissor definido pelo cliente. Um retorno com erro reabre o período para correção.",
+      "Fecha o ciclo depois que o Responsável de Compliance da instituição aprovou. O que acontece aqui depende do contrato do cliente e do cadastro prévio do canal: a transmissão pode ser feita pela Videnas ou pelo próprio Responsável de Compliance, e o módulo Fiscal pode ter a emissão da NFS-e incluída. Sem transmissão disponível (não contratada, cadastro pendente ou expirado), o Responsável de Compliance registra o protocolo manualmente, com justificativa; no Fiscal sem emissão, a DPS é encaminhada ao emissor definido pelo cliente. Um retorno com erro reabre o período para correção.",
   },
 
   "estado.aguardando_dados": {
@@ -97,13 +97,13 @@ export const TEXTOS_AJUDA = {
     titulo: "Em validação",
     pergunta: "O que significa o status Em validação?",
     descricao:
-      "O Validador Videnas está conferindo o arquivo contra o schema oficial da obrigação. Exceções abertas nesta fase são tratadas pelo Executor; o Validador só reprocessa a validação depois do tratamento. Quem gerou o arquivo não pode liberá-lo.",
+      "O Validador Videnas designado por sorteio para este período está conferindo o arquivo contra o schema oficial da obrigação. Só ele executa a validação e libera. Exceções abertas nesta fase são tratadas pelo Executor; o Validador só reprocessa a validação depois do tratamento. Quem gerou o arquivo não pode liberá-lo.",
   },
   "estado.validado": {
     titulo: "Validado",
     pergunta: "O que significa o status Validado?",
     descricao:
-      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para a instituição. Depois disso, o Responsável de Compliance da casa cliente aprova. A transmissão ao órgão segue o contrato do cliente: feita pela Videnas, pelo próprio Diretor ou registrada manualmente.",
+      "O arquivo passou na validação de schema sem pendências bloqueantes. Falta o Validador liberá-lo para a instituição. Depois disso, o Responsável de Compliance da casa cliente aprova. A transmissão ao órgão segue o contrato do cliente: feita pela Videnas, pelo próprio Responsável de Compliance ou registrada manualmente.",
   },
   "estado.com_excecoes": {
     titulo: "Com exceções",
@@ -121,11 +121,11 @@ export const TEXTOS_AJUDA = {
     titulo: "Aprovado",
     pergunta: "O que significa o status Aprovado?",
     descricao:
-      "O Diretor aprovou o arquivo e assumiu a responsabilidade pela obrigação. Conforme o contrato e o cadastro prévio, falta transmitir (pela Videnas ou pelo Diretor), emitir o documento fiscal (Fiscal com emissão incluída), registrar o protocolo manualmente ou, no Fiscal sem emissão, marcar o encaminhamento ao emissor.",
+      "O Responsável de Compliance aprovou o arquivo e assumiu a responsabilidade pela obrigação. Conforme o contrato e o cadastro prévio, falta transmitir (pela Videnas ou pelo Responsável de Compliance), emitir o documento fiscal (Fiscal com emissão incluída), registrar o protocolo manualmente ou, no Fiscal sem emissão, marcar o encaminhamento ao emissor.",
   },
   "estado.devolvido_diretor": {
-    titulo: "Devolvido pelo Diretor",
-    pergunta: "O que significa o status Devolvido pelo Diretor?",
+    titulo: "Devolvido pelo Compliance",
+    pergunta: "O que significa o status Devolvido pelo Compliance?",
     descricao:
       "O Responsável de Compliance negou a aprovação e descreveu o motivo. O Executor precisa gerar uma nova versão do arquivo, que passa novamente por validação e liberação antes de voltar para aprovação.",
   },
@@ -133,7 +133,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Em Comitê de Qualidade",
     pergunta: "O que significa o status Em Comitê de Qualidade?",
     descricao:
-      "O período foi negado duas ou mais vezes e ficou em análise do Comitê de Qualidade da Videnas, presidido pelo Administrador. Nenhuma ação de execução fica disponível até a decisão do comitê, que devolve o período ao Executor (com plano de correção) ou ao Diretor.",
+      "O período foi negado duas ou mais vezes e ficou em análise do Comitê de Qualidade da Videnas, presidido pelo Administrador. Nenhuma ação de execução fica disponível até a decisão do comitê, que devolve o período ao Executor (com plano de correção) ou ao Responsável de Compliance.",
   },
   "estado.emitido_fiscal": {
     titulo: "Documento fiscal emitido",
@@ -145,25 +145,25 @@ export const TEXTOS_AJUDA = {
     titulo: "Aguardando retorno",
     pergunta: "O que significa o status Aguardando retorno?",
     descricao:
-      "O protocolo foi registrado e a obrigação aguarda o retorno do órgão destinatário. Assim que o retorno chegar, ele é registrado como aceito, aceito com ressalvas ou rejeitado.",
+      "O protocolo foi registrado e a obrigação aguarda o retorno do órgão destinatário. Assim que o retorno chegar, ele é registrado: no ACAM212 como aceito, aceito com ressalvas ou rejeitado; no Cadoc e no Fiscal apenas como aprovado (sim ou não).",
   },
   "estado.retorno_aceito": {
     titulo: "Retorno aceito",
     pergunta: "O que significa o status Retorno aceito?",
     descricao:
-      "O órgão destinatário aceitou o arquivo sem ressalvas. A competência pode ser arquivada, encerrando o ciclo com um lacre de saída encadeado.",
+      "O órgão destinatário aceitou (aprovou) o arquivo. A competência pode ser arquivada, encerrando o ciclo com um lacre de saída encadeado.",
   },
   "estado.retorno_com_ressalvas": {
     titulo: "Retorno aceito com ressalvas",
     pergunta: "O que significa o status Retorno aceito com ressalvas?",
     descricao:
-      "O órgão destinatário aceitou o arquivo, mas registrou ressalvas na mensagem de retorno. Há dois caminhos: arquivar o período, mantendo a ressalva no dossiê, ou reabri-lo para correção.",
+      "Exclusivo do ACAM212: o órgão destinatário aceitou o arquivo, mas registrou ressalvas na mensagem de retorno. Há dois caminhos: arquivar o período, mantendo a ressalva no dossiê, ou reabri-lo para correção.",
   },
   "estado.retorno_rejeitado": {
     titulo: "Retorno rejeitado",
     pergunta: "O que significa o status Retorno rejeitado?",
     descricao:
-      "O órgão destinatário recusou o arquivo entregue. O período precisa ser reaberto para correção, o que devolve a obrigação para a etapa de dados recebidos. O prazo regulatório continua contando.",
+      "O órgão destinatário recusou (não aprovou) o arquivo entregue. O período precisa ser reaberto para correção, o que devolve a obrigação para a etapa de dados recebidos. O prazo regulatório continua contando.",
   },
   "estado.arquivado": {
     titulo: "Arquivado",
@@ -214,7 +214,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Dashboard",
     pergunta: "O que é o Dashboard?",
     descricao:
-      "Visão de partida da competência corrente, recortada pelo perfil: o Cliente vê o que falta fornecer; Diretor e Operacional vêem prazos e pendências da instituição; Executor e Validador vêem a fila de operação.",
+      "Visão de partida da competência corrente, recortada pelo perfil: o Cliente vê o que falta fornecer; Compliance e Operacional vêem prazos e pendências da instituição; Executor e Validador vêem a fila de operação.",
   },
   "nav.acam212": {
     titulo: "ACAM212",
@@ -281,7 +281,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Status de implantação",
     pergunta: "O que significa cada status de implantação?",
     descricao:
-      "Provisionado: o Administrador cadastrou a instituição e os usuários iniciais, mas o convite ainda não saiu — ninguém do cliente consegue configurar nada. Onboarding em andamento: o convite inicial foi enviado ao Diretor responsável, que ainda não terminou a configuração guiada do ambiente. Ativo: o Diretor concluiu a configuração guiada e as competências dos módulos contratados foram abertas — o cliente opera normalmente. Suspenso: o Administrador interrompeu o atendimento com um motivo registrado; o histórico e a trilha de auditoria continuam visíveis, mas novas competências deixam de ser abertas. Reativar devolve o cliente ao status Ativo.",
+      "Provisionado: o Administrador cadastrou a instituição e os usuários iniciais, mas o convite ainda não saiu — ninguém do cliente consegue configurar nada. Onboarding em andamento: o convite inicial foi enviado ao Responsável de Compliance, que ainda não terminou a configuração guiada do ambiente. Ativo: o Responsável de Compliance concluiu a configuração guiada e as competências dos módulos contratados foram abertas — o cliente opera normalmente. Suspenso: o Administrador interrompeu o atendimento com um motivo registrado; o histórico e a trilha de auditoria continuam visíveis, mas novas competências deixam de ser abertas. Reativar devolve o cliente ao status Ativo.",
   },
   "cliente.usuarios-iniciais": {
     titulo: "Usuários iniciais do cliente",
@@ -336,7 +336,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Fornecimento do cliente",
     pergunta: "O que este painel de acompanhamento mostra?",
     descricao:
-      "É a visão de quem depende do fornecimento do Cliente / Fornecedor de dados nesta competência: completude, insumos e prazo. O Operacional usa este painel para orientar e cobrar o que falta. O Executor só consulta o que já chegou para gerar. O Diretor consulta o andamento, sem cobrar. O Validador não vê este painel. O envio continua exclusivo do Cliente.",
+      "É a visão de quem depende do fornecimento do Cliente / Fornecedor de dados nesta competência: completude, insumos e prazo. O Operacional usa este painel para orientar e cobrar o que falta. O Executor só consulta o que já chegou para gerar. O Responsável de Compliance consulta o andamento, sem cobrar. O Validador não vê este painel. O envio continua exclusivo do Cliente.",
   },
   "fornecimento.statusCanonico": {
     titulo: "Status do lote canônico",

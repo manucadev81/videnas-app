@@ -27,7 +27,11 @@ export function IdentidadeUsuario({ className }: IdentidadeUsuarioProps) {
     instituicaoAtivaId && instituicaoAtivaId !== "todas" ? instituicaoAtivaId : usuario.instituicaoIds[0];
   const instituicao = instituicaoId ? buscarInstituicao(instituicaoId) : undefined;
 
-  const linhaSecundaria = [instituicao?.nomeFantasia, perfil.rotuloCompleto]
+  const rotuloPerfil =
+    perfilAtivo === "validador" && usuario.nivelValidador
+      ? `${perfil.rotuloCompleto} (${usuario.nivelValidador})`
+      : perfil.rotuloCompleto;
+  const linhaSecundaria = [instituicao?.nomeFantasia, rotuloPerfil]
     .filter(Boolean)
     .join(" · ");
 

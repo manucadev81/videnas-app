@@ -39,7 +39,7 @@ export const CANAIS_BCB_OFERECIDOS: CanalEnvioBcb[] = ["sisbacen", "pstaw10", "p
 
 export const ROTULO_RESPONSAVEL_TRANSMISSAO: Record<ResponsavelTransmissao, string> = {
   videnas: "Videnas",
-  diretor: "Diretor da instituição",
+  diretor: "Responsável de Compliance da instituição",
 };
 
 export const ROTULO_STATUS_CADASTRO: Record<StatusCadastroPrevio, string> = {
@@ -249,7 +249,7 @@ export function avaliarDisponibilidadeTransmissao(
     : undefined;
   const cadastro = cadastroCongelado ?? cadastroAplicavel(instituicao, moduloId, hojeIso, contrato);
   if (!cadastro) {
-    const dono = contrato.responsavelTransmissao === "diretor" ? " do Diretor" : "";
+    const dono = contrato.responsavelTransmissao === "diretor" ? " do Responsável de Compliance" : "";
     return {
       ...base,
       disponivel: false,
@@ -371,7 +371,7 @@ export function avaliarAcaoDeEntrega(
     }
     const ladoResponsavel = disponibilidade.responsavel;
     if (ladoResponsavel === "diretor" && perfil !== "diretor") {
-      return { visivel: true, permitido: false, motivo: "Transmissão feita pelo Diretor da instituição" };
+      return { visivel: true, permitido: false, motivo: "Transmissão feita pelo Responsável de Compliance da instituição" };
     }
     if (ladoResponsavel === "videnas" && !configuracaoFluxo.transmissaoPerfisVidenas.includes(perfil)) {
       return {
@@ -433,7 +433,7 @@ export function descreverCaminhoDeEntrega(
       tom: "atencao",
       titulo: "Emissão da NFS-e não contratada",
       texto:
-        "A emissão da NFS-e não faz parte do contrato desta instituição. Depois da aprovação, o Diretor encaminha a DPS ao emissor definido pelo cliente e registra o encaminhamento aqui.",
+        "A emissão da NFS-e não faz parte do contrato desta instituição. Depois da aprovação, o Responsável de Compliance encaminha a DPS ao emissor definido pelo cliente e registra o encaminhamento aqui.",
     };
   }
 
@@ -442,8 +442,8 @@ export function descreverCaminhoDeEntrega(
     if (disponibilidade.responsavel === "diretor") {
       return {
         tom: "sucesso",
-        titulo: "Transmissão feita pelo Diretor da instituição",
-        texto: `O contrato inclui a transmissão e o cadastro prévio é do Diretor (${canal}). O Diretor transmite pela plataforma e a Videnas guarda o comprovante lacrado.`,
+        titulo: "Transmissão feita pelo Responsável de Compliance da instituição",
+        texto: `O contrato inclui a transmissão e o cadastro prévio é do Responsável de Compliance (${canal}). O Responsável de Compliance transmite pela plataforma e a Videnas guarda o comprovante lacrado.`,
       };
     }
     return {
@@ -454,8 +454,8 @@ export function descreverCaminhoDeEntrega(
   }
 
   const complemento = ehFiscal
-    ? "O Diretor registra manualmente o protocolo do emissor, com justificativa."
-    : "O Diretor registra manualmente o protocolo recebido, com justificativa.";
+    ? "O Responsável de Compliance registra manualmente o protocolo do emissor, com justificativa."
+    : "O Responsável de Compliance registra manualmente o protocolo recebido, com justificativa.";
 
   return {
     tom: "atencao",

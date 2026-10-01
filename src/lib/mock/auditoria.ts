@@ -11,6 +11,9 @@ import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
 import { montarHistoricoNegativas } from "@/lib/negacoes";
 import { excecoes } from "@/lib/mock/excecoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
+import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { areasDestinatarias, gatilhoNotifica } from "@/lib/areas-cliente";
+import { validadoresElegiveis } from "@/lib/validadores";
 
 export const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   PERIODO_CRIADO: "Período criado",
@@ -30,7 +33,7 @@ export const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   REPROCESSAMENTO_SOLICITADO: "Reprocessamento solicitado",
   PERIODO_LIBERADO: "Período liberado",
   PERIODO_APROVADO: "Período aprovado",
-  APROVACAO_NEGADA: "Aprovação negada pelo Diretor",
+  APROVACAO_NEGADA: "Aprovação negada pelo Responsável de Compliance",
   COMITE_QUALIDADE_ACIONADO: "Comitê de Qualidade acionado",
   COMITE_QUALIDADE_DECIDIU: "Comitê de Qualidade decidiu",
   DOCUMENTO_FISCAL_EMITIDO: "Documento fiscal emitido",
@@ -43,6 +46,7 @@ export const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   RETORNO_REJEITADO: "Retorno rejeitado",
   PERIODO_ARQUIVADO: "Período arquivado",
   AREA_CLIENTE_NOTIFICADA: "Área do cliente notificada",
+  VALIDADOR_SORTEADO: "Validador sorteado",
   PERIODO_REABERTO: "Período reaberto",
   HASH_REVERIFICADO: "Hash reverificado",
   USUARIO_CONVIDADO: "Usuário convidado",
@@ -202,6 +206,37 @@ for (const validacao of validacoes) {
 }
 
 for (const periodo of periodos) {
+  const designado = periodo.validadorDesignadoId ? buscarUsuario(periodo.validadorDesignadoId) : undefined;
+  if (designado && periodo.designadoEm) {
+    const arquivoDesignado = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);
+    eventos.push(
+      criarEvento({
+        ocorridoEm: periodo.designadoEm,
+        instituicaoId: periodo.instituicaoId,
+        periodoId: periodo.id,
+        moduloId: periodo.moduloId,
+        competencia: periodo.competencia,
+        tipo: "VALIDADOR_SORTEADO",
+        usuarioId: periodo.geradoPorUsuarioId ?? designado.id,
+        referencia: designado.id,
+        payload: {
+          criterio: "sorteio",
+          elegiveis: validadoresElegiveis(periodo).map((usuario) => ({
+            usuarioId: usuario.id,
+            nome: usuario.nome,
+            nivel: usuario.nivelValidador ?? null,
+          })),
+          sorteadoUsuarioId: designado.id,
+          sorteadoNome: designado.nome,
+          sorteadoNivel: designado.nivelValidador ?? null,
+          geradoPorUsuarioId: periodo.geradoPorUsuarioId,
+          arquivoId: arquivoDesignado?.id ?? null,
+          hashSha256: arquivoDesignado?.hashSha256 ?? null,
+        },
+      })
+    );
+  }
+
   if (periodo.liberadoEm && periodo.liberadoPorUsuarioId) {
     const arquivoCorrente = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);
     eventos.push(
@@ -428,6 +463,36 @@ for (const periodo of periodos) {
         },
       })
     );
+
+    if (gatilhoNotifica("arquivamento")) {
+      for (const area of areasDestinatarias(buscarInstituicao(periodo.instituicaoId), periodo.moduloId)) {
+        eventos.push(
+          criarEvento({
+            ocorridoEm: periodo.arquivadoEm.replace(/:\d{2}(-03:00)$/, ":02$1"),
+            instituicaoId: periodo.instituicaoId,
+            periodoId: periodo.id,
+            moduloId: periodo.moduloId,
+            competencia: periodo.competencia,
+            tipo: "AREA_CLIENTE_NOTIFICADA",
+            usuarioId: periodo.arquivadoPorUsuarioId,
+            referencia: area.id,
+            payload: {
+              areaId: area.id,
+              tipoArea: area.tipo,
+              areaNome: area.nome,
+              responsavelNome: area.responsavelNome,
+              email: area.email,
+              gatilho: "arquivamento",
+              motivo: "Notificação por arquivamento do período",
+              periodoId: periodo.id,
+              moduloId: periodo.moduloId,
+              competencia: periodo.competencia,
+              simulado: true,
+            },
+          })
+        );
+      }
+    }
   }
 }
 

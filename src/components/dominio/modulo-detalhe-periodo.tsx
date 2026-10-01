@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
 import { StepperEtapas } from "@/components/dominio/stepper-etapas";
+import { FaixaOrganizacaoPeriodo } from "@/components/dominio/faixa-organizacao-periodo";
+import { rotuloUsuarioComNivel } from "@/lib/validadores";
 import { PainelArquivo } from "@/components/dominio/painel-arquivo";
 import { TimelineAuditoria } from "@/components/dominio/timeline-auditoria";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
@@ -418,6 +420,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
               {instituicao?.nomeFantasia} · {instituicao ? formatarCNPJ(instituicao.cnpj) : ""}
             </span>
           </div>
+          <FaixaOrganizacaoPeriodo periodo={periodo} />
         </div>
         <BarraAcoesFluxo periodoId={periodoId} className="shrink-0" />
       </div>
@@ -763,7 +766,7 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
               </div>
               <div className="rounded-md bg-neutral-50 p-3">
                 <p className="text-xs text-neutral-500">Liberado por</p>
-                <p className="text-sm font-medium text-neutral-700">{usuarioLiberador?.nome ?? "—"}</p>
+                <p className="text-sm font-medium text-neutral-700">{rotuloUsuarioComNivel(usuarioLiberador)}</p>
                 <p className="text-xs text-neutral-500">{periodo.liberadoEm ? formatarDataHora(periodo.liberadoEm) : "—"}</p>
               </div>
               <div className="rounded-md bg-neutral-50 p-3">
@@ -879,8 +882,8 @@ function BannerComiteQualidade({
         </p>
         <p className="mt-1">
           {historico.some((registro) => registro.origem === "contador")
-            ? `Esta competência acumulou ${historico.length} ${historico.length === 1 ? "negativa" : "negativas"}, entre negações do Diretor e devoluções do Contador`
-            : `O Diretor negou a aprovação ${historico.length} ${historico.length === 1 ? "vez" : "vezes"} nesta competência`}{" "}
+            ? `Esta competência acumulou ${historico.length} ${historico.length === 1 ? "negativa" : "negativas"}, entre negações do Responsável de Compliance e devoluções do Contador`
+            : `O Responsável de Compliance negou a aprovação ${historico.length} ${historico.length === 1 ? "vez" : "vezes"} nesta competência`}{" "}
           (limite de {limiarNegativas()}). O período foi escalado ao Comitê de Qualidade e está
           somente leitura para todos os perfis
           {desde ? `, desde ${formatarDataHora(desde)}` : ""}. {prazoTexto}
@@ -890,7 +893,7 @@ function BannerComiteQualidade({
         <p>
           O Comitê de Qualidade da Videnas é presidido pelo Administrador, com quórum{" "}
           {descricaoQuorumComite()}. Sem acordo, a negativa é mantida. O Comitê é consultivo: a
-          aprovação regulatória continua sendo do Diretor.
+          aprovação regulatória continua sendo do Responsável de Compliance.
         </p>
         {prazoComite ? (
           <p className="mt-1 font-semibold" role="status">
@@ -961,7 +964,7 @@ function BannerNegacaoDiretor({
       data-tour="banner-negacao-diretor"
       className="rounded-lg border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text"
     >
-      <p className="font-display text-base font-bold">Devolvido pelo Diretor</p>
+      <p className="font-display text-base font-bold">Devolvido pelo Compliance</p>
       <p className="mt-0.5 text-xs font-medium">
         {rotuloContagemNegativas(numero)}
         {escalaNaProxima ? " · uma nova negativa escala o período ao Comitê de Qualidade" : ""}

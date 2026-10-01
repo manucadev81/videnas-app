@@ -12,6 +12,7 @@ import {
   calcularRetencaoAte,
   configuracaoFluxo,
   DESFECHOS_COMITE,
+  retornoSomentePosicionamento,
 } from "@/lib/mock/configuracao-fluxo";
 import { descricaoQuorumComite } from "@/lib/comite";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
@@ -178,9 +179,13 @@ export function montarReciboRetorno(entrada: EntradaReciboRetorno): string {
       artefato: entrada.rotuloArtefato,
       identificador: entrada.identificador,
       dataInformada: entrada.dataInformada,
-      situacao: entrada.situacao,
-      codigo: entrada.codigoRetorno,
-      mensagem: entrada.mensagemRetorno,
+      ...(retornoSomentePosicionamento(periodo.moduloId)
+        ? { aprovado: entrada.situacao === "aceito" }
+        : {
+            situacao: entrada.situacao,
+            codigo: entrada.codigoRetorno,
+            mensagem: entrada.mensagemRetorno,
+          }),
       anexo: entrada.anexoNome
         ? {
             nome: entrada.anexoNome,

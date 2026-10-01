@@ -45,9 +45,19 @@ import {
 import {
   calcularRetencaoAte,
   configuracaoFluxo,
+  type GatilhoNotificacaoArea,
   DESFECHOS_COMITE,
+  retornoSomentePosicionamento,
   rotuloRetornoDoModulo,
 } from "@/lib/mock/configuracao-fluxo";
+import { areasDestinatarias, gatilhoNotifica, ROTULO_GATILHO_AREA } from "@/lib/areas-cliente";
+import {
+  MENSAGEM_SEM_VALIDADOR_ELEGIVEL,
+  avaliarValidadorDesignado,
+  nivelDoUsuario,
+  sortearValidador,
+  validadoresElegiveis,
+} from "@/lib/validadores";
 import { descricaoQuorumComite, impedimentosDoComite } from "@/lib/comite";
 import {
   avaliarDisponibilidadeDoPeriodo,
@@ -72,6 +82,7 @@ export interface AutorAcao {
 export interface ResultadoAcao {
   sucesso: boolean;
   motivo?: string;
+  notificacoes?: string[];
 }
 
 export interface DadosRetornoRegulador {
@@ -147,11 +158,21 @@ export interface DadosEncaminhamento {
 
 export const TAMANHO_MINIMO_TEXTO_COMITE = 10;
 
+export const CODIGO_RETORNO_NAO_APROVADO = "RETORNO_NAO_APROVADO";
+export const DESCRICAO_RETORNO_NAO_APROVADO =
+  "O regulador/emissor informou que o documento não foi aprovado.";
+
 export function validarEntradaRetorno(
   situacao: "aceito" | "aceito_com_ressalvas" | "rejeitado",
   codigoRetorno: string,
-  mensagemRetorno: string
+  mensagemRetorno: string,
+  somentePosicionamento = false
 ): ResultadoAcao {
+  if (somentePosicionamento) {
+    return situacao === "aceito_com_ressalvas"
+      ? { sucesso: false, motivo: "Este módulo registra apenas se o retorno foi aprovado ou não." }
+      : { sucesso: true };
+  }
   if (!codigoRetorno.trim()) {
     return { sucesso: false, motivo: "Informe o código de retorno recebido." };
   }
@@ -257,6 +278,76 @@ function construirEvento(
     referencia,
     payload
   );
+}
+
+function construirNotificacoesDeAreas(
+  autor: AutorAcao,
+  periodo: PeriodoObrigacao,
+  gatilho: GatilhoNotificacaoArea
+): { eventos: EventoAuditoria[]; destinatarios: string[] } {
+  if (!gatilhoNotifica(gatilho)) {
+    return { eventos: [], destinatarios: [] };
+  }
+  const areas = areasDestinatarias(buscarInstituicao(periodo.instituicaoId), periodo.moduloId);
+  const eventos = areas.map((area) =>
+    construirEvento(autor, periodo, "AREA_CLIENTE_NOTIFICADA", "Área do cliente notificada", area.id, {
+      areaId: area.id,
+      tipoArea: area.tipo,
+      areaNome: area.nome,
+      responsavelNome: area.responsavelNome,
+      email: area.email,
+      gatilho,
+      motivo: `Notificação por ${ROTULO_GATILHO_AREA[gatilho]}`,
+      periodoId: periodo.id,
+      moduloId: periodo.moduloId,
+      competencia: periodo.competencia,
+      simulado: true,
+    })
+  );
+  return { eventos, destinatarios: areas.map((area) => `${area.nome} <${area.email}>`) };
+}
+
+function designarValidadorPorSorteio(
+  autor: AutorAcao,
+  periodo: PeriodoObrigacao,
+  arquivo: ArquivoGerado | undefined,
+  agora: string
+): { periodo: PeriodoObrigacao; evento: EventoAuditoria } | null {
+  const elegiveis = validadoresElegiveis(periodo);
+  const sorteado = sortearValidador(elegiveis);
+  if (!sorteado) {
+    return null;
+  }
+  const periodoDesignado: PeriodoObrigacao = {
+    ...periodo,
+    validadorDesignadoId: sorteado.id,
+    designadoEm: agora,
+    criterioDesignacao: "sorteio",
+    liberadoPorUsuarioId: null,
+    liberadoEm: null,
+  };
+  const evento = construirEvento(
+    autor,
+    periodoDesignado,
+    "VALIDADOR_SORTEADO",
+    "Validador sorteado",
+    sorteado.id,
+    {
+      criterio: "sorteio",
+      elegiveis: elegiveis.map((usuario) => ({
+        usuarioId: usuario.id,
+        nome: usuario.nome,
+        nivel: usuario.nivelValidador ?? null,
+      })),
+      sorteadoUsuarioId: sorteado.id,
+      sorteadoNome: sorteado.nome,
+      sorteadoNivel: sorteado.nivelValidador ?? null,
+      geradoPorUsuarioId: periodo.geradoPorUsuarioId,
+      arquivoId: arquivo?.id ?? null,
+      hashSha256: arquivo?.hashSha256 ?? null,
+    }
+  );
+  return { periodo: periodoDesignado, evento };
 }
 
 export interface ResultadoAberturaCompetencias {
@@ -437,7 +528,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 11;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 13;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
@@ -616,7 +707,11 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
     const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
 
-    const periodoAtualizado: PeriodoObrigacao = { ...periodo, estado: "em_validacao" };
+    const designacao = designarValidadorPorSorteio(autor, periodo, arquivo, new Date().toISOString());
+    if (!designacao) {
+      return { sucesso: false, motivo: MENSAGEM_SEM_VALIDADOR_ELEGIVEL };
+    }
+    const periodoAtualizado: PeriodoObrigacao = { ...designacao.periodo, estado: "em_validacao" };
     const evento = construirEvento(
       autor,
       periodoAtualizado,
@@ -628,7 +723,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: [...estado.eventos, evento],
+      eventos: [...estado.eventos, evento, designacao.evento],
     }));
 
     return { sucesso: true };
@@ -677,8 +772,13 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const arquivoCorrente = get().arquivos[periodo.arquivoCorrenteId ?? ""];
     const estadoNovo: EstadoPeriodo =
       decisao === "confirmado" ? "em_validacao" : escalaParaComite ? "em_comite_qualidade" : "gerado";
+    const designacao =
+      decisao === "confirmado" ? designarValidadorPorSorteio(autor, periodo, arquivoCorrente, agora) : null;
+    if (decisao === "confirmado" && !designacao) {
+      return { sucesso: false, motivo: MENSAGEM_SEM_VALIDADOR_ELEGIVEL };
+    }
     const periodoAtualizado: PeriodoObrigacao = {
-      ...periodo,
+      ...(designacao?.periodo ?? periodo),
       estado: estadoNovo,
       contadorStatus: decisao === "confirmado" ? "confirmado" : "devolvido",
       contadorConfirmadoEm: decisao === "confirmado" ? agora : periodo.contadorConfirmadoEm,
@@ -741,7 +841,12 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: eventoComite ? [...estado.eventos, evento, eventoComite] : [...estado.eventos, evento],
+      eventos: [
+        ...estado.eventos,
+        evento,
+        ...(designacao ? [designacao.evento] : []),
+        ...(eventoComite ? [eventoComite] : []),
+      ],
     }));
 
     return { sucesso: true };
@@ -753,6 +858,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
     if (!["em_validacao", "com_excecoes"].includes(periodo.estado)) {
       return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    }
+    const avaliacaoDesignado = avaliarValidadorDesignado(periodo, autor.usuarioId);
+    if (!avaliacaoDesignado.permitido) {
+      return { sucesso: false, motivo: avaliacaoDesignado.motivo ?? "Ação indisponível no estado atual do período." };
     }
     if (periodo.estado === "com_excecoes" && get().excecoesBloqueantesAbertas(periodoId) > 0) {
       return {
@@ -867,6 +976,16 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       };
     }
 
+    const avaliacaoValidador = avaliarAcao(autor.perfilId, "liberar", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacaoValidador.permitido) {
+      return {
+        sucesso: false,
+        motivo: avaliacaoValidador.motivo ?? "Ação indisponível no estado atual do período.",
+      };
+    }
+
     const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
     const agora = new Date().toISOString();
     const periodoAtualizado: PeriodoObrigacao = {
@@ -882,6 +1001,9 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       arquivoId: arquivo?.id ?? null,
       hashSha256: arquivo?.hashSha256 ?? null,
       segregacaoOk: true,
+      nivelValidador: nivelDoUsuario(autor.usuarioId),
+      validadorDesignadoId: periodo.validadorDesignadoId ?? null,
+      criterioDesignacao: periodo.criterioDesignacao ?? null,
     });
 
     set((estado) => ({
@@ -898,7 +1020,6 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     if (periodo.estado !== "liberado") {
       return { sucesso: false, motivo: "Disponível após a liberação pelo Validador Videnas." };
     }
-
     const arquivo = get().arquivos[periodo.arquivoCorrenteId ?? ""];
     const agora = new Date().toISOString();
     const periodoAtualizado: PeriodoObrigacao = {
@@ -919,13 +1040,14 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       estadoNovo: "aprovado",
       contratoCongelado: periodoAtualizado.contratoCongelado,
     });
+    const notificacoes = construirNotificacoesDeAreas(autor, periodoAtualizado, "aprovacao");
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: [...estado.eventos, evento],
+      eventos: [...estado.eventos, evento, ...notificacoes.eventos],
     }));
 
-    return { sucesso: true };
+    return { sucesso: true, notificacoes: notificacoes.destinatarios };
   },
 
   emitirFiscal: (periodoId, autor, dados) => {
@@ -1239,7 +1361,8 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     if (!periodo.protocoloId) return { sucesso: false, motivo: "Período sem protocolo registrado." };
     const protocolo = get().protocolos[periodo.protocoloId];
     if (!protocolo) return { sucesso: false, motivo: "Protocolo não encontrado." };
-    const validacaoEntrada = validarEntradaRetorno(situacao, codigoRetorno, mensagemRetorno);
+    const somentePosicionamento = retornoSomentePosicionamento(periodo.moduloId);
+    const validacaoEntrada = validarEntradaRetorno(situacao, codigoRetorno, mensagemRetorno, somentePosicionamento);
     if (!validacaoEntrada.sucesso) return validacaoEntrada;
 
     const agora = new Date().toISOString();
@@ -1257,8 +1380,8 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const protocoloAtualizado: ProtocoloBCB = {
       ...protocolo,
       situacaoRetorno: situacao,
-      codigoRetorno,
-      mensagemRetorno,
+      codigoRetorno: somentePosicionamento ? null : codigoRetorno,
+      mensagemRetorno: somentePosicionamento ? null : mensagemRetorno,
       dataRetorno: agora,
       retornoRegulador,
     };
@@ -1278,10 +1401,10 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
             instituicaoId: periodo.instituicaoId,
             moduloId: periodo.moduloId,
             origem: "retorno_bcb",
-            codigo: codigoRetorno.trim(),
+            codigo: somentePosicionamento ? CODIGO_RETORNO_NAO_APROVADO : codigoRetorno.trim(),
             severidade: "bloqueante",
             titulo: `Retorno rejeitado (${rotuloArtefato})`,
-            descricao: mensagemRetorno.trim(),
+            descricao: somentePosicionamento ? DESCRICAO_RETORNO_NAO_APROVADO : mensagemRetorno.trim(),
             abertaEm: agora,
             abertaPorUsuarioId: autor.usuarioId,
             responsavelAtualPerfil: "executor",
@@ -1321,8 +1444,9 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       artefatoRetorno: rotuloArtefato,
       identificadorRetorno: retornoRegulador.identificador,
       dataRetornoInformada: retornoRegulador.dataInformada,
-      codigoRetorno,
-      mensagemRetorno,
+      ...(somentePosicionamento
+        ? { aprovado: situacao === "aceito" }
+        : { codigoRetorno, mensagemRetorno }),
       resultado: situacao,
       hashSha256: arquivoCorrente?.hashSha256 ?? null,
       anexoNome: retornoRegulador.anexoNome,
@@ -1393,13 +1517,14 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
         estadoNovo: "arquivado",
       }
     );
+    const notificacoes = construirNotificacoesDeAreas(autor, periodoAtualizado, "arquivamento");
 
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: [...estado.eventos, evento],
+      eventos: [...estado.eventos, evento, ...notificacoes.eventos],
     }));
 
-    return { sucesso: true };
+    return { sucesso: true, notificacoes: notificacoes.destinatarios };
   },
 
   negarAprovacao: (periodoId, autor, motivo, dados) => {
@@ -1442,7 +1567,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       autor,
       periodoAtualizado,
       "APROVACAO_NEGADA",
-      "Aprovação negada pelo Diretor",
+      "Aprovação negada pelo Compliance",
       arquivo?.hashSha256 ?? null,
       {
         motivo,

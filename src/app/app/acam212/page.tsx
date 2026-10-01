@@ -39,7 +39,7 @@ const ROTULOS_ESTADO: Record<EstadoPeriodo | "todos", string> = {
   com_excecoes: "Com exceções",
   liberado: "Liberado",
   aprovado: "Aprovado",
-  devolvido_diretor: "Devolvido pelo Diretor",
+  devolvido_diretor: "Devolvido pelo Compliance",
   em_comite_qualidade: "Em Comitê de Qualidade",
   emitido_fiscal: "Documento fiscal emitido",
   aguardando_retorno: "Aguardando retorno",
@@ -98,7 +98,7 @@ export default function Acam212Page() {
     return (
       <EstadoVazio
         titulo="Acesso não disponível"
-        mensagem="Seu perfil não tem acesso a esta área. O módulo ACAM212 é restrito aos perfis Diretor, Operacional, Executor e Validador."
+        mensagem="Seu perfil não tem acesso a esta área. O módulo ACAM212 é restrito aos perfis Compliance, Operacional, Executor e Validador."
       />
     );
   }

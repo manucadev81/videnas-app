@@ -98,7 +98,7 @@ const FAQ = [
   {
     pergunta: "A Videnas envia o arquivo ao Banco Central por mim?",
     resposta:
-      "Depende do contrato. A Videnas entrega o arquivo pronto, íntegro e com hash calculado. Quando o contrato inclui a transmissão e há cadastro prévio válido, a transmissão é feita pela Videnas ou pelo Diretor da instituição; caso contrário, a instituição transmite por conta própria e registra o protocolo na plataforma.",
+      "Depende do contrato. A Videnas entrega o arquivo pronto, íntegro e com hash calculado. Quando o contrato inclui a transmissão e há cadastro prévio válido, a transmissão é feita pela Videnas ou pelo Responsável de Compliance da instituição; caso contrário, a instituição transmite por conta própria e registra o protocolo na plataforma.",
   },
   {
     pergunta: "A Videnas emite a NFS-e?",
@@ -286,7 +286,7 @@ export default function LandingPage() {
               <p className="mt-3 font-display text-base font-bold text-neutral-700">Instituição aprova e envia</p>
               <p className="mt-1 text-sm text-neutral-500">
                 O Responsável de Compliance da casa cliente assume a obrigação. A transmissão ao órgão
-                segue o contrato: feita pela Videnas, pelo Diretor ou registrada manualmente.
+                segue o contrato: feita pela Videnas, pelo Responsável de Compliance ou registrada manualmente.
               </p>
             </div>
           </div>

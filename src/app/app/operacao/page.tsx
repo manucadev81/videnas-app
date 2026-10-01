@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
+import { ValidadorDoPeriodo } from "@/components/dominio/faixa-organizacao-periodo";
 import { BadgeStatus } from "@/components/dominio/badge-status";
 import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
 import { GrupoComiteQualidade } from "@/components/dominio/grupo-comite-qualidade";
@@ -59,7 +60,9 @@ export default function OperacaoPage() {
     .filter((periodo) => (somenteAtrasados ? calcularPeriodoDerivado(periodo).atrasado : true))
     .filter((periodo) =>
       somenteMeus
-        ? periodo.geradoPorUsuarioId === usuarioId || periodo.liberadoPorUsuarioId === usuarioId
+        ? periodo.geradoPorUsuarioId === usuarioId ||
+          periodo.liberadoPorUsuarioId === usuarioId ||
+          periodo.validadorDesignadoId === usuarioId
         : true
     );
 
@@ -261,7 +264,7 @@ export default function OperacaoPage() {
           {ehExecutor ? (
             <>
               <GrupoFila
-                titulo="Devolvido pelo Diretor"
+                titulo="Devolvido pelo Compliance"
                 periodos={aRegerarDevolvidos}
                 rotuloAcao="Gerar novamente"
                 usuarioId={usuarioId}
@@ -380,6 +383,7 @@ function GrupoFila({
               <th className="px-4 py-2 text-left font-semibold text-neutral-700">Competência</th>
               <th className="px-4 py-2 text-left font-semibold text-neutral-700">Estado</th>
               <th className="px-4 py-2 text-left font-semibold text-neutral-700">Prazo</th>
+              <th className="px-4 py-2 text-left font-semibold text-neutral-700">Validador</th>
               <th className="px-4 py-2 text-left font-semibold text-neutral-700">Última ação</th>
               <th className="px-4 py-2 text-left font-semibold text-neutral-700">Ação</th>
             </tr>
@@ -390,7 +394,15 @@ function GrupoFila({
               const instituicao = buscarInstituicao(periodo.instituicaoId);
               const modulo = buscarModulo(periodo.moduloId);
               const geradoPorMim = periodo.geradoPorUsuarioId === usuarioId;
-              const bloquearPorSegregacao = rotuloAcao === "Liberar" && geradoPorMim;
+              const outroValidadorDesignado = Boolean(
+                periodo.validadorDesignadoId && periodo.validadorDesignadoId !== usuarioId
+              );
+              const bloquearPorSegregacao =
+                (rotuloAcao === "Liberar" && geradoPorMim) ||
+                ((rotuloAcao === "Liberar" ||
+                  rotuloAcao === "Executar validação" ||
+                  rotuloAcao === "Reprocessar validação") &&
+                  outroValidadorDesignado);
 
               return (
                 <tr key={periodo.id} className={cn("border-t border-neutral-200", bloquearPorSegregacao && "bg-neutral-50 text-neutral-400")}>
@@ -412,6 +424,9 @@ function GrupoFila({
                     <span className={derivado.atrasado ? "text-status-error-text" : "text-neutral-600"}>
                       {formatarData(periodo.prazoEntrega)}
                     </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <ValidadorDoPeriodo periodo={periodo} />
                   </td>
                   <td className="px-4 py-2 text-xs text-neutral-500">
                     {periodo.estado === "aguardando_retorno" ? (

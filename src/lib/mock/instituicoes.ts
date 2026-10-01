@@ -1,9 +1,24 @@
-import type { Instituicao } from "@/lib/tipos";
+import type { Instituicao, MapeamentoAreasCliente, ModuloId } from "@/lib/tipos";
 import {
   definirRegistroInstituicoes,
   encontrarInstituicaoRegistrada,
   listarInstituicoesRegistradas,
 } from "@/lib/tenants/registro";
+
+const MAPEAMENTO_INFORMADO_PELO_CLIENTE: MapeamentoAreasCliente = {
+  acam212: { ingestao: ["contabil"], entrega: ["controles_internos"] },
+  cadoc5711: { ingestao: ["custodia"], entrega: ["controles_internos"] },
+  cadoc5710: { ingestao: ["custodia"], entrega: ["controles_internos"] },
+  fiscal: { contador: ["contabil"], entrega: ["controles_internos"] },
+};
+
+function mapeamentoInformado(modulos: ModuloId[]): MapeamentoAreasCliente {
+  const mapeamento: MapeamentoAreasCliente = {};
+  for (const moduloId of modulos) {
+    mapeamento[moduloId] = MAPEAMENTO_INFORMADO_PELO_CLIENTE[moduloId];
+  }
+  return mapeamento;
+}
 
 export const instituicoesSemente: Instituicao[] = [
   {
@@ -21,7 +36,7 @@ export const instituicoesSemente: Instituicao[] = [
     responsavelBcb: {
       nome: "Ricardo Menezes",
       cpf: "285.914.377-06",
-      cargo: "Diretor de Compliance",
+      cargo: "Responsável de Compliance",
       email: "ricardo.menezes@meridiandigital.com.br",
       telefone: "(11) 3045-8812",
     },
@@ -30,6 +45,31 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-11T14:22:00-03:00",
     statusImplantacao: "ativo",
+    areasCliente: [
+      {
+        id: "area-meridian-controles_internos",
+        tipo: "controles_internos",
+        nome: "Controles internos",
+        responsavelNome: "Luciana Pacheco",
+        email: "luciana.pacheco@meridiandigital.com.br",
+        telefone: "(11) 3045-8820",
+      },
+      {
+        id: "area-meridian-custodia",
+        tipo: "custodia",
+        nome: "Custódia",
+        responsavelNome: "Fábio Albuquerque",
+        email: "fabio.albuquerque@meridiandigital.com.br",
+      },
+      {
+        id: "area-meridian-contabil",
+        tipo: "contabil",
+        nome: "Contábil",
+        responsavelNome: "Renata Siqueira",
+        email: "renata.siqueira@meridiandigital.com.br",
+      },
+    ],
+    mapeamentoAreas: mapeamentoInformado(["acam212", "cadoc5711", "cadoc5710", "fiscal"]),
     contrato: {
       modulos: {
         acam212: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },
@@ -89,7 +129,7 @@ export const instituicoesSemente: Instituicao[] = [
     responsavelBcb: {
       nome: "Helena Drummond",
       cpf: "402.117.885-30",
-      cargo: "Diretora de Compliance",
+      cargo: "Responsável de Compliance",
       email: "helena.drummond@cofreatlantico.com.br",
       telefone: "(21) 3987-2245",
     },
@@ -98,6 +138,31 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 6,
     criadoEm: "2026-03-18T09:40:00-03:00",
     statusImplantacao: "ativo",
+    areasCliente: [
+      {
+        id: "area-cofre-atlantico-controles_internos",
+        tipo: "controles_internos",
+        nome: "Controles internos",
+        responsavelNome: "Marcelo Teixeira",
+        email: "marcelo.teixeira@cofreatlantico.com.br",
+        telefone: "(21) 3987-2250",
+      },
+      {
+        id: "area-cofre-atlantico-custodia",
+        tipo: "custodia",
+        nome: "Custódia",
+        responsavelNome: "Otávio Ramos",
+        email: "otavio.ramos@cofreatlantico.com.br",
+      },
+      {
+        id: "area-cofre-atlantico-contabil",
+        tipo: "contabil",
+        nome: "Contábil",
+        responsavelNome: "Simone Castelo",
+        email: "simone.castelo@cofreatlantico.com.br",
+      },
+    ],
+    mapeamentoAreas: mapeamentoInformado(["cadoc5711", "cadoc5710", "fiscal"]),
     contrato: {
       modulos: {
         cadoc5711: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "diretor" },
@@ -134,7 +199,7 @@ export const instituicoesSemente: Instituicao[] = [
     responsavelBcb: {
       nome: "Sérgio Bittencourt",
       cpf: "119.446.203-72",
-      cargo: "Diretor Responsável",
+      cargo: "Responsável de Compliance",
       email: "sergio.bittencourt@pampulhacapital.com.br",
       telefone: "(31) 3221-6690",
     },
@@ -143,6 +208,31 @@ export const instituicoesSemente: Instituicao[] = [
     etapaOnboardingAtual: 4,
     criadoEm: "2026-08-25T11:05:00-03:00",
     statusImplantacao: "onboarding_em_andamento",
+    areasCliente: [
+      {
+        id: "area-pampulha-controles_internos",
+        tipo: "controles_internos",
+        nome: "Controles internos",
+        responsavelNome: "Henrique Lacerda",
+        email: "henrique.lacerda@pampulhacapital.com.br",
+        telefone: "(31) 3221-6700",
+      },
+      {
+        id: "area-pampulha-custodia",
+        tipo: "custodia",
+        nome: "Custódia",
+        responsavelNome: "Daniela Moura",
+        email: "daniela.moura@pampulhacapital.com.br",
+      },
+      {
+        id: "area-pampulha-contabil",
+        tipo: "contabil",
+        nome: "Contábil",
+        responsavelNome: "Paulo Vasconcellos",
+        email: "paulo.vasconcellos@pampulhacapital.com.br",
+      },
+    ],
+    mapeamentoAreas: mapeamentoInformado(["acam212", "fiscal"]),
     contrato: {
       modulos: {
         acam212: { emissaoIncluida: false, transmissaoIncluida: true, responsavelTransmissao: "videnas" },

@@ -14,7 +14,7 @@ const SUFIXO_SEGREGACAO = "Segregação de funções obrigatória.";
 
 export const MOTIVO_GERADOR_IMPEDIDO = `Quem gerou uma versão negada do arquivo não pode participar do Comitê de Qualidade. ${SUFIXO_SEGREGACAO}`;
 export const MOTIVO_LIBERADOR_IMPEDIDO = `Quem liberou uma versão negada do arquivo não pode participar do Comitê de Qualidade. ${SUFIXO_SEGREGACAO}`;
-export const MOTIVO_DIRETOR_IMPEDIDO = `O Diretor que negou a aprovação não pode participar do Comitê de Qualidade. ${SUFIXO_SEGREGACAO}`;
+export const MOTIVO_DIRETOR_IMPEDIDO = `O Responsável de Compliance que negou a aprovação não pode participar do Comitê de Qualidade. ${SUFIXO_SEGREGACAO}`;
 export const MOTIVO_CONTADOR_IMPEDIDO = `O Contador que devolveu a DPS não pode participar do Comitê de Qualidade. ${SUFIXO_SEGREGACAO}`;
 
 export type ImpedimentosComite = Record<string, string>;

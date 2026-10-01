@@ -47,7 +47,7 @@ const ROTULOS_ESTADO: Record<EstadoPeriodo, string> = {
   com_excecoes: "Com exceções",
   liberado: "Liberado",
   aprovado: "Aprovado",
-  devolvido_diretor: "Devolvido pelo Diretor",
+  devolvido_diretor: "Devolvido pelo Compliance",
   em_comite_qualidade: "Em Comitê de Qualidade",
   emitido_fiscal: "Documento fiscal emitido",
   aguardando_retorno: "Aguardando retorno",

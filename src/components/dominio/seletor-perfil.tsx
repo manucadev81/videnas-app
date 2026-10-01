@@ -32,6 +32,11 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
     return null;
   }
 
+  const rotuloPerfilAtivo =
+    perfilAtivo === "validador" && usuario.perfilId === "validador" && usuario.nivelValidador
+      ? `${perfilMetadados.rotuloCompleto} (${usuario.nivelValidador})`
+      : perfilMetadados.rotuloCompleto;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -50,7 +55,7 @@ export function SeletorPerfil({ className }: SeletorPerfilProps) {
         </Avatar>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium text-neutral-700">{usuario.nome}</span>
-          <span className="block truncate text-xs text-neutral-500">{perfilMetadados.rotuloCompleto}</span>
+          <span className="block truncate text-xs text-neutral-500">{rotuloPerfilAtivo}</span>
         </span>
         <ChevronsUpDown className="size-4 shrink-0 text-neutral-400" aria-hidden="true" />
       </DropdownMenuTrigger>

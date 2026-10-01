@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,8 @@ import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
+import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
+import { buscarPerfil } from "@/lib/permissoes";
 import type { ModuloId, PerfilId, TipoEventoAuditoria } from "@/lib/tipos";
 
 const ROTULOS_MODULO: Record<ModuloId, string> = {
@@ -29,13 +32,13 @@ const ROTULOS_MODULO: Record<ModuloId, string> = {
 };
 
 const ROTULOS_PERFIL: Record<PerfilId, string> = {
-  diretor: "Compliance",
-  operacional: "Operacional",
-  contador: "Contador",
-  cliente: "Cliente",
-  executor: "Executor",
-  validador: "Validador",
-  admin: "Administrador",
+  diretor: buscarPerfil("diretor").rotulo,
+  operacional: buscarPerfil("operacional").rotulo,
+  contador: buscarPerfil("contador").rotulo,
+  cliente: buscarPerfil("cliente").rotulo,
+  executor: buscarPerfil("executor").rotulo,
+  validador: buscarPerfil("validador").rotulo,
+  admin: buscarPerfil("admin").rotulo,
 };
 
 export default function AuditoriaPage() {
@@ -44,6 +47,8 @@ export default function AuditoriaPage() {
   const eventos = usePeriodosStore((estado) => estado.eventos);
   const arquivos = usePeriodosStore((estado) => estado.arquivos);
   const periodos = usePeriodosStore((estado) => estado.periodos);
+  const registrarEventoAdministrativo = usePeriodosStore((estado) => estado.registrarEventoAdministrativo);
+  const usuarioId = useSessaoStore((estado) => estado.usuarioId);
 
   const [filtroModulo, setFiltroModulo] = useState<ModuloId | "todos">("todos");
   const [filtroPerfil, setFiltroPerfil] = useState<PerfilId | "todos">("todos");
@@ -90,6 +95,54 @@ export default function AuditoriaPage() {
       );
     })
     .sort((a, b) => (a.ocorridoEm < b.ocorridoEm ? 1 : -1));
+
+  const podeExportar = Boolean(perfilAtivo && buscarPerfil(perfilAtivo).acoesPermitidas.includes("exportar_auditoria"));
+
+  function exportarTrilha() {
+    if (!perfilAtivo || !usuarioId) {
+      return;
+    }
+    if (!podeExportar) {
+      toast.error("Seu perfil não pode exportar a trilha.");
+      return;
+    }
+    if (eventosFiltrados.length === 0) {
+      toast.info("Nenhum evento para exportar com os filtros atuais.");
+      return;
+    }
+    try {
+      const escopo = instituicaoAtivaId ?? "todas";
+      const nomeArquivo = nomeArquivoTrilha(escopo, new Date().toISOString());
+      const conteudo = montarCsvTrilha(eventosFiltrados, {
+        rotulosTipo: ROTULOS_TIPO,
+        rotuloPerfil: (perfilId) => ROTULOS_PERFIL[perfilId],
+        rotuloModulo: (moduloId) => ROTULOS_MODULO[moduloId],
+        nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
+      });
+      baixarCsv(nomeArquivo, conteudo);
+      registrarEventoAdministrativo({
+        autor: { usuarioId, perfilId: perfilAtivo },
+        instituicaoId: escopo,
+        tipo: "TRILHA_EXPORTADA",
+        rotuloTipo: ROTULOS_TIPO.TRILHA_EXPORTADA,
+        referencia: nomeArquivo,
+        payload: {
+          quantidade: eventosFiltrados.length,
+          formato: "csv",
+          nomeArquivo,
+          filtros: {
+            modulo: filtroModulo,
+            perfil: filtroPerfil,
+            tipo: filtroTipo,
+            busca: busca.trim() || null,
+          },
+        },
+      });
+      toast.success(`Trilha exportada: ${eventosFiltrados.length} evento(s) em ${nomeArquivo}.`);
+    } catch {
+      toast.error("Não foi possível gerar o arquivo CSV.");
+    }
+  }
 
   const arquivosEscopo = Object.values(arquivos).filter((arquivo) => {
     const periodo = periodos[arquivo.periodoId];
@@ -169,8 +222,17 @@ export default function AuditoriaPage() {
         <Button
           type="button"
           variant="outline"
-          onClick={() => toast.info("Exportação simulada. Nenhum arquivo real é gerado nesta demonstração.")}
+          disabled={!podeExportar || eventosFiltrados.length === 0}
+          title={
+            !podeExportar
+              ? "Seu perfil não pode exportar a trilha."
+              : eventosFiltrados.length === 0
+                ? "Nenhum evento para exportar com os filtros atuais."
+                : undefined
+          }
+          onClick={exportarTrilha}
         >
+          <Download className="size-4" aria-hidden="true" />
           Exportar trilha (CSV)
         </Button>
       </div>
@@ -214,7 +276,7 @@ export default function AuditoriaPage() {
                       onClick={() => setLinhaExpandida(expandida ? null : evento.id)}
                     >
                       <td className="px-4 py-2 font-mono text-xs text-neutral-500">{formatarDataHora(evento.ocorridoEm)}</td>
-                      <td className="px-4 py-2 text-neutral-600">{instituicao?.nomeFantasia ?? "—"}</td>
+                      <td className="px-4 py-2 text-neutral-600">{instituicao?.nomeFantasia ?? (evento.instituicaoId === "todas" ? "Todas" : "—")}</td>
                       <td className="px-4 py-2 text-neutral-600">{evento.moduloId ? ROTULOS_MODULO[evento.moduloId] : "—"}</td>
                       <td className="px-4 py-2 text-neutral-600">{evento.competencia ?? "—"}</td>
                       <td className="px-4 py-2">

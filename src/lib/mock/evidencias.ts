@@ -6,6 +6,7 @@ import type {
   SentidoLacre,
   TipoArtefatoLacre,
 } from "@/lib/tipos";
+import { retornoSomentePosicionamento } from "@/lib/mock/configuracao-fluxo";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
 import { arquivos, periodos, protocolos } from "@/lib/mock/periodos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
@@ -131,7 +132,9 @@ function sementesDePeriodosDemo(): SementeLacre[] {
           perfilId: "validador",
           origemNome: `Recibo ${retorno.rotuloArtefato} — ${protocolo.numeroProtocolo}`,
           tamanhoBytes: 1_024,
-          resumoConteudo: `Recibo do retorno ${retorno.rotuloArtefato} (${protocolo.situacaoRetorno}) — código ${protocolo.codigoRetorno}: ${protocolo.mensagemRetorno}`,
+          resumoConteudo: retornoSomentePosicionamento(periodo.moduloId)
+            ? `Recibo do retorno ${retorno.rotuloArtefato} (${protocolo.situacaoRetorno === "aceito" ? "aprovado" : "não aprovado"})`
+            : `Recibo do retorno ${retorno.rotuloArtefato} (${protocolo.situacaoRetorno}) — código ${protocolo.codigoRetorno}: ${protocolo.mensagemRetorno}`,
           encadeadoApos: anterior,
           tipoArtefato: "recibo_retorno",
         });
@@ -184,7 +187,7 @@ function sementesDePeriodosDemo(): SementeLacre[] {
         seladoPorUsuarioId: arquivoCorrente.geradoPorUsuarioId,
         seladoPorNome: gerador?.nome ?? arquivoCorrente.geradoPorUsuarioId,
         perfilId: gerador?.perfilId ?? "executor",
-        origemNome: `Nova versão gerada após devolução do Diretor — ${arquivoCorrente.nomeArquivo}`,
+        origemNome: `Nova versão gerada após devolução do Compliance — ${arquivoCorrente.nomeArquivo}`,
         tamanhoBytes: arquivoCorrente.tamanhoBytes,
         resumoConteudo: arquivoCorrente.previewConteudo.replace(/\s+/g, " "),
         encadeadoApos: anterior,

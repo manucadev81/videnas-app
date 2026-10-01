@@ -1,8 +1,9 @@
 import type { Acao, AcaoId, EstadoPeriodo, ModuloId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
-import { configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import { ROTULOS_COMPLETOS_APROVADOR, configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { avaliarParticipantesDoComite, type ImpedimentosComite } from "@/lib/comite";
 import { avaliarAcaoDeEntrega, type AcaoDeEntrega } from "@/lib/contrato";
+import { avaliarEnvioParaValidacao, avaliarValidadorDesignado } from "@/lib/validadores";
 
 export interface PerfilMetadados {
   id: PerfilId;
@@ -34,10 +35,10 @@ const ROTAS_SEM_DESCENDENTES = new Set(["/", "/app", "/app/configuracoes"]);
 export const PERFIS: PerfilMetadados[] = [
   {
     id: "diretor",
-    rotulo: "Compliance",
-    rotuloCompleto: "Responsável de Compliance",
+    rotulo: configuracaoFluxo.rotuloAprovador,
+    rotuloCompleto: ROTULOS_COMPLETOS_APROVADOR[configuracaoFluxo.rotuloAprovador],
     descricao:
-      "Na instituição cliente: aprova o que a Videnas já validou e acompanha a entrega ao órgão. Conforme o contrato e o cadastro prévio, a transmissão é feita pela Videnas ou pelo próprio Diretor; sem transmissão disponível, ele registra o protocolo manualmente.",
+      "Na instituição cliente: aprova o que a Videnas já validou e acompanha a entrega ao órgão. Conforme o contrato e o cadastro prévio, a transmissão é feita pela Videnas ou pelo próprio Compliance; sem transmissão disponível, ele registra o protocolo manualmente.",
     lado: "cliente",
     corBadge: "brand",
     icone: "ShieldCheck",
@@ -243,6 +244,7 @@ export const PERFIS: PerfilMetadados[] = [
     ],
     acoesPermitidas: [
       "decidir_comite",
+      "editar_areas_cliente",
       "provisionar_tenant",
       "gerenciar_clientes",
       "convidar_usuario_inicial",
@@ -304,6 +306,7 @@ export const ROTULOS_ACAO: Record<AcaoId, string> = {
   marcar_encaminhado: "Marcar como encaminhado ao emissor",
   tratar_excecao: "Tratar exceção",
   editar_config_instituicao: "Editar dados da instituição",
+  editar_areas_cliente: "Editar áreas do cliente",
   gerenciar_usuarios: "Convidar / editar usuário",
   editar_dicionarios: "Editar dicionários",
   trocar_tenant: "Trocar de instituição",
@@ -558,6 +561,13 @@ export function podeExecutar(
     };
   }
 
+  if (acaoId === "enviar_validacao" || acaoId === "validar_fiscal") {
+    const avaliacaoEnvio = avaliarEnvioParaValidacao(periodo);
+    if (!avaliacaoEnvio.permitido) {
+      return avaliacaoEnvio;
+    }
+  }
+
   if (
     acaoId === "liberar" &&
     contexto.usuarioAtualId &&
@@ -568,6 +578,13 @@ export function podeExecutar(
       visivel: true,
       motivo: "Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória.",
     };
+  }
+
+  if (acaoId === "liberar" || acaoId === "executar_validacao") {
+    const avaliacaoValidador = avaliarValidadorDesignado(periodo, contexto.usuarioAtualId);
+    if (!avaliacaoValidador.permitido) {
+      return avaliacaoValidador;
+    }
   }
 
   if (

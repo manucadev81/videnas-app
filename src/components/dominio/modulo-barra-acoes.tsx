@@ -64,6 +64,9 @@ import {
   nomeArquivoDocumentoFiscal,
 } from "@/lib/transmissao";
 import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
+import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
+import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
+import { MENSAGEM_SEM_VALIDADOR_ELEGIVEL, rotuloUsuarioComNivel, validadorDesignado } from "@/lib/validadores";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
@@ -71,6 +74,7 @@ import {
   DESFECHOS_COMITE,
   ROTULO_RETORNO_GENERICO,
   configuracaoFluxo,
+  retornoSomentePosicionamento,
   rotuloRetornoDoModulo,
 } from "@/lib/mock/configuracao-fluxo";
 import type { AcaoId, CanalEnvioBcb, DesfechoComite, ValidacaoItem } from "@/lib/tipos";
@@ -191,6 +195,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const validarContador = usePeriodosStore((estado) => estado.validarContador);
   const reprocessar = usePeriodosStore((estado) => estado.reprocessar);
   const liberar = usePeriodosStore((estado) => estado.liberar);
+  const registrarEventoAdministrativo = usePeriodosStore((estado) => estado.registrarEventoAdministrativo);
   const aprovar = usePeriodosStore((estado) => estado.aprovar);
   const emitirFiscal = usePeriodosStore((estado) => estado.emitirFiscal);
   const transmitir = usePeriodosStore((estado) => estado.transmitir);
@@ -248,7 +253,10 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const usuarioContador = periodo.contadorUsuarioId ? buscarUsuario(periodo.contadorUsuarioId) : undefined;
   const usuarioAtual = buscarUsuario(usuarioId);
   const rotuloRetorno = rotuloRetornoDoModulo(periodo.moduloId);
+  const complementoRetorno = rotuloRetorno === ROTULO_RETORNO_GENERICO ? "do regulador/emissor" : rotuloRetorno;
   const protocoloCorrente = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
+  const retornoSimples = retornoSomentePosicionamento(periodo.moduloId);
+  const usuarioDesignado = validadorDesignado(periodo);
 
   function abrirDialogo(acaoId: AcaoId) {
     setCampoTexto("");
@@ -280,9 +288,15 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     setDialogoAberto(null);
   }
 
-  function tratarResultado(resultado: { sucesso: boolean; motivo?: string }, mensagemSucesso: string) {
+  function tratarResultado(
+    resultado: { sucesso: boolean; motivo?: string; notificacoes?: string[] },
+    mensagemSucesso: string
+  ) {
     if (resultado.sucesso) {
       toast.success(mensagemSucesso);
+      if (resultado.notificacoes && resultado.notificacoes.length > 0) {
+        toast.info(`Notificação simulada enviada a: ${resultado.notificacoes.join("; ")}. Nenhum e-mail real foi enviado.`);
+      }
       fecharDialogo();
     } else {
       toast.error(resultado.motivo ?? "Não foi possível concluir a ação.");
@@ -317,10 +331,46 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         toast.info("Download simulado. Nenhum arquivo real é gerado nesta demonstração.");
         return;
       case "exportar_auditoria":
-        toast.info("Exportação simulada. Nenhum arquivo real é gerado nesta demonstração.");
+        exportarTrilhaDoPeriodo();
         return;
       default:
         abrirDialogo(acaoId);
+    }
+  }
+
+  function exportarTrilhaDoPeriodo() {
+    const eventosPeriodo = eventosStore
+      .filter((evento) => evento.periodoId === periodoId)
+      .sort((a, b) => (a.ocorridoEm < b.ocorridoEm ? 1 : -1));
+    if (eventosPeriodo.length === 0) {
+      toast.info("Nenhum evento para exportar neste período.");
+      return;
+    }
+    try {
+      const nomeArquivo = nomeArquivoTrilha(periodoId.replace(/^per-/, ""), new Date().toISOString());
+      const conteudo = montarCsvTrilha(eventosPeriodo, {
+        rotulosTipo: ROTULOS_TIPO,
+        rotuloPerfil: (perfilId) => buscarPerfil(perfilId).rotulo,
+        rotuloModulo: (moduloId) => buscarModulo(moduloId).nome,
+        nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
+      });
+      baixarCsv(nomeArquivo, conteudo);
+      registrarEventoAdministrativo({
+        autor,
+        instituicaoId: periodo.instituicaoId,
+        tipo: "TRILHA_EXPORTADA",
+        rotuloTipo: ROTULOS_TIPO.TRILHA_EXPORTADA,
+        referencia: nomeArquivo,
+        payload: {
+          quantidade: eventosPeriodo.length,
+          formato: "csv",
+          nomeArquivo,
+          filtros: { periodoId, modulo: periodo.moduloId },
+        },
+      });
+      toast.success(`Trilha do período exportada: ${eventosPeriodo.length} evento(s).`);
+    } catch {
+      toast.error("Não foi possível gerar o arquivo CSV.");
     }
   }
 
@@ -339,7 +389,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
       periodo: periodoAtual,
       arquivo: arquivoAtual,
       autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
-      origemNome: `Nova versão gerada após devolução do Diretor — ${arquivoAtual.nomeArquivo}`,
+      origemNome: `Nova versão gerada após devolução do Compliance — ${arquivoAtual.nomeArquivo}`,
     });
   }
 
@@ -354,7 +404,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
       return;
     }
     const situacao = (campoSelect || "aceito") as "aceito" | "aceito_com_ressalvas" | "rejeitado";
-    const validacao = validarEntradaRetorno(situacao, campoTexto, campoTextarea);
+    const validacao = validarEntradaRetorno(situacao, campoTexto, campoTextarea, retornoSimples);
     if (!validacao.sucesso) {
       toast.error(validacao.motivo ?? "Dados do retorno inválidos.");
       return;
@@ -373,8 +423,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         situacao,
         codigoRetorno: campoTexto.trim(),
         mensagemRetorno: campoTextarea.trim(),
-        identificador: campoTexto2.trim() || null,
-        dataInformada: campoData || null,
+        identificador: retornoSimples ? null : campoTexto2.trim() || null,
+        dataInformada: retornoSimples ? null : campoData || null,
         anexo: campoAnexo,
         autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
       });
@@ -383,8 +433,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         return;
       }
       const resultado = registrarRetorno(periodoId, autor, situacao, campoTexto.trim(), campoTextarea.trim(), {
-        identificador: campoTexto2,
-        dataInformada: campoData,
+        identificador: retornoSimples ? "" : campoTexto2,
+        dataInformada: retornoSimples ? "" : campoData,
         anexoNome: campoAnexo?.name ?? null,
         anexoTamanhoBytes: campoAnexo?.size ?? null,
         anexoHash: selagem.anexoLacre?.hashSha256 ?? null,
@@ -392,7 +442,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         reciboLacreId: selagem.reciboLacre.id,
         reciboHash: selagem.reciboLacre.hashSha256,
       });
-      tratarResultado(resultado, `Retorno ${rotuloRetorno} registrado e lacrado na cadeia do período.`);
+      tratarResultado(resultado, `Retorno ${complementoRetorno} registrado e lacrado na cadeia do período.`);
     } catch {
       toast.error("Não foi possível registrar o retorno.");
     } finally {
@@ -553,7 +603,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
       tratarResultado(
         resultado,
         campoDesfecho === "negativa_superada"
-          ? "Decisão registrada. Período devolvido ao Diretor e ata lacrada na cadeia."
+          ? "Decisão registrada. Período devolvido ao Responsável de Compliance e ata lacrada na cadeia."
           : "Decisão registrada. Período devolvido ao Executor com o plano de correção e ata lacrada na cadeia."
       );
     } catch {
@@ -923,6 +973,14 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
 
   const temMenu = Boolean(acaoBaixar?.visivel || acaoExportar?.visivel || acaoReabrir?.visivel);
 
+  const avisoEnvioBloqueado = acoesBarra.some(
+    ({ acaoId, avaliacao }) =>
+      (acaoId === "enviar_validacao" || acaoId === "validar_fiscal") &&
+      avaliacao.motivo === MENSAGEM_SEM_VALIDADOR_ELEGIVEL
+  )
+    ? MENSAGEM_SEM_VALIDADOR_ELEGIVEL
+    : null;
+
   function rotuloAcao(acaoId: AcaoId): string {
     if (acaoId === "executar_validacao" && periodo.estado === "com_excecoes") {
       return "Reprocessar validação";
@@ -1003,6 +1061,12 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
             </DropdownMenu>
           ) : null}
         </div>
+
+        {avisoEnvioBloqueado ? (
+          <p role="status" className="mt-2 text-xs text-status-error-text">
+            {avisoEnvioBloqueado}
+          </p>
+        ) : null}
 
         <Dialog open={dialogoAberto !== null} onOpenChange={(aberto) => !aberto && fecharDialogo()}>
           <DialogContent>
@@ -1112,6 +1176,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                     {arquivoCorrente ? truncarHash(arquivoCorrente.hashSha256) : "—"}.
                   </DialogDescription>
                 </DialogHeader>
+                {usuarioDesignado ? (
+                  <p className="rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
+                    Validador designado por sorteio para {modulo.nome}: {rotuloUsuarioComNivel(usuarioDesignado)}.
+                  </p>
+                ) : null}
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={fecharDialogo}>
                     Cancelar
@@ -1129,9 +1198,14 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   <DialogTitle>Aprovar a competência {periodo.competenciaRotulo}?</DialogTitle>
                   <DialogDescription>
                     {modulo.nome} · Competência {periodo.competenciaRotulo} · versão v
-                    {arquivoCorrente?.versao ?? "—"} · liberado por {usuarioLiberador?.nome ?? "—"}
+                    {arquivoCorrente?.versao ?? "—"} · liberado por {rotuloUsuarioComNivel(usuarioLiberador)}
                   </DialogDescription>
                 </DialogHeader>
+                {usuarioDesignado ? (
+                  <p className="rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
+                    Validador designado por sorteio: {rotuloUsuarioComNivel(usuarioDesignado)}.
+                  </p>
+                ) : null}
                 <div className="space-y-1.5 rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
                   <p>
                     Hash SHA-256:{" "}
@@ -1278,7 +1352,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   <DialogDescription>
                     Você preside o Comitê. Quórum: {descricaoQuorumComite()}. A decisão é lavrada em uma
                     ata lacrada e encadeada ao dossiê de escalonamento. O Comitê é consultivo: a aprovação
-                    regulatória continua sendo do Diretor.
+                    regulatória continua sendo do Responsável de Compliance.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -1673,78 +1747,104 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
             {dialogoAberto === "registrar_retorno" ? (
               <>
                 <DialogHeader>
-                  <DialogTitle>Registrar retorno {rotuloRetorno}</DialogTitle>
+                  <DialogTitle>Registrar retorno {complementoRetorno}</DialogTitle>
                   <DialogDescription>
-                    {rotuloRetorno === "ACAM213"
-                      ? "Registre o retorno de processamento do ACAM212 recebido do Banco Central."
-                      : "Registre o retorno recebido do regulador ou do emissor para o protocolo informado."}
+                    {retornoSimples
+                      ? "Informe se o regulador ou o emissor aprovou o documento enviado."
+                      : rotuloRetorno === "ACAM213"
+                        ? "Registre o retorno de processamento do ACAM212 recebido do Banco Central."
+                        : "Registre o retorno recebido do regulador ou do emissor para o protocolo informado."}
                     {protocoloCorrente ? ` Protocolo ${protocoloCorrente.numeroProtocolo}.` : ""}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
-                  <fieldset className="space-y-2">
-                    <legend className="text-sm font-medium text-neutral-700">Resultado do retorno</legend>
-                    <RadioGroup value={campoSelect} onValueChange={(valor) => setCampoSelect(String(valor))}>
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="aceito" id="situacao-aceito" />
-                        <Label htmlFor="situacao-aceito" className="font-normal">
-                          Aceito
-                        </Label>
+                  {retornoSimples ? (
+                    <>
+                      <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium text-neutral-700">Aprovado</legend>
+                        <RadioGroup value={campoSelect} onValueChange={(valor) => setCampoSelect(String(valor))}>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="aceito" id="situacao-aprovado-sim" />
+                            <Label htmlFor="situacao-aprovado-sim" className="font-normal">
+                              Sim
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="rejeitado" id="situacao-aprovado-nao" />
+                            <Label htmlFor="situacao-aprovado-nao" className="font-normal">
+                              Não
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </fieldset>
+                    </>
+                  ) : (
+                    <>
+                      <fieldset className="space-y-2">
+                        <legend className="text-sm font-medium text-neutral-700">Resultado do retorno</legend>
+                        <RadioGroup value={campoSelect} onValueChange={(valor) => setCampoSelect(String(valor))}>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="aceito" id="situacao-aceito" />
+                            <Label htmlFor="situacao-aceito" className="font-normal">
+                              Aceito
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="aceito_com_ressalvas" id="situacao-ressalvas" />
+                            <Label htmlFor="situacao-ressalvas" className="font-normal">
+                              Aceito com ressalvas
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RadioGroupItem value="rejeitado" id="situacao-rejeitado" />
+                            <Label htmlFor="situacao-rejeitado" className="font-normal">
+                              Rejeitado
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </fieldset>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="identificador-retorno">Identificador do {rotuloRetorno} (opcional)</Label>
+                          <Input
+                            id="identificador-retorno"
+                            value={campoTexto2}
+                            placeholder="ACAM213-202511-0001"
+                            onChange={(evento) => setCampoTexto2(evento.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="data-retorno">Data do retorno</Label>
+                          <Input
+                            id="data-retorno"
+                            type="date"
+                            value={campoData}
+                            onChange={(evento) => setCampoData(evento.target.value)}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="aceito_com_ressalvas" id="situacao-ressalvas" />
-                        <Label htmlFor="situacao-ressalvas" className="font-normal">
-                          Aceito com ressalvas
-                        </Label>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="codigo-retorno">Código de retorno</Label>
+                        <Input
+                          id="codigo-retorno"
+                          value={campoTexto}
+                          onChange={(evento) => setCampoTexto(evento.target.value)}
+                          placeholder="RET-0000"
+                        />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <RadioGroupItem value="rejeitado" id="situacao-rejeitado" />
-                        <Label htmlFor="situacao-rejeitado" className="font-normal">
-                          Rejeitado
+                      <div className="space-y-1.5">
+                        <Label htmlFor="mensagem-retorno">
+                          {campoSelect === "aceito_com_ressalvas" ? "Ressalva recebida (obrigatória)" : "Mensagem"}
                         </Label>
+                        <Textarea
+                          id="mensagem-retorno"
+                          value={campoTextarea}
+                          onChange={(evento) => setCampoTextarea(evento.target.value)}
+                          rows={3}
+                        />
                       </div>
-                    </RadioGroup>
-                  </fieldset>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="identificador-retorno">Identificador do {rotuloRetorno} (opcional)</Label>
-                      <Input
-                        id="identificador-retorno"
-                        value={campoTexto2}
-                        placeholder="ACAM213-202511-0001"
-                        onChange={(evento) => setCampoTexto2(evento.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="data-retorno">Data do retorno</Label>
-                      <Input
-                        id="data-retorno"
-                        type="date"
-                        value={campoData}
-                        onChange={(evento) => setCampoData(evento.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="codigo-retorno">Código de retorno</Label>
-                    <Input
-                      id="codigo-retorno"
-                      value={campoTexto}
-                      onChange={(evento) => setCampoTexto(evento.target.value)}
-                      placeholder="RET-0000"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="mensagem-retorno">
-                      {campoSelect === "aceito_com_ressalvas" ? "Ressalva recebida (obrigatória)" : "Mensagem"}
-                    </Label>
-                    <Textarea
-                      id="mensagem-retorno"
-                      value={campoTextarea}
-                      onChange={(evento) => setCampoTextarea(evento.target.value)}
-                      rows={3}
-                    />
-                  </div>
+                    </>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="anexo-retorno">Arquivo de retorno (opcional)</Label>
                     <Input
@@ -1787,7 +1887,12 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   </p>
                   <p>Protocolo: {protocoloCorrente?.numeroProtocolo ?? "—"}</p>
                   <p>
-                    Retorno {rotuloRetorno}: {protocoloCorrente?.codigoRetorno ?? "—"}
+                    Retorno {complementoRetorno}:{" "}
+                    {retornoSimples
+                      ? protocoloCorrente?.situacaoRetorno === "aceito"
+                        ? "aprovado"
+                        : "não aprovado"
+                      : (protocoloCorrente?.codigoRetorno ?? "—")}
                   </p>
                   <p>
                     Prazo de retenção:{" "}

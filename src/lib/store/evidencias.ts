@@ -203,7 +203,7 @@ export interface EntradaSelarEncaminhamento {
 type EvidenciasPersistidas = Pick<EstadoEvidencias, "lacres" | "fornecimentos" | "verificacoes">;
 
 export const NOME_ARMAZENAMENTO_EVIDENCIAS = "videnas-evidencias";
-const VERSAO_ARMAZENAMENTO_EVIDENCIAS = 1;
+const VERSAO_ARMAZENAMENTO_EVIDENCIAS = 2;
 
 const MOTIVO_SEM_CRIPTOGRAFIA =
   "Este navegador não expõe a Web Crypto API. O lacre criptográfico não pode ser gerado agora.";

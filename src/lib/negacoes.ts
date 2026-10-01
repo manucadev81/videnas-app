@@ -46,7 +46,7 @@ export function devolucaoContadorEscalaParaComite(
 }
 
 export function rotuloOrigemNegativa(origem: OrigemNegacao | undefined): string {
-  return origem === "contador" ? "Devolução do Contador" : "Negação do Diretor";
+  return origem === "contador" ? "Devolução do Contador" : "Negação do Compliance";
 }
 
 export function rotuloContagemNegativas(numero: number): string {

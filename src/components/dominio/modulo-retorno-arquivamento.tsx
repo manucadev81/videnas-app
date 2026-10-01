@@ -14,7 +14,11 @@ import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { diasDesdeTransmissao } from "@/lib/mock/periodos";
-import { configuracaoFluxo, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
+import {
+  configuracaoFluxo,
+  retornoSomentePosicionamento,
+  rotuloRetornoDoModulo,
+} from "@/lib/mock/configuracao-fluxo";
 import { formatarData, formatarDataHora, formatarTamanhoArquivo } from "@/lib/formatadores";
 import type { RegistroLacre, SituacaoRetornoBcb } from "@/lib/tipos";
 
@@ -107,6 +111,7 @@ export function PainelRetorno({ periodoId }: { periodoId: string }) {
 
   const protocolo = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
   const rotulo = rotuloRetornoDoModulo(periodo.moduloId);
+  const somentePosicionamento = retornoSomentePosicionamento(periodo.moduloId);
   const retorno = protocolo?.retornoRegulador ?? null;
   const dias = diasDesdeTransmissao(periodo);
   const aguardando = periodo.estado === "aguardando_retorno";
@@ -129,25 +134,33 @@ export function PainelRetorno({ periodoId }: { periodoId: string }) {
         <p className="mt-1 text-sm text-neutral-500">
           {aguardando
             ? `Transmitido há ${dias ?? 0} ${dias === 1 ? "dia" : "dias"} · protocolo ${protocolo?.numeroProtocolo ?? "—"}. O retorno ainda não foi registrado.`
-            : `Protocolo ${protocolo?.numeroProtocolo ?? "—"} · situação: ${ROTULOS_SITUACAO[protocolo?.situacaoRetorno ?? "aguardando"]}.`}
+            : somentePosicionamento
+              ? `Protocolo ${protocolo?.numeroProtocolo ?? "—"} · aprovado: ${protocolo?.situacaoRetorno === "aceito" ? "sim" : "não"}.`
+              : `Protocolo ${protocolo?.numeroProtocolo ?? "—"} · situação: ${ROTULOS_SITUACAO[protocolo?.situacaoRetorno ?? "aguardando"]}.`}
         </p>
       </div>
 
       {!aguardando && protocolo ? (
         <dl className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Artefato">{rotulo}</Campo>
-          <Campo rotulo="Identificador">{retorno?.identificador ?? "—"}</Campo>
-          <Campo rotulo="Data do retorno">
-            {retorno?.dataInformada
-              ? formatarData(retorno.dataInformada)
-              : protocolo.dataRetorno
-                ? formatarData(protocolo.dataRetorno)
-                : "—"}
-          </Campo>
-          <Campo rotulo="Código">{protocolo.codigoRetorno ?? "—"}</Campo>
-          <div className="sm:col-span-2">
-            <Campo rotulo="Mensagem">{protocolo.mensagemRetorno ?? "—"}</Campo>
-          </div>
+          {somentePosicionamento ? (
+            <Campo rotulo="Aprovado">{protocolo.situacaoRetorno === "aceito" ? "Sim" : "Não"}</Campo>
+          ) : (
+            <>
+              <Campo rotulo="Artefato">{rotulo}</Campo>
+              <Campo rotulo="Identificador">{retorno?.identificador ?? "—"}</Campo>
+              <Campo rotulo="Data do retorno">
+                {retorno?.dataInformada
+                  ? formatarData(retorno.dataInformada)
+                  : protocolo.dataRetorno
+                    ? formatarData(protocolo.dataRetorno)
+                    : "—"}
+              </Campo>
+              <Campo rotulo="Código">{protocolo.codigoRetorno ?? "—"}</Campo>
+              <div className="sm:col-span-2">
+                <Campo rotulo="Mensagem">{protocolo.mensagemRetorno ?? "—"}</Campo>
+              </div>
+            </>
+          )}
           {retorno?.anexoNome ? (
             <Campo rotulo="Arquivo anexado">
               {retorno.anexoNome}

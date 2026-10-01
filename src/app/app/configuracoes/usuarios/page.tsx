@@ -28,6 +28,10 @@ import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { usuariosDoTenant, useTenantsStore } from "@/lib/store/tenants";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { listarUsuarios } from "@/lib/mock/usuarios";
+import { buscarModulo } from "@/lib/mock/modulos";
+import { usePeriodosStore } from "@/lib/store/periodos";
+import { ESTADOS_COM_VALIDADOR_DESIGNADO } from "@/lib/validadores";
 import { PERFIS, buscarPerfil } from "@/lib/permissoes";
 import { CLASSE_SITUACAO, ROTULO_SITUACAO } from "@/lib/usuarios/rotulos";
 import { formatarDataHora } from "@/lib/formatadores";
@@ -85,6 +89,7 @@ const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
   convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
   suspender_tenant: "Suspender / reativar cliente",
   alterar_modulos_contratados: "Alterar módulos contratados",
+  editar_areas_cliente: "Editar áreas do cliente",
 };
 
 export default function ConfiguracoesUsuariosPage() {
@@ -96,6 +101,7 @@ export default function ConfiguracoesUsuariosPage() {
   const podeEditar = Boolean(perfilAtivo && buscarPerfil(perfilAtivo).acoesPermitidas.includes("gerenciar_usuarios"));
 
   const usuariosProvisionados = useTenantsStore((estado) => estado.usuariosProvisionados);
+  const periodosStore = usePeriodosStore((estado) => estado.periodos);
 
   const usuariosInstituicao = useMemo(
     () => (instituicao ? usuariosDoTenant(usuariosProvisionados, instituicao.id) : []),
@@ -246,6 +252,45 @@ export default function ConfiguracoesUsuariosPage() {
     },
   ];
 
+  const validadoresVidenas = listarUsuarios()
+    .filter((usuario) => usuario.perfilId === "validador")
+    .sort((a, b) => (a.nivelValidador ?? "Z").localeCompare(b.nivelValidador ?? "Z"));
+
+  const colunasValidadores: ColunaTabela<Usuario>[] = [
+    {
+      id: "nivel",
+      cabecalho: "Nível",
+      renderizar: (u) =>
+        u.nivelValidador ? (
+          <span className="status-badge status-badge-info">{u.nivelValidador}</span>
+        ) : (
+          <span className="text-neutral-400">—</span>
+        ),
+    },
+    { id: "nome", cabecalho: "Nome", renderizar: (u) => <span className="font-medium text-neutral-700">{u.nome}</span> },
+    { id: "email", cabecalho: "E-mail", renderizar: (u) => u.email },
+    {
+      id: "modulos",
+      cabecalho: "Módulos elegíveis",
+      renderizar: (u) => (u.moduloIds.length > 0 ? u.moduloIds.map((moduloId) => buscarModulo(moduloId).nome).join(", ") : "—"),
+    },
+    {
+      id: "designados",
+      cabecalho: "Períodos designados em aberto",
+      renderizar: (u) =>
+        Object.values(periodosStore).filter(
+          (periodo) =>
+            periodo.validadorDesignadoId === u.id && ESTADOS_COM_VALIDADOR_DESIGNADO.includes(periodo.estado)
+        ).length,
+    },
+    { id: "ultimoAcesso", cabecalho: "Último acesso", renderizar: (u) => formatarDataHora(u.ultimoAcesso) },
+    {
+      id: "situacao",
+      cabecalho: "Situação",
+      renderizar: (u) => <span className={cn("status-badge", CLASSE_SITUACAO[u.situacao])}>{ROTULO_SITUACAO[u.situacao]}</span>,
+    },
+  ];
+
   const perfisMatriz = perfilFiltro === "todos" ? PERFIS : PERFIS.filter((p) => p.id === perfilFiltro);
 
   return (
@@ -358,6 +403,24 @@ export default function ConfiguracoesUsuariosPage() {
             chave={(u) => u.id}
             tituloVazio="Nenhum responsável pelo envio de dados designado"
             mensagemVazia="Use o botão Designar responsável para cadastrar a pessoa que vai fornecer os dados desta instituição."
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-6">
+        <h2 className="font-display text-lg font-bold text-neutral-700">Validadores da Videnas (V1, V2, V3)</h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Equipe Videnas que valida e libera. A validação é por módulo: a cada envio para validação o sistema
+          sorteia, entre os validadores ativos com acesso ao módulo e à instituição (exceto quem gerou o
+          arquivo), quem valida e libera aquele período sozinho.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <TabelaDados
+            colunas={colunasValidadores}
+            dados={validadoresVidenas}
+            chave={(u) => u.id}
+            tituloVazio="Nenhum validador cadastrado"
+            mensagemVazia="Os validadores da Videnas aparecem aqui."
           />
         </div>
       </section>

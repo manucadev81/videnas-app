@@ -34,7 +34,7 @@ etapa. A Videnas não é instituição financeira, não custodia ativos virtuais
         Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas
         estrutura os dados do serviço prestado no formato da DPS. A emissão da NFS-e depende do
         contrato de cada instituição: quando está incluída, a Videnas emite o documento fiscal
-        depois da aprovação do Diretor; quando não está, a DPS é encaminhada ao emissor que a
+        depois da aprovação do Responsável de Compliance; quando não está, a DPS é encaminhada ao emissor que a
         instituição definir. A definição de alíquota, retenção e enquadramento tributário é do
         contador responsável, cuja validação é obrigatória antes da liberação.
       </>
@@ -46,7 +46,7 @@ const CORPO_FISCAL_COM_EMISSAO = (
   <>
     Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas estrutura os
     dados do serviço prestado no formato da DPS e, como a emissão da NFS-e está incluída no contrato
-    desta instituição, emite o documento fiscal depois da aprovação do Diretor. A definição de
+    desta instituição, emite o documento fiscal depois da aprovação do Responsável de Compliance. A definição de
     alíquota, retenção e enquadramento tributário é do contador responsável, cuja validação é
     obrigatória antes da liberação.
   </>
@@ -56,7 +56,7 @@ const CORPO_FISCAL_SEM_EMISSAO = (
   <>
     Este módulo é uma funcionalidade candidata, sujeita a decisão de produto. A Videnas estrutura os
     dados do serviço prestado no formato da DPS, mas a emissão da NFS-e não faz parte do contrato desta
-    instituição: depois da aprovação, o Diretor encaminha a DPS ao emissor que a instituição definir. A
+    instituição: depois da aprovação, o Responsável de Compliance encaminha a DPS ao emissor que a instituição definir. A
     definição de alíquota, retenção e enquadramento tributário é do contador responsável, cuja
     validação é obrigatória antes da liberação.
   </>

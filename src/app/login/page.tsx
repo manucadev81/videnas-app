@@ -57,7 +57,17 @@ const ATALHOS: AtalhoDemo[] = [
   },
   {
     email: "c.veloso@videnas.com.br",
-    rotulo: "Validador",
+    rotulo: "Validador V1",
+    instituicao: "Videnas",
+  },
+  {
+    email: "r.tavares@videnas.com.br",
+    rotulo: "Validador V2",
+    instituicao: "Videnas",
+  },
+  {
+    email: "b.nogueira@videnas.com.br",
+    rotulo: "Validador V3",
     instituicao: "Videnas",
   },
   {

@@ -2,6 +2,20 @@ import type { DesfechoComite, EstadoPeriodo, ModuloId, PerfilId } from "@/lib/ti
 
 export interface ConfiguracaoRetornoModulo {
   rotuloArtefato?: string;
+  somentePosicionamento?: boolean;
+}
+
+export type RotuloAprovador = "Compliance";
+
+export type GatilhoNotificacaoArea = "aprovacao" | "arquivamento";
+
+export type DestinatariosNotificacaoArea = "todas_as_areas" | "areas_mapeadas";
+
+export interface ConfiguracaoAreasCliente {
+  responsabilidadePorModuloVisivel: boolean;
+  notificacaoHabilitada: boolean;
+  eventosNotificados: GatilhoNotificacaoArea[];
+  destinatariosNotificacao: DestinatariosNotificacaoArea;
 }
 
 export type CaminhoAposRessalvas = "arquivar" | "reabrir";
@@ -39,9 +53,9 @@ export const DESFECHOS_COMITE: Record<DesfechoComite, DefinicaoDesfechoComite> =
     exigePlanoCorrecao: true,
   },
   negativa_superada: {
-    rotulo: "Negativa superada/esclarecida, submeter novamente ao Diretor",
+    rotulo: "Negativa superada/esclarecida, submeter novamente ao Compliance",
     descricao:
-      "O período volta a Liberado e o Diretor vê a justificativa do Comitê ao decidir de novo. A decisão de aprovar continua sendo dele.",
+      "O período volta a Liberado e o Compliance vê a justificativa do Comitê ao decidir de novo. A decisão de aprovar continua sendo dele.",
     estadoDestino: "liberado",
     exigePlanoCorrecao: false,
   },
@@ -70,6 +84,8 @@ export interface ConfiguracaoFluxo {
   registroProtocoloManualHabilitado: boolean;
   enviarContadorAposNegacaoFiscalHabilitado?: boolean;
   retencao?: ConfiguracaoRetencao;
+  rotuloAprovador: RotuloAprovador;
+  areasCliente: ConfiguracaoAreasCliente;
   modulos: Partial<Record<ModuloId, ConfiguracaoFluxoModulo>>;
 }
 
@@ -95,10 +111,28 @@ export const configuracaoFluxo: ConfiguracaoFluxo = {
   transmissaoPerfisVidenas: ["executor", "validador"],
   registroProtocoloManualHabilitado: true,
   retencao: { anos: 5, marcoInicial: "arquivamento" },
+  rotuloAprovador: "Compliance",
+  areasCliente: {
+    responsabilidadePorModuloVisivel: true,
+    notificacaoHabilitada: true,
+    eventosNotificados: ["aprovacao", "arquivamento"],
+    destinatariosNotificacao: "areas_mapeadas",
+  },
   modulos: {
     acam212: { retorno: { rotuloArtefato: "ACAM213" } },
+    cadoc5711: { retorno: { somentePosicionamento: true } },
+    cadoc5710: { retorno: { somentePosicionamento: true } },
+    fiscal: { retorno: { somentePosicionamento: true } },
   },
 };
+
+export const ROTULOS_COMPLETOS_APROVADOR: Record<RotuloAprovador, string> = {
+  Compliance: "Responsável de Compliance",
+};
+
+export function retornoSomentePosicionamento(moduloId: ModuloId): boolean {
+  return configuracaoFluxo.modulos[moduloId]?.retorno?.somentePosicionamento === true;
+}
 
 export function rotuloRetornoDoModulo(moduloId: ModuloId): string {
   return configuracaoFluxo.modulos[moduloId]?.retorno?.rotuloArtefato ?? ROTULO_RETORNO_GENERICO;

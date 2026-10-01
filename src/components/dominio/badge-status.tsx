@@ -40,7 +40,7 @@ const CONFIGURACAO_ESTADO: Record<EstadoPeriodo, ConfiguracaoEstado> = {
   com_excecoes: { rotulo: "Com exceções", variante: "error", icone: TriangleAlert },
   liberado: { rotulo: "Liberado", variante: "success", icone: Unlock },
   aprovado: { rotulo: "Aprovado", variante: "success", icone: BadgeCheck },
-  devolvido_diretor: { rotulo: "Devolvido pelo Diretor", variante: "error", icone: Undo2 },
+  devolvido_diretor: { rotulo: "Devolvido pelo Compliance", variante: "error", icone: Undo2 },
   em_comite_qualidade: { rotulo: "Em Comitê de Qualidade", variante: "warning", icone: Gavel },
   emitido_fiscal: { rotulo: "Documento fiscal emitido", variante: "info", icone: FileWarning },
   aguardando_retorno: { rotulo: "Aguardando retorno", variante: "warning", icone: Radio },

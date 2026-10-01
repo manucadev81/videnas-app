@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type {
+  AreaCliente,
+  MapeamentoAreasCliente,
   ContratoModulo,
   Instituicao,
   ModuloId,
@@ -21,9 +23,19 @@ import {
 import { usePeriodosStore, type AutorAcao } from "@/lib/store/periodos";
 import { formatarCNPJ } from "@/lib/formatadores";
 import { contratoDoModulo } from "@/lib/contrato";
+import { buscarPerfil } from "@/lib/permissoes";
+import {
+  ROTULO_TIPO_AREA,
+  areaTemErro,
+  descreverMapeamentoModulo,
+  normalizarAreasParaSalvar,
+  normalizarMapeamento,
+  validarArea,
+} from "@/lib/areas-cliente";
+import { buscarModulo } from "@/lib/mock/modulos";
 
 export const NOME_ARMAZENAMENTO_TENANTS = "videnas-tenants";
-const VERSAO_ARMAZENAMENTO_TENANTS = 1;
+const VERSAO_ARMAZENAMENTO_TENANTS = 3;
 
 export interface ContatoInicial {
   nome: string;
@@ -79,6 +91,12 @@ export interface EstadoTenants {
     tenantId: string,
     moduloId: ModuloId,
     alteracao: Partial<ContratoModulo>,
+    autor: AutorAcao
+  ) => ResultadoTenant;
+  alterarAreasCliente: (
+    tenantId: string,
+    areas: AreaCliente[],
+    mapeamento: MapeamentoAreasCliente,
     autor: AutorAcao
   ) => ResultadoTenant;
   concluirOnboarding: (tenantId: string, autor: AutorAcao) => ResultadoTenant;
@@ -203,6 +221,44 @@ export function responsavelEnvioDoTenant(
   return usuariosDoTenant(usuariosProvisionados, tenantId).find(
     (usuario) => usuario.perfilId === "cliente"
   );
+}
+
+function descreverArea(area: AreaCliente | undefined): string {
+  if (!area) {
+    return "não cadastrada";
+  }
+  return `${area.nome} / ${area.responsavelNome} / ${area.email}${area.telefone ? ` / ${area.telefone}` : ""}`;
+}
+
+function compararAreas(antes: AreaCliente[], depois: AreaCliente[]): string[] {
+  const tipos = new Set([...antes, ...depois].map((area) => area.tipo));
+  const linhas: string[] = [];
+  for (const tipo of tipos) {
+    const anterior = antes.find((area) => area.tipo === tipo);
+    const atual = depois.find((area) => area.tipo === tipo);
+    const textoAnterior = descreverArea(anterior);
+    const textoAtual = descreverArea(atual);
+    if (textoAnterior !== textoAtual) {
+      linhas.push(`${ROTULO_TIPO_AREA[tipo]}: ${textoAnterior} -> ${textoAtual}`);
+    }
+  }
+  return linhas;
+}
+
+function compararMapeamentos(
+  antes: MapeamentoAreasCliente,
+  depois: MapeamentoAreasCliente,
+  modulos: ModuloId[]
+): string[] {
+  const linhas: string[] = [];
+  for (const moduloId of modulos) {
+    const textoAnterior = descreverMapeamentoModulo(antes, moduloId);
+    const textoAtual = descreverMapeamentoModulo(depois, moduloId);
+    if (textoAnterior !== textoAtual) {
+      linhas.push(`Responsabilidade em ${buscarModulo(moduloId).nome}: ${textoAnterior} -> ${textoAtual}`);
+    }
+  }
+  return linhas;
 }
 
 function sincronizarRegistros(estado: EstadoTenants): void {
@@ -577,6 +633,61 @@ export const useTenantsStore = create<EstadoTenants>()(
           "Módulos contratados alterados",
           `${tenantId}:${moduloId}`,
           { escopo: "contrato", moduloId, antes, depois }
+        );
+
+        return { sucesso: true };
+      },
+
+      alterarAreasCliente: (tenantId, areas, mapeamento, autor) => {
+        if (!buscarPerfil(autor.perfilId).acoesPermitidas.includes("editar_areas_cliente")) {
+          return { sucesso: false, motivo: "Seu perfil não pode editar as áreas do cliente." };
+        }
+        const tenant = buscarTenant(get().tenants, tenantId);
+        if (!tenant) {
+          return { sucesso: false, motivo: "Cliente não encontrado." };
+        }
+        for (const area of areas) {
+          const erros = validarArea(area);
+          if (areaTemErro(erros)) {
+            return {
+              sucesso: false,
+              motivo: `${ROTULO_TIPO_AREA[area.tipo]}: ${erros.nome ?? erros.responsavelNome ?? erros.email}`,
+            };
+          }
+        }
+
+        const antes = tenant.areasCliente ?? [];
+        const depois = normalizarAreasParaSalvar(areas);
+        const mapeamentoAntes = normalizarMapeamento(tenant.mapeamentoAreas ?? {}, tenant.modulosContratados);
+        const mapeamentoDepois = normalizarMapeamento(mapeamento, tenant.modulosContratados);
+        const alteradas = [
+          ...compararAreas(antes, depois),
+          ...compararMapeamentos(mapeamentoAntes, mapeamentoDepois, tenant.modulosContratados),
+        ];
+        if (alteradas.length === 0) {
+          return { sucesso: false, motivo: "Nenhuma alteração nas áreas do cliente." };
+        }
+
+        set((estado) => ({
+          tenants: estado.tenants.map((item) =>
+            item.id === tenantId ? { ...item, areasCliente: depois, mapeamentoAreas: mapeamentoDepois } : item
+          ),
+        }));
+
+        registrarAuditoria(
+          autor,
+          tenantId,
+          "CONFIG_INSTITUICAO_ALTERADA",
+          "Configuração da instituição alterada",
+          `${tenantId}:areas`,
+          {
+            escopo: "areas_cliente",
+            areasAlteradas: alteradas,
+            antes,
+            depois,
+            mapeamentoAntes,
+            mapeamentoDepois,
+          }
         );
 
         return { sucesso: true };

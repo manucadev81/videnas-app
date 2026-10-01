@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { PainelContratoCadastros } from "@/components/contrato/painel-contrato";
+import { SecaoAreasCliente } from "@/components/clientes/secao-areas-cliente";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { responsavelEnvioDoTenant, useTenantsStore } from "@/lib/store/tenants";
@@ -132,6 +133,11 @@ export default function ConfiguracoesInstituicaoPage() {
           </p>
         )}
       </section>
+
+      <SecaoAreasCliente
+        key={`${instituicao.id}:${JSON.stringify(instituicao.areasCliente ?? [])}:${JSON.stringify(instituicao.mapeamentoAreas ?? {})}`}
+        instituicao={instituicao}
+      />
 
       <section className="rounded-xl border border-neutral-200 bg-white p-6">
         <h2 className="font-display text-lg font-bold text-neutral-700">Módulos contratados</h2>

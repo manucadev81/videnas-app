@@ -113,7 +113,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     return {
       resumo:
         payload.desfecho === "negativa_superada"
-          ? "Negativa superada, devolvida ao Diretor"
+          ? "Negativa superada, devolvida ao Responsável de Compliance"
           : "Negativa mantida, devolvida ao Executor com plano de correção",
       linhas,
     };
@@ -126,7 +126,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
       `Contrato congelado${congeladoEm ? ` em ${formatarData(congeladoEm)}` : ""}`,
       `Emissão incluída: ${contrato.emissaoIncluida === true ? "sim" : "não"}`,
       `Transmissão incluída: ${contrato.transmissaoIncluida === true ? "sim" : "não"}`,
-      `Responsável pela transmissão: ${contrato.responsavelTransmissao === "diretor" ? "Diretor da instituição" : "Videnas"}`,
+      `Responsável pela transmissão: ${contrato.responsavelTransmissao === "diretor" ? "Responsável de Compliance da instituição" : "Videnas"}`,
     ];
     const cadastro = texto(contrato.cadastroId);
     if (cadastro) {
@@ -160,7 +160,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     const linhas: string[] = [];
     const responsavel = texto(payload.responsavelTransmissao);
     linhas.push(
-      `Transmitido ${responsavel === "diretor" ? "pelo Diretor da instituição" : "pela Videnas"}`
+      `Transmitido ${responsavel === "diretor" ? "pelo Responsável de Compliance da instituição" : "pela Videnas"}`
     );
     const cadastro = texto(payload.cadastroIdentificador) ?? texto(payload.cadastroId);
     if (cadastro) {
@@ -173,7 +173,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     }
     return {
       resumo: `Protocolo ${texto(payload.protocolo) ?? "sem número"}${
-        responsavel === "diretor" ? " (Diretor)" : " (Videnas)"
+        responsavel === "diretor" ? " (Compliance)" : " (Videnas)"
       }`,
       linhas,
     };
@@ -217,7 +217,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
       ["responsavelTransmissao", "Responsável pela transmissão"],
     ];
     const formatar = (valor: unknown) =>
-      valor === true ? "sim" : valor === false ? "não" : valor === "diretor" ? "Diretor" : valor === "videnas" ? "Videnas" : "—";
+      valor === true ? "sim" : valor === false ? "não" : valor === "diretor" ? "Compliance" : valor === "videnas" ? "Videnas" : "—";
     const linhas = campos
       .filter(([chave]) => antes[chave] !== depois[chave])
       .map(([chave, rotulo]) => `${rotulo}: ${formatar(antes[chave])} -> ${formatar(depois[chave])}`);
@@ -225,6 +225,59 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
       resumo: `Contrato do módulo ${texto(payload.moduloId) ?? ""} alterado`.trim(),
       linhas,
     };
+  }
+
+  if (evento.tipo === "AREA_CLIENTE_NOTIFICADA") {
+    const linhas = [`Contato: ${texto(payload.responsavelNome) ?? "—"} <${texto(payload.email) ?? "—"}>`];
+    const motivo = texto(payload.motivo);
+    if (motivo) {
+      linhas.push(motivo);
+    }
+    linhas.push(payload.simulado === true ? "Notificação simulada: nenhum e-mail real foi enviado." : "Notificação enviada.");
+    return { resumo: `Área ${texto(payload.areaNome) ?? "não identificada"} notificada`, linhas };
+  }
+
+  if (evento.tipo === "VALIDADOR_SORTEADO") {
+    const elegiveis = Array.isArray(payload.elegiveis) ? payload.elegiveis : [];
+    const nomes = elegiveis
+      .map((item) => {
+        const registro = (item ?? {}) as Record<string, unknown>;
+        const nome = texto(registro.nome);
+        const nivel = texto(registro.nivel);
+        return nome ? (nivel ? `${nome} (${nivel})` : nome) : null;
+      })
+      .filter((nome): nome is string => nome !== null);
+    const sorteadoNivel = texto(payload.sorteadoNivel);
+    const linhas = [
+      `Elegíveis: ${nomes.length > 0 ? nomes.join(", ") : "—"}`,
+      "Critério: sorteio entre os validadores com acesso ao módulo e à instituição, exceto quem gerou o arquivo.",
+    ];
+    const hash = texto(payload.hashSha256);
+    if (hash) {
+      linhas.push(`Arquivo: hash ${truncarHash(hash)}`);
+    }
+    return {
+      resumo: `Sorteado: ${texto(payload.sorteadoNome) ?? "—"}${sorteadoNivel ? ` (${sorteadoNivel})` : ""}`,
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "CONFIG_INSTITUICAO_ALTERADA" && payload.escopo === "areas_cliente") {
+    const alteradas = Array.isArray(payload.areasAlteradas) ? payload.areasAlteradas : [];
+    return {
+      resumo: `Áreas do cliente alteradas (${alteradas.length})`,
+      linhas: alteradas.map((item) => String(item)),
+    };
+  }
+
+  if (evento.tipo === "TRILHA_EXPORTADA" && numero(payload.quantidade) !== null) {
+    const linhas = [`Arquivo: ${texto(payload.nomeArquivo) ?? "—"}`];
+    const filtros = (payload.filtros ?? {}) as Record<string, unknown>;
+    const filtrosAplicados = Object.entries(filtros)
+      .filter(([, valor]) => valor !== null && valor !== "" && valor !== "todos")
+      .map(([chave, valor]) => `${chave}=${String(valor)}`);
+    linhas.push(filtrosAplicados.length > 0 ? `Filtros: ${filtrosAplicados.join("; ")}` : "Sem filtros adicionais");
+    return { resumo: `${numero(payload.quantidade)} evento(s) exportado(s)`, linhas };
   }
 
   return null;

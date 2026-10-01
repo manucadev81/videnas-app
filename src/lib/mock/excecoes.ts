@@ -142,11 +142,10 @@ export const excecoes: Excecao[] = [
     instituicaoId: "inst-cofre-atlantico",
     moduloId: "cadoc5711",
     origem: "retorno_bcb",
-    codigo: "RET-0412",
+    codigo: "RETORNO_NAO_APROVADO",
     severidade: "bloqueante",
     titulo: "Retorno do BCB rejeitado",
-    descricao:
-      "Divergência entre o total consolidado informado e a soma das posições diárias da competência junho/2026.",
+    descricao: "O regulador/emissor informou que o documento da competência junho/2026 não foi aprovado.",
     abertaEm: "2026-07-14T08:00:00-03:00",
     abertaPorUsuarioId: "usr-clarice",
     responsavelAtualPerfil: "executor",

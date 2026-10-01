@@ -250,9 +250,9 @@ function textoOrigemDoProtocolo(protocolo: ProtocoloBCB): string {
     case "transmissao_videnas":
       return "Transmitido pela Videnas com o cadastro prévio da instituição.";
     case "transmissao_diretor":
-      return "Transmitido pelo Diretor da instituição com o cadastro prévio dele.";
+      return "Transmitido pelo Responsável de Compliance da instituição com o cadastro prévio dele.";
     case "manual":
-      return "Registrado manualmente pelo Diretor, com justificativa e recibo lacrado.";
+      return "Registrado manualmente pelo Responsável de Compliance, com justificativa e recibo lacrado.";
     case "encaminhamento":
       return `DPS encaminhada ao emissor ${protocolo.emissor ?? "definido pela instituição"}, com recibo lacrado.`;
     default:
@@ -394,7 +394,7 @@ export function EtapaEntrega({
             mensagem={
               ehFiscal
                 ? "Depois da aprovação, o documento fiscal é emitido (se a emissão estiver no contrato) ou a DPS é encaminhada ao emissor definido pela instituição."
-                : "Depois da aprovação, a transmissão é feita conforme o contrato e o cadastro prévio, ou o Diretor registra o protocolo manualmente."
+                : "Depois da aprovação, a transmissão é feita conforme o contrato e o cadastro prévio, ou o Responsável de Compliance registra o protocolo manualmente."
             }
           />
         )}

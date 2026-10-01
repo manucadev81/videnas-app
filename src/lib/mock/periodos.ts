@@ -14,7 +14,11 @@ import type {
 } from "@/lib/tipos";
 import { formatarTamanhoArquivo } from "@/lib/formatadores";
 import { montarIdentificadorLacre } from "@/lib/evidencias/lacre";
-import { calcularRetencaoAte, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
+import {
+  calcularRetencaoAte,
+  retornoSomentePosicionamento,
+  rotuloRetornoDoModulo,
+} from "@/lib/mock/configuracao-fluxo";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
@@ -127,8 +131,8 @@ function construirEntregue(entrada: EntradaEntregue): PeriodoObrigacao {
     registradoPorUsuarioId: entrada.registradoPorUsuarioId,
     reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
     situacaoRetorno: entrada.situacaoRetorno ?? "aceito",
-    codigoRetorno: "RET-0000",
-    mensagemRetorno: "Documento processado com sucesso.",
+    codigoRetorno: retornoSomentePosicionamento(entrada.moduloId) ? null : "RET-0000",
+    mensagemRetorno: retornoSomentePosicionamento(entrada.moduloId) ? null : "Documento processado com sucesso.",
     dataRetorno: entrada.dataHoraEnvio,
     observacao: null,
   };
@@ -1483,9 +1487,8 @@ protocolos.push({
   registradoPorUsuarioId: "usr-helena",
   reciboHash: gerarHashDeterministico("recibo-prot-cofre-atlantico-cadoc5711-202606"),
   situacaoRetorno: "rejeitado",
-  codigoRetorno: "RET-0412",
-  mensagemRetorno:
-    "Divergência entre o total consolidado informado e a soma das posições diárias.",
+  codigoRetorno: null,
+  mensagemRetorno: null,
   dataRetorno: "2026-07-14T08:00:00-03:00",
   observacao: "Aguardando reabertura do período para nova geração e reenvio.",
 });
@@ -2870,6 +2873,7 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
     const situacaoFinal = situacaoRetorno === "aguardando" ? null : situacaoRetorno;
     const retornado = situacaoFinal !== null;
     const rotuloArtefato = rotuloRetornoDoModulo(entrada.moduloId);
+    const somentePosicionamento = retornoSomentePosicionamento(entrada.moduloId);
     const comAnexo = retornado && entrada.moduloId === "acam212";
     const dataRetorno = entrada.dataRetorno ?? entrada.protocolo.dataHoraEnvio;
     const sufixo = entrada.competencia.replace("-", "");
@@ -2882,8 +2886,8 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
       registradoPorUsuarioId: entrada.diretorId ?? USUARIO_DIRETOR_DEMO,
       reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
       situacaoRetorno: situacaoRetorno ?? "aguardando",
-      codigoRetorno: situacaoFinal ? CODIGO_RETORNO_DEMO[situacaoFinal] : null,
-      mensagemRetorno: situacaoFinal ? MENSAGEM_RETORNO_DEMO[situacaoFinal] : null,
+      codigoRetorno: situacaoFinal && !somentePosicionamento ? CODIGO_RETORNO_DEMO[situacaoFinal] : null,
+      mensagemRetorno: situacaoFinal && !somentePosicionamento ? MENSAGEM_RETORNO_DEMO[situacaoFinal] : null,
       dataRetorno: retornado ? dataRetorno : null,
       observacao: null,
       retornoRegulador: retornado
@@ -2915,10 +2919,12 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
         instituicaoId: entrada.instituicaoId,
         moduloId: entrada.moduloId,
         origem: "retorno_bcb",
-        codigo: CODIGO_RETORNO_DEMO.rejeitado,
+        codigo: somentePosicionamento ? "RETORNO_NAO_APROVADO" : CODIGO_RETORNO_DEMO.rejeitado,
         severidade: "bloqueante",
         titulo: `Retorno rejeitado (${rotuloArtefato})`,
-        descricao: MENSAGEM_RETORNO_DEMO.rejeitado,
+        descricao: somentePosicionamento
+          ? "O regulador/emissor informou que o documento não foi aprovado."
+          : MENSAGEM_RETORNO_DEMO.rejeitado,
         abertaEm: dataRetorno,
         abertaPorUsuarioId: USUARIO_VALIDADOR_DEMO,
         responsavelAtualPerfil: "executor",
@@ -3217,6 +3223,9 @@ for (const moduloId of MODULOS_DEMO_R1) {
   ];
 
   for (const variante of variantesR2) {
+    if (variante.estado === "retorno_com_ressalvas" && retornoSomentePosicionamento(moduloId)) {
+      continue;
+    }
     periodos.push(
       construirPeriodoDemoR1({
         id: `per-meridian-${slug}-${variante.sufixo}`,
@@ -3294,7 +3303,7 @@ const VARIANTES_R4: VarianteR4[] = [
     instituicaoId: "inst-cofre-atlantico",
     moduloId: "cadoc5711",
     competencia: "2026-09",
-    rotulo: "Setembro/2026 (demo R4, transmissão pelo Diretor)",
+    rotulo: "Setembro/2026 (demo R4, transmissão pelo Responsável de Compliance)",
     diretorId: "usr-helena",
     registros: 129,
   },
@@ -3351,6 +3360,22 @@ for (const variante of VARIANTES_R4) {
       ],
     })
   );
+}
+
+const VALIDADOR_DESIGNADO_PENDENTES: Record<string, string> = {
+  "per-meridian-acam212-202608": "usr-beatriz",
+  "per-meridian-cadoc5711-202608": "usr-rafael",
+  "per-cofre-atlantico-cadoc5711-202608": "usr-clarice",
+  "per-cofre-atlantico-fiscal-202608": "usr-beatriz",
+};
+
+for (const periodo of periodos) {
+  const designadoId = VALIDADOR_DESIGNADO_PENDENTES[periodo.id] ?? periodo.liberadoPorUsuarioId;
+  if (designadoId && periodo.geradoEm) {
+    periodo.validadorDesignadoId = designadoId;
+    periodo.designadoEm = periodo.geradoEm;
+    periodo.criterioDesignacao = "sorteio";
+  }
 }
 
 for (const periodo of periodos) {

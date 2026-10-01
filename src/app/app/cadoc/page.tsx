@@ -65,7 +65,7 @@ export default function CadocPage() {
     return (
       <EstadoVazio
         titulo="Acesso não disponível"
-        mensagem="Seu perfil não tem acesso a esta área. O módulo Cadoc é restrito aos perfis Diretor, Operacional, Executor e Validador."
+        mensagem="Seu perfil não tem acesso a esta área. O módulo Cadoc é restrito aos perfis Compliance, Operacional, Executor e Validador."
       />
     );
   }

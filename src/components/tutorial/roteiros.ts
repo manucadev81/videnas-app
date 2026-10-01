@@ -361,7 +361,7 @@ const PASSOS_EXECUTOR: PassoTour[] = [
     id: "executor-enviar-validacao",
     titulo: "Enviar para validação",
     descricao:
-      "Depois de gerado, o arquivo segue para o Validador Videnas com o botão \"Enviar para validação\". No módulo Fiscal esse mesmo passo é substituído por \"Enviar ao contador\", já que a DPS precisa da confirmação de enquadramento antes da validação de schema.",
+      "Depois de gerado, o arquivo segue para validação com o botão \"Enviar para validação\": o sistema sorteia, entre os validadores com acesso ao módulo e à instituição, quem valida e libera aquele período, e o sorteio fica na trilha. No módulo Fiscal esse mesmo passo é substituído por \"Enviar ao contador\", já que a DPS precisa da confirmação de enquadramento antes da validação de schema.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/acam212/per-pampulha-acam212-202608",
     posicao: "bottom",
@@ -382,7 +382,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-boas-vindas",
     titulo: "Bem-vinda, Validadora Videnas",
     descricao:
-      "Você confere a validação de schema e libera as competências para os clientes — nunca gera arquivos. O seletor de perfil no header alterna entre as visões desta demonstração.",
+      "Você confere a validação de schema e libera os períodos que o sorteio designou a você — nunca gera arquivos. O seletor de perfil no header alterna entre as visões desta demonstração.",
     seletor: '[data-tour="seletor-perfil"]',
     rota: "/app",
     posicao: "bottom",
@@ -400,7 +400,7 @@ const PASSOS_VALIDADOR: PassoTour[] = [
     id: "validador-executar-validacao",
     titulo: "Executar a validação de schema",
     descricao:
-      "O Cadoc 5711 de agosto/2026 do Cofre Atlântico está em validação, com um buraco na sequência de datas-base. \"Executar validação de schema\" roda o schema oficial e as regras determinísticas do módulo contra o arquivo gerado.",
+      "O Cadoc 5711 de agosto/2026 do Cofre Atlântico está em validação, designado a você por sorteio, com um buraco na sequência de datas-base. \"Executar validação de schema\" roda o schema oficial e as regras determinísticas do módulo contra o arquivo gerado.",
     seletor: '[data-tour="barra-acoes"]',
     rota: "/app/cadoc/per-cofre-atlantico-cadoc5711-202608",
     posicao: "bottom",
@@ -475,16 +475,16 @@ const PASSOS_ADMIN: PassoTour[] = [
     id: "admin-contadores",
     titulo: "Os quatro status de implantação",
     descricao:
-      "Provisionado: cadastrado, mas o convite inicial ainda não foi enviado. Onboarding em andamento: o Diretor recebeu o convite e ainda não terminou a configuração guiada. Ativo: a configuração guiada foi concluída e as competências dos módulos contratados foram abertas. Suspenso: o atendimento está interrompido, com motivo registrado na trilha. Clicar em um tile filtra a tabela por aquele status.",
+      "Provisionado: cadastrado, mas o convite inicial ainda não foi enviado. Onboarding em andamento: o Responsável de Compliance recebeu o convite e ainda não terminou a configuração guiada. Ativo: a configuração guiada foi concluída e as competências dos módulos contratados foram abertas. Suspenso: o atendimento está interrompido, com motivo registrado na trilha. Clicar em um tile filtra a tabela por aquele status.",
     seletor: '[data-tour="clientes-contadores"]',
     rota: "/app/clientes",
     posicao: "bottom",
   },
   {
     id: "admin-tabela",
-    titulo: "Diretor e responsável pelo envio como colunas",
+    titulo: "Compliance e responsável pelo envio como colunas",
     descricao:
-      "A tabela traz, além dos dados cadastrais e dos módulos contratados, as duas pessoas que determinam se o cliente sai do papel: o Diretor responsável, que conclui a configuração guiada, e o responsável pelo envio de dados, que alimenta as competências. Quando a segunda coluna mostra \"Não designado\", o cliente ainda não tem quem forneça os dados — e nenhuma obrigação avança sem isso.",
+      "A tabela traz, além dos dados cadastrais e dos módulos contratados, as duas pessoas que determinam se o cliente sai do papel: o Responsável de Compliance, que conclui a configuração guiada, e o responsável pelo envio de dados, que alimenta as competências. Quando a segunda coluna mostra \"Não designado\", o cliente ainda não tem quem forneça os dados — e nenhuma obrigação avança sem isso.",
     seletor: '[data-tour="clientes-tabela"]',
     rota: "/app/clientes",
     posicao: "top",
@@ -502,7 +502,7 @@ const PASSOS_ADMIN: PassoTour[] = [
     id: "admin-formulario",
     titulo: "O que o formulário exige",
     descricao:
-      "Três blocos: dados da instituição, com CNPJ único na plataforma — cadastrar o mesmo CNPJ duas vezes é recusado; módulos contratados, com pelo menos um obrigatório, porque são eles que definem quais competências serão abertas; e usuários iniciais, onde o Diretor responsável é obrigatório e o responsável pelo envio de dados é opcional, já que o próprio cliente pode designá-lo depois em Configurações → Usuários e papéis. Cadastrado o cliente, o botão \"Enviar convite\" leva o status de Provisionado para Onboarding em andamento.",
+      "Três blocos: dados da instituição, com CNPJ único na plataforma — cadastrar o mesmo CNPJ duas vezes é recusado; módulos contratados, com pelo menos um obrigatório, porque são eles que definem quais competências serão abertas; e usuários iniciais, onde o Responsável de Compliance é obrigatório e o responsável pelo envio de dados é opcional, já que o próprio cliente pode designá-lo depois em Configurações → Usuários e papéis. Cadastrado o cliente, o botão \"Enviar convite\" leva o status de Provisionado para Onboarding em andamento.",
     seletor: '[data-tour="cliente-novo-formulario"]',
     rota: "/app/clientes/novo",
     posicao: "top",
@@ -511,7 +511,7 @@ const PASSOS_ADMIN: PassoTour[] = [
     id: "admin-ficha-cliente",
     titulo: "A ficha de um cliente",
     descricao:
-      "Abrir um cliente da carteira leva à visão consolidada que antecede qualquer decisão administrativa. O cabeçalho identifica a instituição pelo nome fantasia e pela razão social, mostra o CNPJ, o badge com o status de implantação e a data de entrada na carteira. A Pampulha Capital está em Onboarding em andamento: o convite já saiu, mas o Diretor ainda não terminou a configuração guiada. Todo o resto da ficha — dados cadastrais, módulos contratados, usuários, obrigações da competência — se lê a partir do que este cabeçalho declara.",
+      "Abrir um cliente da carteira leva à visão consolidada que antecede qualquer decisão administrativa. O cabeçalho identifica a instituição pelo nome fantasia e pela razão social, mostra o CNPJ, o badge com o status de implantação e a data de entrada na carteira. A Pampulha Capital está em Onboarding em andamento: o convite já saiu, mas o Responsável de Compliance ainda não terminou a configuração guiada. Todo o resto da ficha — dados cadastrais, módulos contratados, usuários, obrigações da competência — se lê a partir do que este cabeçalho declara.",
     seletor: '[data-tour="cliente-detalhe-cabecalho"]',
     rota: "/app/clientes/inst-pampulha",
     posicao: "bottom",
@@ -520,7 +520,7 @@ const PASSOS_ADMIN: PassoTour[] = [
     id: "admin-usuarios-tenant",
     titulo: "Quem existe do lado do cliente",
     descricao:
-      "Esta tabela lista os usuários do lado Cliente vinculados ao tenant. Na implantação, dois nomes decidem se o cliente sai do papel: o Diretor responsável, único que pode concluir a configuração guiada, e o responsável pelo envio de dados, sem o qual nenhuma competência recebe insumo. O Administrador da Videnas atua aqui apenas reenviando convites; incluir usuários, trocar perfis e desativar acessos é responsabilidade contínua do próprio cliente, em Configurações → Usuários e papéis.",
+      "Esta tabela lista os usuários do lado Cliente vinculados ao tenant. Na implantação, dois nomes decidem se o cliente sai do papel: o Responsável de Compliance, único que pode concluir a configuração guiada, e o responsável pelo envio de dados, sem o qual nenhuma competência recebe insumo. O Administrador da Videnas atua aqui apenas reenviando convites; incluir usuários, trocar perfis e desativar acessos é responsabilidade contínua do próprio cliente, em Configurações → Usuários e papéis.",
     seletor: '[data-tour="cliente-detalhe-usuarios"]',
     rota: "/app/clientes/inst-pampulha",
     posicao: "top",
@@ -529,7 +529,7 @@ const PASSOS_ADMIN: PassoTour[] = [
     id: "admin-acoes-administrativas",
     titulo: "Suspender preserva a trilha",
     descricao:
-      "No rodapé da ficha ficam as ações que mudam o estado da implantação, e elas variam conforme o status. Para um cliente em implantação como a Pampulha Capital aparecem duas: \"Reenviar convite inicial\", que dispara de novo o convite ao Diretor responsável enquanto ele não concluiu a configuração guiada, e \"Suspender cliente\". Suspender exige um motivo escrito e não apaga nada — o cliente continua visível para a operação e toda a trilha de auditoria é preservada; o que muda é que novas competências deixam de ser abertas. Quando o cliente já está suspenso, \"Reativar cliente\" ocupa o lugar de \"Suspender cliente\" e o devolve ao status Ativo. Cada uma dessas ações grava um evento na trilha com o seu nome e o horário.",
+      "No rodapé da ficha ficam as ações que mudam o estado da implantação, e elas variam conforme o status. Para um cliente em implantação como a Pampulha Capital aparecem duas: \"Reenviar convite inicial\", que dispara de novo o convite ao Responsável de Compliance enquanto ele não concluiu a configuração guiada, e \"Suspender cliente\". Suspender exige um motivo escrito e não apaga nada — o cliente continua visível para a operação e toda a trilha de auditoria é preservada; o que muda é que novas competências deixam de ser abertas. Quando o cliente já está suspenso, \"Reativar cliente\" ocupa o lugar de \"Suspender cliente\" e o devolve ao status Ativo. Cada uma dessas ações grava um evento na trilha com o seu nome e o horário.",
     seletor: '[data-tour="cliente-detalhe-acoes"]',
     rota: "/app/clientes/inst-pampulha",
     posicao: "top",

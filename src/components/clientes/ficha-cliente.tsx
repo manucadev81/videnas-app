@@ -25,6 +25,7 @@ import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { BadgeSentido } from "@/components/evidencias/badge-sentido";
 import { PainelContratoCadastros } from "@/components/contrato/painel-contrato";
+import { SecaoAreasCliente } from "@/components/clientes/secao-areas-cliente";
 import { useSessaoStore } from "@/lib/store/sessao";
 import {
   CLASSE_STATUS_IMPLANTACAO,
@@ -191,7 +192,7 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
     }
 
     if (!diretor) {
-      toast.error("Este cliente não tem um Diretor cadastrado para receber o convite.");
+      toast.error("Este cliente não tem um Responsável de Compliance cadastrado para receber o convite.");
       return;
     }
 
@@ -355,6 +356,11 @@ export function FichaCliente({ tenantId }: { tenantId: string }) {
           <Dado rotulo="E-mail do responsável" valor={tenant.responsavelBcb.email} />
         </dl>
       </section>
+
+      <SecaoAreasCliente
+        key={`${tenant.id}:${JSON.stringify(tenant.areasCliente ?? [])}:${JSON.stringify(tenant.mapeamentoAreas ?? {})}`}
+        instituicao={tenant}
+      />
 
       <section
         data-tour="cliente-detalhe-modulos"

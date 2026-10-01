@@ -103,6 +103,7 @@ export type TipoEventoAuditoria =
   | "RETORNO_REJEITADO"
   | "PERIODO_ARQUIVADO"
   | "AREA_CLIENTE_NOTIFICADA"
+  | "VALIDADOR_SORTEADO"
   | "PERIODO_REABERTO"
   | "HASH_REVERIFICADO"
   | "USUARIO_CONVIDADO"
@@ -147,6 +148,7 @@ export type AcaoId =
   | "marcar_encaminhado"
   | "tratar_excecao"
   | "editar_config_instituicao"
+  | "editar_areas_cliente"
   | "gerenciar_usuarios"
   | "editar_dicionarios"
   | "trocar_tenant"
@@ -202,6 +204,19 @@ export interface ContratoInstituicao {
   cadastros: CadastroPrevio[];
 }
 
+export type TipoAreaCliente = "controles_internos" | "custodia" | "contabil";
+
+export interface AreaCliente {
+  id: string;
+  tipo: TipoAreaCliente;
+  nome: string;
+  responsavelNome: string;
+  email: string;
+  telefone?: string;
+}
+
+export type MapeamentoAreasCliente = Partial<Record<ModuloId, Partial<Record<EtapaId, TipoAreaCliente[]>>>>;
+
 export interface Instituicao {
   id: string;
   razaoSocial: string;
@@ -221,7 +236,11 @@ export interface Instituicao {
   criadoEm: string;
   statusImplantacao: StatusImplantacao;
   contrato?: ContratoInstituicao;
+  areasCliente?: AreaCliente[];
+  mapeamentoAreas?: MapeamentoAreasCliente;
 }
+
+export type NivelValidador = "V1" | "V2" | "V3";
 
 export interface Usuario {
   id: string;
@@ -237,6 +256,7 @@ export interface Usuario {
   situacao: SituacaoUsuario;
   ultimoAcesso: string;
   avatarIniciais: string;
+  nivelValidador?: NivelValidador;
 }
 
 export interface Perfil {
@@ -357,6 +377,9 @@ export interface PeriodoObrigacao {
   arquivadoPorUsuarioId: string | null;
   retencaoAte: string | null;
   arquivamentoLacreId?: string | null;
+  validadorDesignadoId?: string | null;
+  designadoEm?: string | null;
+  criterioDesignacao?: "sorteio" | null;
 }
 
 export interface PeriodoDerivado extends PeriodoObrigacao {

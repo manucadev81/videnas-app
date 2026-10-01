@@ -9,7 +9,7 @@ A Videnas e uma aplicacao RegTech voltada a instituicoes brasileiras que operam 
 
 O repositorio e um **mockup front-end 100% local**, construido com Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui e Zustand. Nao ha backend, API, banco de dados ou autenticacao real. O estado vive no navegador; sessao, evidencias e tenants sao parcialmente persistidos em `localStorage`. Os hashes SHA-256 e os envelopes AES-GCM sao calculados de verdade pela Web Crypto API, embora a gestao de chaves seja simulada no navegador.
 
-O escopo atual cobre quatro frentes: **ACAM212**, **Cadoc 5711**, **Cadoc 5710** e **Fiscal - NFS-e/DPS**, sendo o Fiscal marcado como funcionalidade candidata. A Videnas estrutura e controla o processo. A emissao da NFS-e e a transmissao ao Banco Central ou ao emissor dependem do **contrato de cada cliente** e de um **cadastro previo** do canal (feito pela Videnas ou pelo Diretor da instituicao); sem isso, a transmissao ocorre fora da plataforma e o protocolo e registrado manualmente, sob responsabilidade da instituicao cliente.
+O escopo atual cobre quatro frentes: **ACAM212**, **Cadoc 5711**, **Cadoc 5710** e **Fiscal - NFS-e/DPS**, sendo o Fiscal marcado como funcionalidade candidata. A Videnas estrutura e controla o processo. A emissao da NFS-e e a transmissao ao Banco Central ou ao emissor dependem do **contrato de cada cliente** e de um **cadastro previo** do canal (feito pela Videnas ou pelo Responsavel de Compliance da instituicao); sem isso, a transmissao ocorre fora da plataforma e o protocolo e registrado manualmente, sob responsabilidade da instituicao cliente.
 
 ## 2. Perfis e responsabilidades
 
@@ -20,7 +20,7 @@ O escopo atual cobre quatro frentes: **ACAM212**, **Cadoc 5711**, **Cadoc 5710**
 | Cliente / Fornecedor de dados | Unico perfil que envia os insumos de origem; acompanha pendencias, baixa comprovantes e verifica integridade. | Nao acessa a fila de operacao nem opera o pipeline regulatorio. |
 | Contador / Fiscal | Confirma ou devolve aliquota de ISS, retencao e enquadramento tributario das DPS. | Atua apenas no modulo Fiscal. |
 | Executor - Videnas | Executa a ingestao tecnica, gera ou regera o arquivo e o envia para validacao. | Nao fornece dados, nao libera e nao aprova. |
-| Validador - Videnas | Valida o schema e libera o arquivo para o cliente. | Nunca gera; quem gerou nao pode liberar. |
+| Validador - Videnas | Valida o schema e libera o arquivo para o cliente; em cada periodo, so o validador designado por sorteio entre os elegiveis do modulo e da instituicao valida e libera. | Nunca gera; quem gerou nao pode liberar nem ser sorteado. |
 | Administrador - Videnas | Provisiona tenants, contrata modulos, convida usuarios iniciais, suspende e reativa clientes; preside o Comite de Qualidade e registra a decisao. | Nao participa do pipeline regulatorio. |
 
 A separacao **Executor -> Validador -> Compliance** materializa o controle de quatro olhos e reduz conflito de interesses. O Administrador fica fora desse ciclo.
@@ -29,19 +29,20 @@ A separacao **Executor -> Validador -> Compliance** materializa o controle de qu
 
 ```mermaid
 flowchart TD
-    A[Administrador provisiona instituicao, modulos e Diretor] --> B[Diretor conclui onboarding e ativa o tenant]
-    B --> C[Diretor ou Operacional designa o Fornecedor de dados]
+    A[Administrador provisiona instituicao, modulos e Responsavel de Compliance] --> B[Compliance conclui onboarding e ativa o tenant]
+    B --> C[Compliance ou Operacional designa o Fornecedor de dados]
     C --> D[Cliente envia arquivos e formularios da competencia]
     D --> E[Pre-validacao, aceite e lacre de entrada]
     E --> F[Executor normaliza e gera o arquivo]
     F --> G{Modulo Fiscal?}
     G -- Sim --> H[Contador confirma ou devolve o enquadramento]
-    H --> I[Validador confere o schema]
-    G -- Nao --> I
+    H --> V[Sorteio do validador designado entre os elegiveis]
+    G -- Nao --> V
+    V --> I[Validador designado confere o schema]
     I --> J{Ha erro bloqueante?}
     J -- Sim --> K[Excecao: Executor corrige e regera]
-    K --> I
-    J -- Nao --> L[Validador libera para o cliente]
+    K --> V
+    J -- Nao --> L[Validador designado libera para o cliente]
     L --> M{Compliance decide}
     M -- Aprova --> N[Compliance assume responsabilidade]
     M -- Nega, com motivo --> M3{Qual negativa da competencia?}
@@ -50,22 +51,24 @@ flowchart TD
     M2 --> F
     N --> O{Contrato e cadastro previo}
     O -- Fiscal com emissao --> O1[Videnas emite o documento fiscal lacrado]
-    O1 --> O2[Transmissao pela Videnas ou pelo Diretor, comprovante lacrado]
+    O1 --> O2[Transmissao pela Videnas ou pelo Compliance, comprovante lacrado]
     O -- Transmissao disponivel --> O2
-    O -- Indisponivel: nao contratada, pendente ou expirado --> O3[Diretor registra o protocolo manualmente, com justificativa e recibo lacrado]
-    O -- Fiscal sem emissao --> O4[Diretor encaminha a DPS ao emissor, recibo lacrado]
+    O -- Indisponivel: nao contratada, pendente ou expirado --> O3[Compliance registra o protocolo manualmente, com justificativa e recibo lacrado]
+    O -- Fiscal sem emissao --> O4[Compliance encaminha a DPS ao emissor, recibo lacrado]
     O2 --> P[Aguardando retorno]
     O3 --> P
     O4 --> P
     P --> Q{Retorno do orgao}
-    Q -- Aceito --> R[Arquivado, com lacre final encadeado - acao atras de flag]
-    Q -- Rejeitado --> K
-    Q -- Com ressalvas --> S[Aceito com ressalvas - proximo passo pendente de definicao normativa, atras de flag]
+    Q -- Aceito / Aprovado: Sim --> R[Arquivado, com lacre final encadeado e areas mapeadas notificadas]
+    Q -- Rejeitado / Aprovado: Nao --> K
+    Q -- Com ressalvas, so ACAM212 --> S[Aceito com ressalvas: arquivar ou reabrir]
+    S --> R
+    S --> K
 ```
 
-Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos a transmissao, o registro manual do protocolo ou o encaminhamento ao emissor, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Diretor pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Na segunda negativa da mesma competencia, o periodo e escalado para o Comite de Qualidade em vez de voltar ao Executor: o historico de negativas (versao, hash, motivo, autor e data) e lacrado em um dossie na cadeia do periodo, o periodo fica somente leitura para todos os perfis e aparece em destaque, com os dias ate o prazo, no painel, na fila de operacao e no calendario. A contagem e por competencia e nao zera (premissa a confirmar); devolucoes do Contador nao contam por padrao, mas podem contar conforme a configuracao/contrato de cada cliente (decisao de 2026-10-01). O Comite de Qualidade da Videnas (decisao de 2026-10-01) e presidido pelo Administrador, com um segundo membro da equipe Videnas que nao tenha gerado nem liberado versoes negadas, nem negado a aprovacao; o quorum e 2 de 2, por unanimidade (sem acordo, a negativa e mantida). O Administrador registra a decisao com justificativa: manter a negativa, com plano de correcao e retorno ao Executor, ou considerar a negativa superada e devolver ao Diretor, que ve a justificativa do Comite. Nao ha aprovacao por excecao. A decisao gera um evento de auditoria e uma ata lacrada na mesma cadeia do periodo; da terceira negativa em diante o periodo volta direto ao Comite. O prazo do Comite e de 2 dias uteis ou 3 dias antes do prazo regulatorio, o que vier primeiro.
+Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos a transmissao, o registro manual do protocolo ou o encaminhamento ao emissor, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Responsavel de Compliance pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Na segunda negativa da mesma competencia, o periodo e escalado para o Comite de Qualidade em vez de voltar ao Executor: o historico de negativas (versao, hash, motivo, autor e data) e lacrado em um dossie na cadeia do periodo, o periodo fica somente leitura para todos os perfis e aparece em destaque, com os dias ate o prazo, no painel, na fila de operacao e no calendario. A contagem e por competencia e nao zera (premissa a confirmar); devolucoes do Contador nao contam por padrao, mas podem contar conforme a configuracao/contrato de cada cliente (decisao de 2026-10-01). O Comite de Qualidade da Videnas (decisao de 2026-10-01) e presidido pelo Administrador, com um segundo membro da equipe Videnas que nao tenha gerado nem liberado versoes negadas, nem negado a aprovacao; o quorum e 2 de 2, por unanimidade (sem acordo, a negativa e mantida). O Administrador registra a decisao com justificativa: manter a negativa, com plano de correcao e retorno ao Executor, ou considerar a negativa superada e devolver ao Compliance, que ve a justificativa do Comite. Nao ha aprovacao por excecao. A decisao gera um evento de auditoria e uma ata lacrada na mesma cadeia do periodo; da terceira negativa em diante o periodo volta direto ao Comite. O prazo do Comite e de 2 dias uteis ou 3 dias antes do prazo regulatorio, o que vier primeiro.
 
-O retorno do orgao e registrado por alguem da equipe Videnas (Executor ou Validador) com tres desfechos. No ACAM212 ele e registrado como ACAM213 (identificador, data, codigo, mensagem e arquivo anexado opcional); o anexo e um recibo do retorno sao lacrados na mesma cadeia do periodo. Um retorno rejeitado abre uma excecao e permite reabrir o periodo para correcao. O arquivamento gera um dossie lacrado como ultimo elo da cadeia e deixa o periodo somente leitura; periodos arquivados ficam ocultos por padrao nas listas. Quem arquiva tambem e alguem da equipe Videnas (Executor ou Validador), e a retencao conta a partir do arquivamento por 5 anos (por ora), exibida como "Retido ate" no periodo arquivado; nada e expurgado ao fim do prazo. Uma decisao segue aberta e por isso fica atras de flag: o que fazer apos um retorno aceito com ressalvas (nenhuma saida e oferecida).
+O retorno do orgao e registrado por alguem da equipe Videnas (Executor ou Validador). No ACAM212 ele e registrado como ACAM213 (identificador, data, codigo, mensagem e arquivo anexado opcional), com tres desfechos: aceito, aceito com ressalvas ou rejeitado. No Cadoc 5710/5711 e no Fiscal o registro pede apenas o posicionamento "Aprovado: Sim/Nao" e um anexo opcional (decisao de 2026-10-01): Sim leva a retorno aceito; Nao leva a retorno rejeitado, com excecao bloqueante e reabertura. O anexo e um recibo do retorno sao lacrados na mesma cadeia do periodo; no Cadoc e no Fiscal o recibo guarda so o campo aprovado. Um retorno rejeitado abre uma excecao e permite reabrir o periodo para correcao. O arquivamento gera um dossie lacrado como ultimo elo da cadeia e deixa o periodo somente leitura; periodos arquivados ficam ocultos por padrao nas listas. Quem arquiva tambem e alguem da equipe Videnas (Executor ou Validador), e a retencao conta a partir do arquivamento por 5 anos (por ora), exibida como "Retido ate" no periodo arquivado; nada e expurgado ao fim do prazo. Apos um retorno do ACAM212 aceito com ressalvas, os dois caminhos valem: arquivar ou reabrir.
 
 ## 4. Modulos regulatorios e documentos
 
@@ -102,9 +105,9 @@ Estrutura a Declaracao de Prestacao de Servicos (DPS) a partir dos servicos pres
 | Operacao | Oferece fila multi-tenant para Executor e Validador. |
 | Arquivos entregues | Disponibiliza arquivo lacrado, comprovante, hash e verificacao de integridade. |
 | Calendario | Centraliza prazos regulatorios por competencia. |
-| Auditoria | Registra eventos e decisoes com usuario, data, contexto e payload resumido. |
+| Auditoria | Registra eventos e decisoes com usuario, data, contexto e payload resumido; exporta em CSV, gerado no navegador, exatamente os eventos filtrados na tela. |
 | Evidencias | Exibe lacres de entrada e saida, cadeia por hash e resultados de verificacao. |
-| Configuracoes | Mantem instituicao, usuarios, permissoes e dicionarios de apoio. |
+| Configuracoes | Mantem instituicao, usuarios, permissoes e dicionarios de apoio, alem das areas do cliente (Controles internos, Custodia e Contabil) com seus contatos e dos validadores V1, V2 e V3 da Videnas. |
 | Ajuda e tutorial | Orienta cada perfil com conteudo contextual e roteiros guiados. |
 
 ## 6. Controles, limites e conclusao
@@ -113,6 +116,8 @@ Estrutura a Declaracao de Prestacao de Servicos (DPS) a partir dos servicos pres
 - **Segregacao de funcoes:** o Executor gera, o Validador libera e o Compliance aprova; quem gerou nao pode liberar. Na entrega, quem gerou o arquivo nao pode emitir o documento fiscal nem transmitir, e quem emitiu o documento fiscal nao pode transmiti-lo; o registro manual de protocolo fica fora dessas regras.
 - **Cadeia de custodia:** entradas e saidas recebem SHA-256, carimbo de tempo, autoria e envelope AES-GCM; reenvios sao encadeados.
 - **Contrato e cadastro previo:** a emissao e a transmissao so acontecem quando o contrato do cliente as inclui e ha cadastro previo ativo (nao pendente nem expirado) do lado responsavel; o bloqueio sempre mostra o motivo, e o registro manual de protocolo e a alternativa. O contrato do modulo fica congelado no periodo na aprovacao: mudancas posteriores so valem para periodos aprovados depois, e a aba Entrega avisa quando o contrato atual difere do que vigorava na aprovacao. Os cadastros previos sao somente leitura.
+- **Validador designado por sorteio (R5, decisao de 2026-10-01):** a validacao e por modulo e aleatoria. Ao enviar para validacao (e, no Fiscal, quando o Contador confirma), a aplicacao sorteia um unico validador entre os elegiveis do modulo e da instituicao, excluindo quem gerou a versao atual; so ele valida e libera, e o sorteio fica na trilha com a lista de elegiveis e o sorteado. Sem elegivel, o envio e bloqueado com aviso. Cada reenvio (apos negativa, devolucao ou reabertura) refaz o sorteio. Nao ha validacao sequencial V1, V2, V3.
+- **Areas do cliente (R5, decisao de 2026-10-01):** as areas de Controles internos, Custodia e Contabil e o mapeamento area -> modulo sao informados pelo cliente no inicio do contrato, apenas como medida informativa. O Administrador os edita na ficha do cliente; o Compliance os consulta, so leitura, nas configuracoes da instituicao. O mapeamento aparece no periodo, e as areas mapeadas ao modulo recebem avisos simulados quando um periodo e aprovado e quando e arquivado. As areas nao aprovam nem registram aceite.
 - **Responsabilidade:** a plataforma nao custodia ativos, so emite NFS-e e transmite quando contratado e nao substitui contador ou advogado.
 - **Limite do mockup:** nao ha backend, autenticacao real, banco, integracoes externas ou custodia produtiva de chaves. O arquivo baixavel e um extrato demonstrativo deterministico, limitado aos primeiros 12 registros; nao e um documento regulatorio completo. Em producao, a chave deve ficar em KMS/HSM.
 
