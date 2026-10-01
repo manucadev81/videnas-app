@@ -15,9 +15,10 @@ import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
+import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
-import type { ModuloId, PerfilId } from "@/lib/tipos";
+import type { ModuloId, PerfilId, TipoEventoAuditoria } from "@/lib/tipos";
 
 const ROTULOS_MODULO: Record<ModuloId, string> = {
   acam212: "ACAM212",
@@ -45,6 +46,7 @@ export default function AuditoriaPage() {
 
   const [filtroModulo, setFiltroModulo] = useState<ModuloId | "todos">("todos");
   const [filtroPerfil, setFiltroPerfil] = useState<PerfilId | "todos">("todos");
+  const [filtroTipo, setFiltroTipo] = useState<TipoEventoAuditoria | "todos">("todos");
   const [busca, setBusca] = useState("");
   const [linhaExpandida, setLinhaExpandida] = useState<string | null>(null);
 
@@ -64,7 +66,16 @@ export default function AuditoriaPage() {
     });
   }, [eventos, perfilAtivo, instituicaoAtivaId]);
 
+  const tiposDisponiveis = useMemo(
+    () =>
+      Array.from(new Set(eventosEscopo.map((evento) => evento.tipo))).sort((a, b) =>
+        ROTULOS_TIPO[a].localeCompare(ROTULOS_TIPO[b], "pt-BR")
+      ),
+    [eventosEscopo]
+  );
+
   const eventosFiltrados = eventosEscopo
+    .filter((evento) => (filtroTipo === "todos" ? true : evento.tipo === filtroTipo))
     .filter((evento) => (filtroModulo === "todos" ? true : evento.moduloId === filtroModulo))
     .filter((evento) => (filtroPerfil === "todos" ? true : evento.perfilId === filtroPerfil))
     .filter((evento) => {
@@ -131,6 +142,21 @@ export default function AuditoriaPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="min-w-56">
+          <Select value={filtroTipo} onValueChange={(valor) => setFiltroTipo(valor as TipoEventoAuditoria | "todos")}>
+            <SelectTrigger aria-label="Filtrar por tipo de evento" className="w-full">
+              <SelectValue placeholder="Tipo de evento" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os tipos de evento</SelectItem>
+              {tiposDisponiveis.map((tipo) => (
+                <SelectItem key={tipo} value={tipo}>
+                  {ROTULOS_TIPO[tipo]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="min-w-56 flex-1">
           <Input
             placeholder="Buscar por hash, protocolo, usuário ou competência"
@@ -156,6 +182,7 @@ export default function AuditoriaPage() {
           aoAcionar={() => {
             setFiltroModulo("todos");
             setFiltroPerfil("todos");
+            setFiltroTipo("todos");
             setBusca("");
           }}
         />

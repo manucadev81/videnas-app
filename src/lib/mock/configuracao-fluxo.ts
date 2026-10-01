@@ -15,6 +15,10 @@ export interface ConfiguracaoRetornoModulo {
   rotuloArtefato?: string;
 }
 
+export type CaminhoAposRessalvas = "arquivar" | "reabrir";
+
+export const ROTULO_RETORNO_GENERICO = "Retorno do regulador/emissor";
+
 export interface ConfiguracaoFluxoModulo {
   contrato?: ConfiguracaoContratoModulo;
   registroPrevio?: RegistroPrevioModulo;
@@ -27,9 +31,9 @@ export interface ConfiguracaoComiteQualidade {
 }
 
 export interface ConfiguracaoRetencao {
-  diasRetencao?: number;
+  anos: number;
   baseLegal?: string;
-  marcoInicial?: "aprovacao" | "retorno" | "arquivamento";
+  marcoInicial: "aprovacao" | "retorno" | "arquivamento";
 }
 
 export interface ConfiguracaoFluxo {
@@ -38,8 +42,9 @@ export interface ConfiguracaoFluxo {
   devolucaoContadorContaComoNegacao?: boolean;
   reaproveitamentoAposDevolucaoDiretorExigeContador?: boolean;
   comiteQualidade?: ConfiguracaoComiteQualidade;
-  arquivamentoPerfilId?: PerfilId;
-  registroRetornoPerfilId: PerfilId;
+  arquivamentoPerfis: PerfilId[];
+  caminhosAposRessalvas?: CaminhoAposRessalvas[];
+  registroRetornoPerfis: PerfilId[];
   registroProtocoloManualHabilitado: boolean;
   enviarContadorAposNegacaoFiscalHabilitado?: boolean;
   retencao?: ConfiguracaoRetencao;
@@ -49,7 +54,43 @@ export interface ConfiguracaoFluxo {
 export const configuracaoFluxo: ConfiguracaoFluxo = {
   limiarNegacoesComite: 2,
   escaladaComiteAutomaticaHabilitada: false,
-  registroRetornoPerfilId: "validador",
+  arquivamentoPerfis: ["executor", "validador"],
+  caminhosAposRessalvas: ["arquivar", "reabrir"],
+  registroRetornoPerfis: ["executor", "validador"],
   registroProtocoloManualHabilitado: false,
-  modulos: {},
+  retencao: { anos: 5, marcoInicial: "arquivamento" },
+  modulos: {
+    acam212: { retorno: { rotuloArtefato: "ACAM213" } },
+  },
 };
+
+export function rotuloRetornoDoModulo(moduloId: ModuloId): string {
+  return configuracaoFluxo.modulos[moduloId]?.retorno?.rotuloArtefato ?? ROTULO_RETORNO_GENERICO;
+}
+
+export function calcularRetencaoAte(arquivadoEm: string): string | null {
+  const anos = configuracaoFluxo.retencao?.anos;
+  if (!anos) {
+    return null;
+  }
+  const base = new Date(arquivadoEm);
+  if (Number.isNaN(base.getTime())) {
+    return null;
+  }
+  const limite = new Date(base.getTime());
+  limite.setUTCFullYear(limite.getUTCFullYear() + anos);
+  if (limite.getUTCMonth() !== base.getUTCMonth()) {
+    limite.setTime(
+      Date.UTC(
+        limite.getUTCFullYear(),
+        base.getUTCMonth() + 1,
+        0,
+        base.getUTCHours(),
+        base.getUTCMinutes(),
+        base.getUTCSeconds(),
+        base.getUTCMilliseconds()
+      )
+    );
+  }
+  return limite.toISOString();
+}

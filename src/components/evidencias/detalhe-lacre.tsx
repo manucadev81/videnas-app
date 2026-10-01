@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { AvisoEnvelope } from "@/components/evidencias/aviso-envelope";
 import { BadgeSentido } from "@/components/evidencias/badge-sentido";
+import { BadgeTipoArtefato } from "@/components/evidencias/badge-tipo-artefato";
+import { baixarConteudoLacrado } from "@/components/evidencias/conteudo-lacrado";
 import { LinhaDoTempoCadeia } from "@/components/evidencias/linha-do-tempo-cadeia";
 import { ValorHash } from "@/components/evidencias/valor-hash";
 import { VerificadorIntegridade } from "@/components/evidencias/verificador-integridade";
@@ -21,7 +23,7 @@ import {
   baixarComprovante,
   contextoComprovanteDoLacre,
 } from "@/components/evidencias/comprovante";
-import { filtrarCadeia } from "@/lib/evidencias/lacre";
+import { filtrarCadeia, tipoArtefatoDoLacre } from "@/lib/evidencias/lacre";
 import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
@@ -76,6 +78,18 @@ export function DetalheLacre({
   const modulo = lacre ? buscarModulo(lacre.moduloId) : undefined;
   const insumo = lacre?.insumoId ? buscarInsumo(lacre.insumoId) : undefined;
 
+  async function baixarConteudo() {
+    if (!lacre) {
+      return;
+    }
+    try {
+      await baixarConteudoLacrado(lacre);
+      toast.success("Conteúdo lacrado baixado. Use-o em Verificar integridade.");
+    } catch {
+      toast.error("Este lacre veio da carga inicial de demonstração e não guarda conteúdo recuperável.");
+    }
+  }
+
   function baixar() {
     if (!lacre) {
       return;
@@ -114,6 +128,7 @@ export function DetalheLacre({
               </SheetDescription>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <BadgeSentido sentido={lacre.sentido} />
+                <BadgeTipoArtefato lacre={lacre} />
                 <BadgeAjuda chave="evidencia.lacre" tamanho="xs" side="bottom" />
               </div>
             </SheetHeader>
@@ -197,6 +212,14 @@ export function DetalheLacre({
               </section>
 
               <VerificadorIntegridade key={lacre.id} lacre={lacre} dataTour="evidencias-verificar" />
+
+              {tipoArtefatoDoLacre(lacre) === "recibo_retorno" ||
+              tipoArtefatoDoLacre(lacre) === "dossie_arquivamento" ? (
+                <Button type="button" variant="outline" className="w-full" onClick={baixarConteudo}>
+                  <Download aria-hidden="true" />
+                  Baixar conteúdo lacrado
+                </Button>
+              ) : null}
 
               {podeBaixarComprovante ? (
                 <Button type="button" variant="outline" className="w-full" onClick={baixar}>

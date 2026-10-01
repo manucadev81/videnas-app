@@ -2,6 +2,7 @@
 
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { BadgeSentido } from "@/components/evidencias/badge-sentido";
+import { BadgeTipoArtefato } from "@/components/evidencias/badge-tipo-artefato";
 import { ValorHash } from "@/components/evidencias/valor-hash";
 import { buscarPerfil } from "@/lib/permissoes";
 import { formatarDataHora, formatarTamanhoArquivo } from "@/lib/formatadores";
@@ -57,6 +58,7 @@ export function LinhaDoTempoCadeia({
                     v{indice + 1}
                   </span>
                   <BadgeSentido sentido={elo.sentido} />
+                  <BadgeTipoArtefato lacre={elo} />
                   {destacado ? (
                     <span className="status-badge status-badge-neutral px-2 py-1 text-xs">
                       Lacre em exibição

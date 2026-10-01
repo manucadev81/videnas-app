@@ -7,7 +7,11 @@ import type {
   ArquivoGerado,
   FornecimentoInsumo,
   PeriodoObrigacao,
+  ProtocoloBCB,
   RegistroLacre,
+  SentidoLacre,
+  SituacaoRetornoBcb,
+  TipoArtefatoLacre,
 } from "@/lib/tipos";
 import {
   chaveDaCadeiaDe,
@@ -16,9 +20,11 @@ import {
   filtrarCadeia,
   montarIdentificadorLacre,
   resumirValoresDeFormulario,
+  tipoArtefatoDoLacre,
   type AutorLacre,
 } from "@/lib/evidencias/lacre";
 import { criptografiaDisponivel } from "@/lib/evidencias/cripto";
+import { montarDossieArquivamento, montarReciboRetorno } from "@/lib/evidencias/dossie";
 import {
   montarConteudoArquivoEntregue,
   tamanhoEmBytesDoConteudo,
@@ -51,6 +57,8 @@ export interface EstadoEvidencias {
   ) => Promise<ResultadoEvidencia>;
   registrarEntregaAoCliente: (entrada: EntradaEntregaAoCliente) => Promise<ResultadoEvidencia>;
   selarNovaVersaoArquivo: (entrada: EntradaSelarNovaVersaoArquivo) => Promise<ResultadoEvidencia>;
+  selarRetornoRegulador: (entrada: EntradaSelarRetornoRegulador) => Promise<ResultadoSelagemRetorno>;
+  selarArquivamento: (entrada: EntradaSelarArquivamento) => Promise<ResultadoEvidencia>;
   registrarVerificacao: (lacreId: string, confere: boolean, hashCalculado: string) => void;
   reiniciarEvidencias: () => void;
 }
@@ -81,6 +89,34 @@ export interface EntradaSelarNovaVersaoArquivo {
   arquivo: ArquivoGerado;
   autor: AutorLacre;
   origemNome?: string;
+}
+
+export interface EntradaSelarRetornoRegulador {
+  periodo: PeriodoObrigacao;
+  protocolo: ProtocoloBCB;
+  rotuloArtefato: string;
+  situacao: Exclude<SituacaoRetornoBcb, "aguardando">;
+  codigoRetorno: string;
+  mensagemRetorno: string;
+  identificador: string | null;
+  dataInformada: string | null;
+  anexo: File | null;
+  autor: AutorLacre;
+}
+
+export interface ResultadoSelagemRetorno {
+  sucesso: boolean;
+  motivo?: string;
+  anexoLacre?: RegistroLacre;
+  reciboLacre?: RegistroLacre;
+}
+
+export interface EntradaSelarArquivamento {
+  periodo: PeriodoObrigacao;
+  arquivo: ArquivoGerado | undefined;
+  protocolo: ProtocoloBCB | undefined;
+  arquivadoEm: string;
+  autor: AutorLacre;
 }
 
 type EvidenciasPersistidas = Pick<EstadoEvidencias, "lacres" | "fornecimentos" | "verificacoes">;
@@ -164,7 +200,12 @@ export function lacreDeSaidaDoArquivo(
   arquivoId: string
 ): RegistroLacre | undefined {
   return Object.values(lacres)
-    .filter((lacre) => lacre.sentido === "saida" && lacre.arquivoId === arquivoId)
+    .filter(
+      (lacre) =>
+        lacre.sentido === "saida" &&
+        lacre.arquivoId === arquivoId &&
+        tipoArtefatoDoLacre(lacre) === "arquivo_entregue"
+    )
     .sort((a, b) => a.seladoEm.localeCompare(b.seladoEm))
     .at(-1);
 }
@@ -211,6 +252,75 @@ function ajustarNaCadeia(
   }
 
   return { ...lacre, id, hashAnterior };
+}
+
+interface AcessoresEvidencias {
+  get: () => EstadoEvidencias;
+  set: (
+    atualizar: (estado: EstadoEvidencias) => EstadoEvidencias | Partial<EstadoEvidencias>
+  ) => void;
+}
+
+interface EntradaSelagemNaCadeia {
+  periodo: PeriodoObrigacao;
+  sentido: SentidoLacre;
+  tipoArtefato: TipoArtefatoLacre;
+  conteudo: string | ArrayBuffer;
+  origemNome: string;
+  tamanhoBytes: number;
+  autor: AutorLacre;
+}
+
+async function selarNaCadeia(
+  { get, set }: AcessoresEvidencias,
+  entrada: EntradaSelagemNaCadeia
+): Promise<ResultadoEvidencia> {
+  const { periodo } = entrada;
+  const lacresAtuais = get().lacres;
+  const cadeia = filtrarCadeia(Object.values(lacresAtuais), {
+    instituicaoId: periodo.instituicaoId,
+    moduloId: periodo.moduloId,
+    competencia: periodo.competencia,
+    insumoId: null,
+  });
+
+  const ultimo = cadeia.at(-1);
+  const instanteMinimo = ultimo ? Date.parse(ultimo.seladoEm) + 1 : 0;
+  const seladoEm = new Date(Math.max(Date.now(), instanteMinimo)).toISOString();
+
+  const lacre = await construirLacre({
+    sentido: entrada.sentido,
+    instituicaoId: periodo.instituicaoId,
+    moduloId: periodo.moduloId,
+    competencia: periodo.competencia,
+    periodoId: periodo.id,
+    insumoId: null,
+    conteudo: entrada.conteudo,
+    origemNome: entrada.origemNome,
+    tamanhoBytes: entrada.tamanhoBytes,
+    autor: entrada.autor,
+    hashAnterior: encadearApos(cadeia),
+    sequencia: proximaSequenciaDaCadeia(lacresAtuais, periodo, entrada.sentido),
+    seladoEm,
+    tipoArtefato: entrada.tipoArtefato,
+  });
+
+  let gravado = lacre;
+
+  set((estado) => {
+    const definitivo = ajustarNaCadeia(lacre, estado.lacres, periodo);
+    if (estado.lacres[definitivo.id]) {
+      return estado;
+    }
+    gravado = definitivo;
+    return { lacres: { ...estado.lacres, [definitivo.id]: definitivo } };
+  });
+
+  if (get().lacres[gravado.id] !== gravado) {
+    return { sucesso: false, motivo: MOTIVO_LACRE_JA_EXISTE };
+  }
+
+  return { sucesso: true, lacre: gravado };
 }
 
 export const useEvidenciasStore = create<EstadoEvidencias>()(
@@ -511,6 +621,119 @@ export const useEvidenciasStore = create<EstadoEvidencias>()(
         }
 
         return { sucesso: true, lacre: gravado };
+      },
+
+      selarRetornoRegulador: async ({
+        periodo,
+        protocolo,
+        rotuloArtefato,
+        situacao,
+        codigoRetorno,
+        mensagemRetorno,
+        identificador,
+        dataInformada,
+        anexo,
+        autor,
+      }: EntradaSelarRetornoRegulador) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const acessores: AcessoresEvidencias = { get, set };
+        let anexoLacre: RegistroLacre | undefined;
+
+        if (anexo) {
+          const bytes = await anexo.arrayBuffer();
+          const resultadoAnexo = await selarNaCadeia(acessores, {
+            periodo,
+            sentido: "entrada",
+            tipoArtefato: "anexo_retorno",
+            conteudo: bytes,
+            origemNome: anexo.name,
+            tamanhoBytes: anexo.size,
+            autor,
+          });
+          if (!resultadoAnexo.sucesso || !resultadoAnexo.lacre) {
+            return { sucesso: false, motivo: resultadoAnexo.motivo };
+          }
+          anexoLacre = resultadoAnexo.lacre;
+        }
+
+        const recibo = montarReciboRetorno({
+          periodo,
+          protocolo,
+          rotuloArtefato,
+          situacao,
+          codigoRetorno,
+          mensagemRetorno,
+          identificador,
+          dataInformada,
+          anexoNome: anexo?.name ?? null,
+          anexoTamanhoBytes: anexo?.size ?? null,
+          anexoHash: anexoLacre?.hashSha256 ?? null,
+          anexoLacreId: anexoLacre?.id ?? null,
+          registradoEm: new Date().toISOString(),
+          registradoPorUsuarioId: autor.usuarioId,
+        });
+
+        const resultadoRecibo = await selarNaCadeia(acessores, {
+          periodo,
+          sentido: "entrada",
+          tipoArtefato: "recibo_retorno",
+          conteudo: recibo,
+          origemNome: `Recibo ${rotuloArtefato} — ${protocolo.numeroProtocolo}`,
+          tamanhoBytes: tamanhoEmBytesDoConteudo(recibo),
+          autor,
+        });
+        if (!resultadoRecibo.sucesso || !resultadoRecibo.lacre) {
+          return { sucesso: false, motivo: resultadoRecibo.motivo, anexoLacre };
+        }
+
+        return { sucesso: true, anexoLacre, reciboLacre: resultadoRecibo.lacre };
+      },
+
+      selarArquivamento: async ({ periodo, arquivo, protocolo, arquivadoEm, autor }: EntradaSelarArquivamento) => {
+        if (!criptografiaDisponivel()) {
+          return { sucesso: false, motivo: MOTIVO_SEM_CRIPTOGRAFIA };
+        }
+
+        const lacresAtuais = get().lacres;
+        const existente = Object.values(lacresAtuais).find(
+          (lacre) =>
+            lacre.periodoId === periodo.id && lacre.tipoArtefato === "dossie_arquivamento"
+        );
+        if (existente) {
+          return { sucesso: true, lacre: existente };
+        }
+
+        const cadeia = filtrarCadeia(Object.values(lacresAtuais), {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        });
+
+        const dossie = montarDossieArquivamento({
+          periodo,
+          arquivo,
+          protocolo,
+          arquivadoEm,
+          arquivadoPorUsuarioId: autor.usuarioId,
+          hashLacreAnterior: encadearApos(cadeia),
+        });
+
+        return selarNaCadeia(
+          { get, set },
+          {
+            periodo,
+            sentido: "saida",
+            tipoArtefato: "dossie_arquivamento",
+            conteudo: dossie,
+            origemNome: `Dossiê de arquivamento — ${periodo.competenciaRotulo}`,
+            tamanhoBytes: tamanhoEmBytesDoConteudo(dossie),
+            autor,
+          }
+        );
       },
 
       registrarVerificacao: (lacreId: string, confere: boolean, hashCalculado: string) => {

@@ -1,4 +1,5 @@
 import type { Excecao } from "@/lib/tipos";
+import { excecoesDemoRetorno } from "@/lib/mock/periodos";
 
 export const excecoes: Excecao[] = [
   {
@@ -246,3 +247,5 @@ export function excecoesAbertasBloqueantes(): Excecao[] {
     (excecao) => excecao.severidade === "bloqueante" && excecao.status === "aberta"
   );
 }
+
+excecoes.push(...excecoesDemoRetorno);

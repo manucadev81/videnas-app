@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BadgeStatus } from "@/components/dominio/badge-status";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
 import {
   Select,
   SelectContent,
@@ -19,7 +20,7 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { useTenantsStore } from "@/lib/store/tenants";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
-import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
+import { calcularPeriodoDerivado, diasDesdeTransmissao } from "@/lib/mock/periodos";
 import { formatarData, formatarDataHora } from "@/lib/formatadores";
 import type { EstadoPeriodo, ModuloId, PeriodoObrigacao } from "@/lib/tipos";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ export default function OperacaoPage() {
   const [filtroModulo, setFiltroModulo] = useState<ModuloId | "todos">("todos");
   const [somenteMeus, setSomenteMeus] = useState(false);
   const [somenteAtrasados, setSomenteAtrasados] = useState(false);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
 
   const ehOperacao = perfilAtivo === "executor" || perfilAtivo === "validador";
 
@@ -67,15 +69,19 @@ export default function OperacaoPage() {
   const emValidacao = filaBase.filter((periodo) => periodo.estado === "em_validacao");
   const aLiberar = filaBase.filter((periodo) => periodo.estado === "validado");
   const aTratarExcecoes = filaBase.filter((periodo) => periodo.estado === "com_excecoes");
+  const aReabrirRejeitados = filaBase.filter((periodo) => periodo.estado === "retorno_rejeitado");
+  const aguardandoRetorno = filaBase.filter((periodo) => periodo.estado === "aguardando_retorno");
+  const arquivadosOcultos = filaBase.filter((periodo) => periodo.estado === "arquivado");
+  const arquivadosVisiveis = mostrarArquivados ? arquivadosOcultos : [];
 
   const filaDoPerfil = ehExecutor
-    ? [...aRegerarDevolvidos, ...aGerar, ...aEnviar, ...aTratarExcecoes]
-    : [...emValidacao, ...aTratarExcecoes, ...aLiberar];
+    ? [...aRegerarDevolvidos, ...aReabrirRejeitados, ...aGerar, ...aEnviar, ...aTratarExcecoes]
+    : [...emValidacao, ...aTratarExcecoes, ...aLiberar, ...aguardandoRetorno];
 
   const estadosFila: EstadoPeriodo[] =
     perfilAtivo === "executor"
-      ? ["devolvido_diretor", "dados_ingeridos", "gerado", "com_excecoes"]
-      : ["em_validacao", "com_excecoes", "validado"];
+      ? ["devolvido_diretor", "retorno_rejeitado", "dados_ingeridos", "gerado", "com_excecoes"]
+      : ["em_validacao", "com_excecoes", "validado", "aguardando_retorno"];
 
   const contadorPorInstituicao = tenants.map((instituicao) => ({
     instituicao,
@@ -93,7 +99,7 @@ export default function OperacaoPage() {
     );
   }
 
-  const totalFila = filaDoPerfil.length;
+  const totalFila = filaDoPerfil.length + arquivadosVisiveis.length;
 
   return (
     <div className="space-y-6">
@@ -209,6 +215,12 @@ export default function OperacaoPage() {
             Somente atrasados
           </Label>
         </div>
+        <FiltroArquivados
+          id="mostrar-arquivados-operacao"
+          marcado={mostrarArquivados}
+          aoAlterar={setMostrarArquivados}
+          totalOcultos={arquivadosOcultos.length}
+        />
       </div>
 
       {totalFila === 0 ? (
@@ -221,6 +233,12 @@ export default function OperacaoPage() {
                 titulo="Devolvido pelo Diretor"
                 periodos={aRegerarDevolvidos}
                 rotuloAcao="Gerar novamente"
+                usuarioId={usuarioId}
+              />
+              <GrupoFila
+                titulo="Retorno rejeitado"
+                periodos={aReabrirRejeitados}
+                rotuloAcao="Reabrir para correção"
                 usuarioId={usuarioId}
               />
               <GrupoFila
@@ -262,8 +280,20 @@ export default function OperacaoPage() {
                 rotuloAcao="Liberar"
                 usuarioId={usuarioId}
               />
+              <GrupoFila
+                titulo="Aguardando retorno do regulador"
+                periodos={aguardandoRetorno}
+                rotuloAcao="Registrar retorno"
+                usuarioId={usuarioId}
+              />
             </>
           )}
+          <GrupoFila
+            titulo="Arquivados"
+            periodos={arquivadosVisiveis}
+            rotuloAcao="Abrir"
+            usuarioId={usuarioId}
+          />
         </div>
       )}
     </div>
@@ -281,6 +311,8 @@ function GrupoFila({
   rotuloAcao: string;
   usuarioId: string | null;
 }) {
+  const protocolos = usePeriodosStore((estado) => estado.protocolos);
+
   if (periodos.length === 0) return null;
 
   const ordenados = [...periodos].sort((a, b) => {
@@ -339,7 +371,15 @@ function GrupoFila({
                     </span>
                   </td>
                   <td className="px-4 py-2 text-xs text-neutral-500">
-                    {periodo.geradoEm ? (
+                    {periodo.estado === "aguardando_retorno" ? (
+                      <>
+                        Aguardando retorno há {diasDesdeTransmissao(periodo) ?? 0}{" "}
+                        {diasDesdeTransmissao(periodo) === 1 ? "dia" : "dias"} · protocolo{" "}
+                        <span className="font-mono">
+                          {protocolos[periodo.protocoloId ?? ""]?.numeroProtocolo ?? "—"}
+                        </span>
+                      </>
+                    ) : periodo.geradoEm ? (
                       <>
                         Arquivo gerado · {buscarUsuario(periodo.geradoPorUsuarioId ?? "")?.nome} ·{" "}
                         {formatarDataHora(periodo.geradoEm)}

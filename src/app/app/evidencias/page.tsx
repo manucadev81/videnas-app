@@ -17,6 +17,12 @@ import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { BadgeSentido } from "@/components/evidencias/badge-sentido";
+import { BadgeTipoArtefato } from "@/components/evidencias/badge-tipo-artefato";
+import {
+  ROTULOS_TIPO_ARTEFATO,
+  TIPOS_ARTEFATO,
+  tipoArtefatoDoLacre,
+} from "@/lib/evidencias/lacre";
 import { DetalheLacre } from "@/components/evidencias/detalhe-lacre";
 import { ValorHash } from "@/components/evidencias/valor-hash";
 import {
@@ -42,6 +48,7 @@ export default function EvidenciasPage() {
   const [filtroModulo, setFiltroModulo] = useState<string>(TODOS);
   const [filtroCompetencia, setFiltroCompetencia] = useState<string>(TODOS);
   const [filtroSentido, setFiltroSentido] = useState<string>(TODOS);
+  const [filtroTipo, setFiltroTipo] = useState<string>(TODOS);
   const [busca, setBusca] = useState("");
   const [lacreSelecionado, setLacreSelecionado] = useState<RegistroLacre | null>(null);
 
@@ -76,6 +83,7 @@ export default function EvidenciasPage() {
     .filter((lacre) => filtroModulo === TODOS || lacre.moduloId === filtroModulo)
     .filter((lacre) => filtroCompetencia === TODOS || lacre.competencia === filtroCompetencia)
     .filter((lacre) => filtroSentido === TODOS || lacre.sentido === filtroSentido)
+    .filter((lacre) => filtroTipo === TODOS || tipoArtefatoDoLacre(lacre) === filtroTipo)
     .filter((lacre) => {
       const alvo = busca.trim().toLowerCase();
       if (!alvo) {
@@ -94,6 +102,7 @@ export default function EvidenciasPage() {
     setFiltroModulo(TODOS);
     setFiltroCompetencia(TODOS);
     setFiltroSentido(TODOS);
+    setFiltroTipo(TODOS);
     setBusca("");
   }
 
@@ -194,6 +203,23 @@ export default function EvidenciasPage() {
           </Select>
         </div>
 
+        <div className="space-y-1.5">
+          <Label htmlFor="filtro-tipo">Tipo de artefato</Label>
+          <Select value={filtroTipo} onValueChange={(valor) => setFiltroTipo(valor ?? TODOS)}>
+            <SelectTrigger id="filtro-tipo" className="w-full">
+              <SelectValue placeholder="Todos os tipos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS}>Todos os tipos</SelectItem>
+              {TIPOS_ARTEFATO.map((tipo) => (
+                <SelectItem key={tipo} value={tipo}>
+                  {ROTULOS_TIPO_ARTEFATO[tipo]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="filtro-busca">Buscar por hash ou identificador do lacre</Label>
           <Input
@@ -278,7 +304,10 @@ export default function EvidenciasPage() {
                         {lacre.id}
                       </th>
                       <td className="px-4 py-3">
-                        <BadgeSentido sentido={lacre.sentido} />
+                        <span className="flex flex-col items-start gap-1">
+                          <BadgeSentido sentido={lacre.sentido} />
+                          <BadgeTipoArtefato lacre={lacre} />
+                        </span>
                       </td>
                       {mostrarInstituicao ? (
                         <td className="px-4 py-3 text-neutral-600">
@@ -336,6 +365,7 @@ export default function EvidenciasPage() {
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <BadgeSentido sentido={lacre.sentido} />
+                    <BadgeTipoArtefato lacre={lacre} />
                     <h2 className="font-mono text-xs font-bold break-all text-neutral-700">
                       {lacre.id}
                     </h2>

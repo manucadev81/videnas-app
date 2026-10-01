@@ -238,6 +238,7 @@ export const usuariosPorEmail: Record<string, string> = {
   "joao.beraldo@contabilberaldo.com.br": "usr-joao",
   "t.nakamura@videnas.com.br": "usr-tomoe",
   "c.veloso@videnas.com.br": "usr-clarice",
+  "i.salgado@videnas.com.br": "usr-igor",
   "natalia.queiroz@meridiandigital.com.br": "usr-natalia",
   "diego.vasconcelos@cofreatlantico.com.br": "usr-diego",
   "m.fontes@videnas.com.br": "usr-marina",

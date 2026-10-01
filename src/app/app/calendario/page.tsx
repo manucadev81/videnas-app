@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { prazosRegulatorios } from "@/lib/mock/prazos";
@@ -47,6 +48,7 @@ export default function CalendarioPage() {
 
   const [mesAtual, setMesAtual] = useState("2026-09");
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [modulosVisiveis, setModulosVisiveis] = useState<Set<ModuloId>>(
     new Set(["acam212", "cadoc5711", "cadoc5710", "fiscal"])
   );
@@ -64,9 +66,13 @@ export default function CalendarioPage() {
     });
   }, [instituicaoAtivaId, modulosPermitidos]);
 
-  const prazosMes = prazosBase
+  const prazosMesBase = prazosBase
     .filter((prazo) => prazo.dataVencimento.startsWith(mesAtual))
     .filter((prazo) => modulosVisiveis.has(prazo.moduloId));
+  const prazosMes = prazosMesBase.filter(
+    (prazo) => mostrarArquivados || periodos[prazo.periodoId]?.estado !== "arquivado"
+  );
+  const totalArquivadosOcultos = prazosMesBase.length - prazosMes.length;
 
   const [ano, mes] = mesAtual.split("-").map(Number);
   const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
@@ -126,6 +132,12 @@ export default function CalendarioPage() {
             <ChevronRight className="size-4" aria-hidden="true" />
           </Button>
         </div>
+        <FiltroArquivados
+          id="mostrar-arquivados-calendario"
+          marcado={mostrarArquivados}
+          aoAlterar={setMostrarArquivados}
+          totalOcultos={totalArquivadosOcultos}
+        />
         <div className="flex flex-wrap gap-2">
           {modulosPermitidos.map((moduloId) => {
             const modulo = buscarModulo(moduloId);

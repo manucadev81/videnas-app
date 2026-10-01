@@ -4,9 +4,13 @@ import type {
   PerfilId,
   RegistroLacre,
   SentidoLacre,
+  TipoArtefatoLacre,
 } from "@/lib/tipos";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
+import { arquivos, periodos, protocolos } from "@/lib/mock/periodos";
+import { buscarUsuario } from "@/lib/mock/usuarios";
 import { IDENTIFICADOR_CHAVE_SIMULADA_PREFIXO } from "@/lib/evidencias/cripto";
+import { montarIdentificadorLacre } from "@/lib/evidencias/lacre";
 
 const ALFABETO_BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -37,6 +41,116 @@ interface SementeLacre {
   tamanhoBytes: number;
   resumoConteudo: string;
   encadeadoApos: string | null;
+  arquivoId?: string | null;
+  tipoArtefato?: TipoArtefatoLacre;
+}
+
+function sementesDePeriodosDemo(): SementeLacre[] {
+  const sementes: SementeLacre[] = [];
+  const estadosComCadeia = [
+    "aguardando_retorno",
+    "retorno_aceito",
+    "retorno_com_ressalvas",
+    "retorno_rejeitado",
+    "arquivado",
+  ];
+
+  for (const periodo of periodos) {
+    if (!/-(r1|r2)[a-z]+$/.test(periodo.id) || !estadosComCadeia.includes(periodo.estado)) {
+      continue;
+    }
+    const arquivo = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);
+    const protocolo = protocolos.find((item) => item.id === periodo.protocoloId);
+    if (!arquivo || !protocolo || !periodo.liberadoEm) {
+      continue;
+    }
+
+    const validador = buscarUsuario("usr-clarice");
+    const base = {
+      instituicaoId: periodo.instituicaoId,
+      moduloId: periodo.moduloId,
+      competencia: periodo.competencia,
+      periodoId: periodo.id,
+      insumoId: null,
+    };
+    let anterior: string | null = null;
+
+    const idArquivo = montarIdentificadorLacre("saida", periodo.moduloId, periodo.competencia, 1);
+    sementes.push({
+      ...base,
+      id: idArquivo,
+      sentido: "saida",
+      seladoEm: periodo.liberadoEm,
+      seladoPorUsuarioId: "usr-clarice",
+      seladoPorNome: validador?.nome ?? "Clarice Veloso",
+      perfilId: "validador",
+      origemNome: arquivo.nomeArquivo,
+      tamanhoBytes: arquivo.tamanhoBytes,
+      resumoConteudo: arquivo.previewConteudo.replace(/\s+/g, " "),
+      encadeadoApos: anterior,
+      arquivoId: arquivo.id,
+      tipoArtefato: "arquivo_entregue",
+    });
+    anterior = idArquivo;
+
+    const retorno = protocolo.retornoRegulador;
+    if (retorno && protocolo.dataRetorno) {
+      if (retorno.anexoLacreId && retorno.anexoNome) {
+        sementes.push({
+          ...base,
+          id: retorno.anexoLacreId,
+          sentido: "entrada",
+          seladoEm: protocolo.dataRetorno,
+          seladoPorUsuarioId: "usr-clarice",
+          seladoPorNome: validador?.nome ?? "Clarice Veloso",
+          perfilId: "validador",
+          origemNome: retorno.anexoNome,
+          tamanhoBytes: retorno.anexoTamanhoBytes ?? 0,
+          resumoConteudo: `Anexo do retorno ${retorno.rotuloArtefato} do protocolo ${protocolo.numeroProtocolo}`,
+          encadeadoApos: anterior,
+          tipoArtefato: "anexo_retorno",
+        });
+        anterior = retorno.anexoLacreId;
+      }
+      if (retorno.reciboLacreId) {
+        sementes.push({
+          ...base,
+          id: retorno.reciboLacreId,
+          sentido: "entrada",
+          seladoEm: new Date(Date.parse(protocolo.dataRetorno) + 60_000).toISOString(),
+          seladoPorUsuarioId: "usr-clarice",
+          seladoPorNome: validador?.nome ?? "Clarice Veloso",
+          perfilId: "validador",
+          origemNome: `Recibo ${retorno.rotuloArtefato} — ${protocolo.numeroProtocolo}`,
+          tamanhoBytes: 1_024,
+          resumoConteudo: `Recibo do retorno ${retorno.rotuloArtefato} (${protocolo.situacaoRetorno}) — código ${protocolo.codigoRetorno}: ${protocolo.mensagemRetorno}`,
+          encadeadoApos: anterior,
+          tipoArtefato: "recibo_retorno",
+        });
+        anterior = retorno.reciboLacreId;
+      }
+    }
+
+    if (periodo.arquivamentoLacreId && periodo.arquivadoEm && periodo.arquivadoPorUsuarioId) {
+      const arquivador = buscarUsuario(periodo.arquivadoPorUsuarioId);
+      sementes.push({
+        ...base,
+        id: periodo.arquivamentoLacreId,
+        sentido: "saida",
+        seladoEm: periodo.arquivadoEm,
+        seladoPorUsuarioId: periodo.arquivadoPorUsuarioId,
+        seladoPorNome: arquivador?.nome ?? periodo.arquivadoPorUsuarioId,
+        perfilId: arquivador?.perfilId ?? "diretor",
+        origemNome: `Dossiê de arquivamento — ${periodo.competenciaRotulo}`,
+        tamanhoBytes: 2_048,
+        resumoConteudo: `Dossiê de arquivamento: arquivo ${arquivo.nomeArquivo}, protocolo ${protocolo.numeroProtocolo}, retorno ${protocolo.situacaoRetorno}`,
+        encadeadoApos: anterior,
+        tipoArtefato: "dossie_arquivamento",
+      });
+    }
+  }
+
+  return sementes;
 }
 
 const SEMENTES: SementeLacre[] = [
@@ -294,6 +408,8 @@ const SEMENTES: SementeLacre[] = [
   },
 ];
 
+SEMENTES.push(...sementesDePeriodosDemo());
+
 const hashPorId = new Map<string, string>(
   SEMENTES.map((semente) => [semente.id, gerarHashDeterministico(`${semente.id}|${semente.origemNome}`)])
 );
@@ -306,7 +422,7 @@ export const lacresSemente: RegistroLacre[] = SEMENTES.map((semente) => ({
   competencia: semente.competencia,
   periodoId: semente.periodoId,
   insumoId: semente.insumoId,
-  arquivoId: null,
+  arquivoId: semente.arquivoId ?? null,
   hashSha256: hashPorId.get(semente.id) ?? gerarHashDeterministico(semente.id),
   algoritmoHash: "SHA-256",
   hashAnterior: semente.encadeadoApos ? (hashPorId.get(semente.encadeadoApos) ?? null) : null,
@@ -320,6 +436,7 @@ export const lacresSemente: RegistroLacre[] = SEMENTES.map((semente) => ({
   vetorInicializacao: base64EstavelDeSemente(`vetor|${semente.id}`, 16),
   identificadorChave: `${IDENTIFICADOR_CHAVE_SIMULADA_PREFIXO}:${semente.instituicaoId}:v1`,
   resumoConteudo: semente.resumoConteudo,
+  ...(semente.tipoArtefato ? { tipoArtefato: semente.tipoArtefato } : {}),
 }));
 
 function fornecimentoArquivo(

@@ -287,9 +287,11 @@ export interface PeriodoObrigacao {
   emitidoFiscalEm: string | null;
   transmitidoEm: string | null;
   retornoSituacao: SituacaoRetornoBcb | null;
+  retornoRegistradoPorUsuarioId?: string | null;
   arquivadoEm: string | null;
   arquivadoPorUsuarioId: string | null;
   retencaoAte: string | null;
+  arquivamentoLacreId?: string | null;
 }
 
 export interface PeriodoDerivado extends PeriodoObrigacao {
@@ -452,6 +454,17 @@ export interface ValidacaoResultado {
   regrasDeterministicas: RegraDeterministica[];
 }
 
+export interface RetornoRegulador {
+  rotuloArtefato: string;
+  identificador: string | null;
+  dataInformada: string | null;
+  anexoNome: string | null;
+  anexoTamanhoBytes: number | null;
+  anexoHash: string | null;
+  anexoLacreId: string | null;
+  reciboLacreId: string | null;
+}
+
 export interface ProtocoloBCB {
   id: string;
   periodoId: string;
@@ -465,6 +478,7 @@ export interface ProtocoloBCB {
   mensagemRetorno: string | null;
   dataRetorno: string | null;
   observacao: string | null;
+  retornoRegulador?: RetornoRegulador | null;
 }
 
 export interface Excecao {
@@ -536,6 +550,13 @@ export type StatusCanonicoLote =
   | "modelado_canonicamente";
 
 export type SentidoLacre = "entrada" | "saida";
+
+export type TipoArtefatoLacre =
+  | "insumo"
+  | "arquivo_entregue"
+  | "anexo_retorno"
+  | "recibo_retorno"
+  | "dossie_arquivamento";
 
 export interface CampoFormularioInsumo {
   chave: string;
@@ -616,6 +637,7 @@ export interface RegistroLacre {
   vetorInicializacao: string;
   identificadorChave: string;
   resumoConteudo: string;
+  tipoArtefato?: TipoArtefatoLacre;
 }
 
 export interface LinhaCanonica {

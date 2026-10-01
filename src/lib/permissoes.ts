@@ -167,6 +167,8 @@ export const PERFIS: PerfilMetadados[] = [
       "enviar_contador",
       "emitir_fiscal",
       "transmitir",
+      "registrar_retorno",
+      "arquivar",
       "reabrir",
       "tratar_excecao",
       "editar_dicionarios",
@@ -203,6 +205,7 @@ export const PERFIS: PerfilMetadados[] = [
       "executar_validacao",
       "liberar",
       "registrar_retorno",
+      "arquivar",
       "trocar_tenant",
       "exportar_auditoria",
       "baixar_arquivo",
@@ -356,8 +359,8 @@ const REGRAS_ACAO: RegraAcao[] = [
   { id: "registrar_protocolo", estadosOrigem: ["aprovado"], estadoDestino: "aguardando_retorno", variante: "primario", modulos: MODULOS_NAO_FISCAIS },
   { id: "registrar_protocolo_manual", estadosOrigem: ["aprovado", "emitido_fiscal"], estadoDestino: "aguardando_retorno", variante: "secundario" },
   { id: "registrar_retorno", estadosOrigem: ["aguardando_retorno"], estadoDestino: null, variante: "secundario" },
-  { id: "reabrir", estadosOrigem: ["retorno_rejeitado", "liberado", "aprovado"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
-  { id: "arquivar", estadosOrigem: ["retorno_aceito"], estadoDestino: "arquivado", variante: "secundario" },
+  { id: "reabrir", estadosOrigem: ["retorno_rejeitado", "retorno_com_ressalvas", "liberado", "aprovado"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
+  { id: "arquivar", estadosOrigem: ["retorno_aceito", "retorno_com_ressalvas"], estadoDestino: "arquivado", variante: "secundario" },
   { id: "baixar_arquivo", estadosOrigem: TODOS_ESTADOS_LEITURA.filter((estado) => estado !== "aguardando_dados" && estado !== "dados_ingeridos"), estadoDestino: null, variante: "ghost" },
   { id: "tratar_excecao", estadosOrigem: ["com_excecoes", "em_validacao"], estadoDestino: null, variante: "secundario" },
   { id: "exportar_auditoria", estadosOrigem: TODOS_ESTADOS_LEITURA, estadoDestino: null, variante: "ghost" },
@@ -372,7 +375,12 @@ function moduloPermiteAcao(regra: RegraAcao, moduloId: ModuloId): boolean {
   return !regra.modulos || regra.modulos.includes(moduloId);
 }
 
-function acaoOcultaPorConfiguracao(acaoId: AcaoId, moduloId: ModuloId): boolean {
+function acaoOcultaPorConfiguracao(
+  acaoId: AcaoId,
+  periodo: PeriodoObrigacao,
+  perfil: PerfilId
+): boolean {
+  const moduloId = periodo.moduloId;
   const configuracaoModulo = configuracaoFluxo.modulos[moduloId];
   switch (acaoId) {
     case "decidir_comite":
@@ -386,8 +394,19 @@ function acaoOcultaPorConfiguracao(acaoId: AcaoId, moduloId: ModuloId): boolean 
       );
     case "registrar_protocolo_manual":
       return !configuracaoFluxo.registroProtocoloManualHabilitado;
+    case "registrar_retorno":
+      return !configuracaoFluxo.registroRetornoPerfis.includes(perfil);
     case "arquivar":
-      return !configuracaoFluxo.arquivamentoPerfilId;
+      return (
+        !configuracaoFluxo.arquivamentoPerfis.includes(perfil) ||
+        (periodo.estado === "retorno_com_ressalvas" &&
+          !configuracaoFluxo.caminhosAposRessalvas?.includes("arquivar"))
+      );
+    case "reabrir":
+      return (
+        periodo.estado === "retorno_com_ressalvas" &&
+        !configuracaoFluxo.caminhosAposRessalvas?.includes("reabrir")
+      );
     default:
       return false;
   }
@@ -398,7 +417,7 @@ export function acoesDisponiveis(perfil: PerfilId, periodo: PeriodoObrigacao): A
 
   return REGRAS_ACAO.filter((regra) => perfilMetadados.acoesPermitidas.includes(regra.id))
     .filter((regra) => moduloPermiteAcao(regra, periodo.moduloId))
-    .filter((regra) => !acaoOcultaPorConfiguracao(regra.id, periodo.moduloId))
+    .filter((regra) => !acaoOcultaPorConfiguracao(regra.id, periodo, perfil))
     .filter((regra) => regra.estadosOrigem.includes(periodo.estado))
     .map((regra) => ({
       id: regra.id,
@@ -443,7 +462,7 @@ export function podeExecutar(
     return { permitido: false, visivel: false };
   }
 
-  if (acaoOcultaPorConfiguracao(acaoId, periodo.moduloId)) {
+  if (acaoOcultaPorConfiguracao(acaoId, periodo, perfil)) {
     return { permitido: false, visivel: false };
   }
 
@@ -500,6 +519,30 @@ export function podeExecutar(
       permitido: false,
       visivel: true,
       motivo: "Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória.",
+    };
+  }
+
+  if (
+    acaoId === "arquivar" &&
+    contexto.usuarioAtualId &&
+    contexto.usuarioAtualId === periodo.geradoPorUsuarioId
+  ) {
+    return {
+      permitido: false,
+      visivel: true,
+      motivo: "Quem gerou o arquivo não pode arquivá-lo. Segregação de funções obrigatória.",
+    };
+  }
+
+  if (
+    acaoId === "arquivar" &&
+    contexto.usuarioAtualId &&
+    contexto.usuarioAtualId === periodo.retornoRegistradoPorUsuarioId
+  ) {
+    return {
+      permitido: false,
+      visivel: true,
+      motivo: "Quem registrou o retorno não pode arquivar o período. Segregação de funções obrigatória.",
     };
   }
 

@@ -560,6 +560,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "A regra de 4 olhos da Videnas é fixa e vale para todos os módulos: Executor gera, Validador libera, Diretor aprova — nunca a mesma pessoa.",
       "Se o usuário que gerou o arquivo tentar liberá-lo, o botão fica desabilitado com o aviso: \"Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória.\"",
       "Por isso o botão \"Gerar arquivo\" nunca aparece para o Validador, e \"Liberar para o cliente\" nunca aparece para o Executor nem para o Diretor. Pela mesma razão, o Validador não reabre período nem registra protocolo do Banco Central: reabrir e corrigir é do Executor, e responder perante o BCB é do Diretor. Cada perfil só enxerga as ações do seu próprio papel.",
+      "No arquivamento há duas travas adicionais: quem gerou a versão corrente do arquivo não pode arquivar o período, e quem registrou o retorno do regulador também não. A reabertura não tem essa trava.",
       "O Administrador — Videnas fica fora dessa cadeia de propósito: ele não gera, não valida e não aprova. Provisiona o cliente, contrata os módulos, convida os usuários iniciais e sai do caminho — nenhuma ação do pipeline aparece para ele, em nenhum estado da competência.",
       "O card de segregação de funções, na etapa Auditoria, mostra quem executou cada um desses três passos.",
     ].join("\n\n"),

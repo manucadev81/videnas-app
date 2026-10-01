@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
@@ -9,6 +9,8 @@ import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dado
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
+import { ProtocoloComRetorno } from "@/components/dominio/protocolo-retorno";
 import { construirEtapasStepper } from "@/components/dominio/modulo-etapas";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
@@ -35,7 +37,13 @@ export default function FiscalPage() {
     [todosPeriodos, instituicaoAtivaId]
   );
 
-  const periodoCorrente = periodosModulo[0];
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
+  const periodosAtivos = useMemo(
+    () => periodosModulo.filter((periodo) => periodo.estado !== "arquivado"),
+    [periodosModulo]
+  );
+  const periodosVisiveis = mostrarArquivados ? periodosModulo : periodosAtivos;
+  const periodoCorrente = periodosAtivos[0];
   const derivadoCorrente = periodoCorrente ? calcularPeriodoDerivado(periodoCorrente) : null;
 
   const pendentesContador = periodoCorrente ? servicosPendentesContador(periodoCorrente.id) : [];
@@ -115,7 +123,15 @@ export default function FiscalPage() {
           ) : null}
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-            <TabelaCompetencias periodos={periodosModulo} />
+            <div className="space-y-3">
+              <FiltroArquivados
+                id="mostrar-arquivados-fiscal"
+                marcado={mostrarArquivados}
+                aoAlterar={setMostrarArquivados}
+                totalOcultos={periodosModulo.length - periodosAtivos.length}
+              />
+              <TabelaCompetencias periodos={periodosVisiveis} />
+            </div>
 
             <div className="rounded-lg border border-neutral-200 bg-white p-5">
               <h2 className="mb-3 font-display text-base font-bold text-neutral-700">Distribuição por município</h2>
@@ -184,7 +200,15 @@ function TabelaCompetencias({ periodos }: { periodos: PeriodoObrigacao[] }) {
       cabecalho: "Encaminhado a",
       renderizar: (periodo) => {
         const protocolo = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
-        return protocolo?.observacao ? <span className="text-xs">{protocolo.observacao}</span> : "—";
+        if (!protocolo) {
+          return "—";
+        }
+        return (
+          <span className="flex flex-col gap-1">
+            {protocolo.observacao ? <span className="text-xs">{protocolo.observacao}</span> : null}
+            <ProtocoloComRetorno periodo={periodo} protocolo={protocolo} />
+          </span>
+        );
       },
     },
     {

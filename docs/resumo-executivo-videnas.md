@@ -49,12 +49,14 @@ flowchart TD
     N --> O[Transmissao externa ao BCB ou emissor fiscal]
     O --> P[Registro de protocolo ou encaminhamento: aguardando retorno]
     P --> Q{Retorno do orgao}
-    Q -- Aceito --> R[Arquivado, com lacre final encadeado]
+    Q -- Aceito --> R[Arquivado, com lacre final encadeado - acao atras de flag]
     Q -- Rejeitado --> K
-    Q -- Com ressalvas --> S[Aceito com ressalvas - proximo passo pendente de definicao normativa]
+    Q -- Com ressalvas --> S[Aceito com ressalvas - proximo passo pendente de definicao normativa, atras de flag]
 ```
 
 Em todas as etapas, eventos relevantes alimentam a trilha de auditoria. Reenvios nao sobrescrevem o historico: cada novo lacre aponta para o anterior, formando uma cadeia verificavel. O estado `entregue` nao existe mais: apos o registro do protocolo ou do encaminhamento, o periodo fica `aguardando_retorno` ate o registro do retorno do orgao (aceito, aceito com ressalvas ou rejeitado). O Diretor pode negar a aprovacao com motivo obrigatorio (minimo 10 caracteres); o periodo volta ao Executor, que gera uma nova versao do arquivo e o reenvia para validacao e liberacao antes de uma nova aprovacao. Duas negacoes seguidas escalariam para um Comite de Qualidade, mas essa escalada automatica esta desabilitada nesta fatia de entrega.
+
+O retorno do orgao e registrado por alguem da equipe Videnas (Executor ou Validador) com tres desfechos. No ACAM212 ele e registrado como ACAM213 (identificador, data, codigo, mensagem e arquivo anexado opcional); o anexo e um recibo do retorno sao lacrados na mesma cadeia do periodo. Um retorno rejeitado abre uma excecao e permite reabrir o periodo para correcao. O arquivamento gera um dossie lacrado como ultimo elo da cadeia e deixa o periodo somente leitura; periodos arquivados ficam ocultos por padrao nas listas. Quem arquiva tambem e alguem da equipe Videnas (Executor ou Validador), e a retencao conta a partir do arquivamento por 5 anos (por ora), exibida como "Retido ate" no periodo arquivado; nada e expurgado ao fim do prazo. Uma decisao segue aberta e por isso fica atras de flag: o que fazer apos um retorno aceito com ressalvas (nenhuma saida e oferecida).
 
 ## 4. Modulos regulatorios e documentos
 

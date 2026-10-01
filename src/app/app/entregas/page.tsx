@@ -6,6 +6,7 @@ import { Download, PackageCheck, ShieldQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
 import { SeloCandidato } from "@/components/dominio/selo-candidato";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { ValorHash } from "@/components/evidencias/valor-hash";
@@ -21,6 +22,7 @@ import {
   useEvidenciasStore,
   useHidratarEvidencias,
 } from "@/lib/store/evidencias";
+import { tipoArtefatoDoLacre } from "@/lib/evidencias/lacre";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarModulo } from "@/lib/mock/modulos";
@@ -100,10 +102,17 @@ export default function EntregasPage() {
   const instituicaoAtivaId = useSessaoStore((estado) => estado.instituicaoAtivaId);
 
   const [lacreEmConferencia, setLacreEmConferencia] = useState<RegistroLacre | null>(null);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
 
-  const entregas = instituicaoAtivaId
-    ? lacresDaInstituicao(lacres, instituicaoAtivaId).filter((lacre) => lacre.sentido === "saida")
+  const entregasBase = instituicaoAtivaId
+    ? lacresDaInstituicao(lacres, instituicaoAtivaId).filter(
+        (lacre) => lacre.sentido === "saida" && tipoArtefatoDoLacre(lacre) === "arquivo_entregue"
+      )
     : [];
+  const entregas = entregasBase.filter(
+    (lacre) => mostrarArquivados || periodos[lacre.periodoId]?.estado !== "arquivado"
+  );
+  const totalArquivadosOcultos = entregasBase.length - entregas.length;
 
   return (
     <div className="space-y-6">
@@ -129,6 +138,13 @@ export default function EntregasPage() {
         </span>
         <BadgeAjuda chave="evidencia.verificarIntegridade" tamanho="xs" side="bottom" />
       </div>
+
+      <FiltroArquivados
+        id="mostrar-arquivados-entregas"
+        marcado={mostrarArquivados}
+        aoAlterar={setMostrarArquivados}
+        totalOcultos={totalArquivadosOcultos}
+      />
 
       {!hidratado ? (
         <div role="status" aria-label="Carregando arquivos entregues" className="space-y-3">

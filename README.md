@@ -4,7 +4,7 @@ Mockup de front-end (Next.js 16 + React 19) da Videnas, uma RegTech de conformid
 
 **Este projeto é 100% mockado**: não há backend, API routes, autenticação real, `fetch` de rede ou banco de dados. Todo o estado (sessão, perfil ativo, períodos regulatórios, arquivos, validações, exceções, trilha de auditoria, fornecimentos e lacres criptográficos) vive em stores Zustand no navegador.
 
-Quatro recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload ou a uma troca de login: a sessão (`videnas-sessao`), as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`) —, a carteira de clientes provisionados pelo Administrador, com os usuários iniciais criados junto (`videnas-tenants`), e os períodos regulatórios com arquivos, validações, protocolos, exceções e a trilha de auditoria (`videnas-periodos`). O logout não zera mais esses dados — só a sessão é limpa. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
+Quatro recortes desse estado são persistidos em `localStorage`, para a demonstração sobreviver a um reload ou a uma troca de login: a sessão (`videnas-sessao`), as evidências criptográficas — fornecimentos, lacres e verificações (`videnas-evidencias`) —, a carteira de clientes provisionados pelo Administrador, com os usuários iniciais criados junto (`videnas-tenants`), e os períodos regulatórios com arquivos, validações, protocolos, exceções e a trilha de auditoria (`videnas-periodos`, versão 2: dados salvos de uma versão anterior são descartados e voltam à semente). O logout não zera mais esses dados — só a sessão é limpa. A única exceção real à regra "nada de rede" é a criptografia: os hashes SHA-256 e o envelope AES-GCM são calculados de verdade, pela Web Crypto API do próprio navegador, sem sair do dispositivo.
 
 ## Stack
 
@@ -71,12 +71,12 @@ Rotas listadas com um prefixo (`/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/ap
 
 | Perfil | Rotas permitidas | Ações permitidas |
 |---|---|---|
-| `diretor` | `/`, `/login`, `/onboarding`, `/app`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `aprovar`, `negar_aprovacao`, `decidir_comite` (oculta — D3), `registrar_protocolo`, `marcar_encaminhado`, `registrar_protocolo_manual` (oculta — flag pendente), `arquivar` (oculta — D14), `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
+| `diretor` | `/`, `/login`, `/onboarding`, `/app`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `aprovar`, `negar_aprovacao`, `decidir_comite` (oculta — D3), `registrar_protocolo`, `marcar_encaminhado`, `registrar_protocolo_manual` (oculta — flag pendente), `arquivar` (oculta — só equipe Videnas, D14), `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
 | `operacional` | `/`, `/login`, `/selecionar-instituicao`, `/onboarding`, `/app`, `/app/fornecimento`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/entregas`, `/app/calendario`, `/app/auditoria`, `/app/configuracoes`, `/app/configuracoes/instituicao`, `/app/configuracoes/usuarios`, `/app/configuracoes/dicionarios` | `baixar_arquivo`, `tratar_excecao`, `editar_dicionarios`, `notificar_cliente`, `gerenciar_usuarios` |
 | `contador` | `/`, `/login`, `/selecionar-instituicao`, `/onboarding`, `/app`, `/app/fiscal`, `/app/calendario` | `validar_fiscal`, `devolver_fiscal`, `baixar_arquivo` |
 | `cliente` | `/`, `/login`, `/app`, `/app/fornecimento`, `/app/entregas`, `/app/calendario` | `fornecer_dados`, `baixar_comprovante`, `baixar_arquivo`, `verificar_integridade` |
-| `executor` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias`, `/app/configuracoes`, `/app/configuracoes/dicionarios` | `gerar`, `regerar` (inclui reenvio após devolução do Diretor), `enviar_validacao`, `enviar_contador`, `emitir_fiscal` (oculta — D4/D5), `transmitir` (oculta — D4/D5), `reabrir`, `tratar_excecao`, `editar_dicionarios`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
-| `validador` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `executar_validacao`, `liberar`, `registrar_retorno`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
+| `executor` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias`, `/app/configuracoes`, `/app/configuracoes/dicionarios` | `gerar`, `regerar` (inclui reenvio após devolução do Diretor), `enviar_validacao`, `enviar_contador`, `emitir_fiscal` (oculta — D4/D5), `transmitir` (oculta — D4/D5), `registrar_retorno`, `arquivar`, `reabrir`, `tratar_excecao`, `editar_dicionarios`, `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
+| `validador` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/operacao`, `/app/acam212`, `/app/cadoc`, `/app/fiscal`, `/app/calendario`, `/app/auditoria`, `/app/evidencias` | `executar_validacao`, `liberar`, `registrar_retorno`, `arquivar` (oculta — só equipe Videnas, D14), `trocar_tenant`, `exportar_auditoria`, `baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias` |
 | `admin` | `/`, `/login`, `/selecionar-instituicao`, `/app`, `/app/clientes`, `/app/auditoria`, `/app/evidencias` | `provisionar_tenant`, `gerenciar_clientes`, `convidar_usuario_inicial`, `suspender_tenant`, `alterar_modulos_contratados`, `trocar_tenant`, `exportar_auditoria`, `ver_evidencias`, `verificar_integridade` |
 
 Fronteiras que a matriz deixa explícitas:
@@ -123,7 +123,7 @@ Por que ele fica fora da segregação de funções: a regra de 4 olhos é **Exec
 
 O Administrador é **multi-tenant**, mas por um motivo diferente do Executor e do Validador: ele não atende várias instituições, ele **administra todas**. Por isso, em `/selecionar-instituicao`, o cartão tracejado "todas" o leva para `/app/clientes` e não para `/app/operacao`.
 
-## Máquina de estados do período (R1 — aprovação, devolução e retorno)
+## Máquina de estados do período (R1 e R2 — aprovação, devolução, retorno e arquivamento)
 
 `entregue` e `retorno_com_erro` não existem mais. A partir de `liberado`, o fluxo é:
 
@@ -131,9 +131,15 @@ O Administrador é **multi-tenant**, mas por um motivo diferente do Executor e d
 
 `devolvido_diretor` → **`regerar`** (Executor) → `gerado` (nova versão do arquivo; a anterior vira `substituida`; a nova versão é selada e encadeada na cadeia de custódia do período) → o único caminho adiante é `enviar_validacao` (não-fiscal) ou `enviar_contador` (Fiscal) → validação e liberação de novo, antes de qualquer nova aprovação.
 
-`aprovado` → **`registrar_protocolo`** (não-fiscal) ou **`marcar_encaminhado`** (Fiscal) → `aguardando_retorno` → **`registrar_retorno`** (Validador, 3 desfechos obrigatórios: aceito / aceito com ressalvas / rejeitado, com código e mensagem sempre obrigatórios e texto de ressalva obrigatório para o desfecho intermediário) → `retorno_aceito`, `retorno_com_ressalvas` ou `retorno_rejeitado`.
+`aprovado` → **`registrar_protocolo`** (não-fiscal) ou **`marcar_encaminhado`** (Fiscal) → `aguardando_retorno` (as listas e a fila do Validador mostram os dias desde a transmissão e o número do protocolo) → **`registrar_retorno`** (Executor ou Validador — equipe Videnas, D14; 3 desfechos obrigatórios: aceito / aceito com ressalvas / rejeitado, com código e mensagem sempre obrigatórios e texto de ressalva obrigatório para o desfecho intermediário) → `retorno_aceito`, `retorno_com_ressalvas` ou `retorno_rejeitado`.
 
-`retorno_rejeitado` → **`reabrir`** (Executor) → `dados_ingeridos`. `retorno_aceito` → **`arquivar`** → `arquivado` (ação ainda oculta em R1; ator pendente de decisão — ver `docs/backlog-front-approval-flow.md`).
+**Retorno do regulador (R2).** No ACAM212 o retorno é registrado como **ACAM213**: identificador, data, código, mensagem e arquivo anexado opcional. Nos demais módulos o rótulo é genérico ("Retorno do regulador/emissor"; D6). O anexo é lacrado e um **recibo do retorno** em JSON também é lacrado; os dois entram na mesma cadeia `hashAnterior` do período, logo depois do lacre do arquivo entregue. O rótulo vem de `rotuloRetornoDoModulo`, em `src/lib/mock/configuracao-fluxo.ts`.
+
+`retorno_rejeitado` abre uma exceção bloqueante de origem `retorno_bcb` (responsável: Executor) e → **`reabrir`** (Executor) → `dados_ingeridos`, encerrando a exceção do retorno. `retorno_com_ressalvas` aceita os dois caminhos (D12, decisão de 2026-09-30): **`arquivar`** (a ressalva registrada no retorno segue no dossiê) e **`reabrir`** (Executor, volta a `dados_ingeridos` como no retorno rejeitado). Ambos vêm de `caminhosAposRessalvas: ["arquivar", "reabrir"]` em `src/lib/mock/configuracao-fluxo.ts`; retirar um item esconde a ação correspondente.
+
+`retorno_aceito` → **`arquivar`** → `arquivado`. A ação aparece para os perfis de `arquivamentoPerfis` (D14: `executor` e `validador`, equipe Videnas) em `src/lib/mock/configuracao-fluxo.ts`; também a partir de `retorno_com_ressalvas` (D12). **Segregação no arquivamento (D17):** quem gerou a versão corrente do arquivo não pode arquivar ("Quem gerou o arquivo não pode arquivá-lo. Segregação de funções obrigatória.") e quem registrou o retorno do regulador também não ("Quem registrou o retorno não pode arquivar o período. Segregação de funções obrigatória."); as duas valem juntas, na UI (botão desabilitado com o motivo) e na store, e não se aplicam a `reabrir`. Ao arquivar, um **dossiê** (hash do arquivo, aprovações, negações, protocolo e retorno) é lacrado como último elo da cadeia do período, `PERIODO_ARQUIVADO` entra na trilha e o período fica **somente leitura**. `retencaoAte` = data de arquivamento + `retencao.anos` (D2: 5 anos, só na config), gravado no período, no dossiê e no evento, e exibido como "Retido até"; nada é expurgado. Períodos arquivados ficam ocultos por padrão nas listas dos módulos, em entregas, na fila de operação e no calendário, com a chave "Mostrar arquivados".
+
+Para ver o arquivamento na demonstração: entre como **Igor Salgado** (atalho "Executor (arquivamento)", `i.salgado@videnas.com.br`), único usuário da semente que não gerou os arquivos (Tomoe Nakamura) nem registrou os retornos (Clarice Veloso), abra `/app/acam212/per-meridian-acam212-r2aceito` (ou `/app/cadoc/per-meridian-cadoc5711-r2ressalvasb`, que tem ressalva) e use "Arquivar período". Como Tomoe ou Clarice o botão fica desabilitado com o motivo. Para demonstrar a reabertura após ressalvas, use `per-meridian-cadoc5711-r2ressalvas` como Executor.
 
 Duas negações seguidas escalariam para `em_comite_qualidade`, mas essa escalada automática está **desabilitada em R1** (decisão do Tech Lead): toda negação vai para `devolvido_diretor`, e o histórico de negações (`negacoesAprovacao`) fica visível no diálogo de aprovação e na linha do tempo do período. As ações `escalar_comite`, `decidir_comite`, `emitir_fiscal`, `transmitir`, `registrar_protocolo_manual` e `arquivar` existem em `REGRAS_ACAO` mas ficam ocultas nesta fatia — cada uma amarrada a uma decisão pendente ou flag em `src/lib/mock/configuracao-fluxo.ts`. Detalhe completo em `docs/backlog-front-approval-flow.md` (seção 5 e "Decisões de escopo do Tech Lead").
 
@@ -157,7 +163,7 @@ Na ficha do cliente o Administrador ainda pode **alterar os módulos contratados
 
 Não existe autenticação real: qualquer e-mail e senha entram no ambiente de demonstração.
 
-1. Em `/login`, use um dos **7 atalhos de demonstração** (ou digite qualquer e-mail — cai automaticamente no perfil Operacional/Suporte ao cliente da Meridian Digital Assets, com um toast avisando que o e-mail não foi reconhecido):
+1. Em `/login`, use um dos **8 atalhos de demonstração** (ou digite qualquer e-mail — cai automaticamente no perfil Operacional/Suporte ao cliente da Meridian Digital Assets, com um toast avisando que o e-mail não foi reconhecido):
 
    | Atalho | E-mail | Instituição |
    |---|---|---|
@@ -167,6 +173,7 @@ Não existe autenticação real: qualquer e-mail e senha entram no ambiente de d
    | Contador / Fiscal | `joao.beraldo@contabilberaldo.com.br` | Atende todos os tenants |
    | Executor | `t.nakamura@videnas.com.br` | Videnas |
    | Validador | `c.veloso@videnas.com.br` | Videnas |
+   | Executor (arquivamento) | `i.salgado@videnas.com.br` | Videnas |
    | **Administrador** | `m.fontes@videnas.com.br` | Videnas |
 
    O usuário do perfil Cliente é **Natália Queiroz**, analista de dados regulatórios da Meridian Digital Assets (`usr-natalia`, em `src/lib/mock/usuarios.ts`). O do perfil Administrador é **Marina Fontes** (`usr-marina`), do lado Videnas. Diretores cadastrados pelo Administrador durante a demonstração também entram por este mesmo formulário, com o e-mail que foi digitado no cadastro.
@@ -243,7 +250,8 @@ Todo envio aceito do Cliente e todo arquivo liberado pela Videnas geram um **lac
 - **hash SHA-256** do conteúdo real, calculado com `crypto.subtle.digest` sobre os bytes do arquivo (ou sobre o JSON serializado, no caso de formulário);
 - **carimbo de tempo**, autor (nome, id e perfil), instituição, módulo, competência, período e insumo;
 - o conteúdo guardado em um **envelope cifrado em AES-GCM**, com vetor de inicialização próprio e identificador de chave;
-- o **sentido** do lacre: `entrada` (dado recebido do cliente) ou `saida` (arquivo devolvido pela Videnas).
+- o **sentido** do lacre: `entrada` (dado recebido do cliente) ou `saida` (arquivo devolvido pela Videnas);
+- o **tipo de artefato** (`tipoArtefato`): insumo do cliente, arquivo entregue, anexo do retorno, recibo do retorno ou dossiê de arquivamento. Lacres antigos sem o campo são lidos como insumo (entrada) ou arquivo entregue (saída). Os artefatos de retorno e de arquivamento entram na mesma cadeia do período e podem ser filtrados em `/app/evidencias`.
 
 ### Encadeamento por `hashAnterior` — nada é sobrescrito
 
@@ -306,6 +314,8 @@ A regra fixa da Videnas é: **quem executa nunca é quem valida**. Para ver isso
 1. **Executor** (ex.: Tomoe Nakamura) — vê e executa `Enviar dados do período`, `Gerar arquivo`, `Enviar para validação`. Nunca vê `Liberar` nem `Aprovar`.
 2. **Validador** (ex.: Clarice Veloso) — vê `Executar validação de schema` e, se o resultado não tiver erro bloqueante, `Liberar para o cliente`. Se o usuário ativo for o mesmo que gerou o arquivo, o botão `Liberar` fica **desabilitado** com o tooltip "Quem gerou o arquivo não pode liberá-lo. Segregação de funções obrigatória." — é a forma de demonstrar a trava mesmo dentro do mock.
 3. **Diretor/Compliance** (ex.: Ricardo Menezes) — só depois de `liberado` vê `Aprovar e assumir responsabilidade` habilitado; antes disso o botão aparece desabilitado com o motivo.
+
+Na fase de arquivamento a regra vale em dobro (D17): quem gerou a versão corrente do arquivo e quem registrou o retorno do regulador não arquivam o período; na semente, só Igor Salgado pode. `reabrir` não tem essa trava.
 
 No módulo **Fiscal**, existe uma etapa adicional: depois de `Enviar ao contador`, o perfil **Contador/Fiscal** (João Beraldo) precisa `Confirmar enquadramento fiscal` antes que o Validador possa validar o schema — nenhum outro perfil decide alíquota, retenção ou enquadramento tributário.
 

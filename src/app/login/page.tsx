@@ -51,6 +51,11 @@ const ATALHOS: AtalhoDemo[] = [
     instituicao: "Videnas",
   },
   {
+    email: "i.salgado@videnas.com.br",
+    rotulo: "Executor (arquivamento)",
+    instituicao: "Videnas",
+  },
+  {
     email: "m.fontes@videnas.com.br",
     rotulo: "Administrador",
     instituicao: "Videnas",

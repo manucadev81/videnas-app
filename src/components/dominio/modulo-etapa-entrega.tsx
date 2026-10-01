@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PainelArquivo } from "@/components/dominio/painel-arquivo";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
+import { PainelArquivamento, PainelRetorno } from "@/components/dominio/modulo-retorno-arquivamento";
 import { BadgeAjuda } from "@/components/ajuda/badge-ajuda";
 import { AvisoEnvelope } from "@/components/evidencias/aviso-envelope";
 import { ValorHash } from "@/components/evidencias/valor-hash";
@@ -315,6 +316,10 @@ export function EtapaEntrega({
           )}
         </>
       )}
+
+      <PainelRetorno periodoId={periodoId} />
+
+      <PainelArquivamento periodoId={periodoId} />
 
       <ProvaDeEntrega periodoId={periodoId} arquivoCorrente={arquivoCorrente} />
     </>

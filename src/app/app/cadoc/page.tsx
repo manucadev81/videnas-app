@@ -10,6 +10,8 @@ import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
+import { ProtocoloComRetorno } from "@/components/dominio/protocolo-retorno";
 import { construirEtapasStepper } from "@/components/dominio/modulo-etapas";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
@@ -28,6 +30,7 @@ export default function CadocPage() {
   const protocolos = usePeriodosStore((estado) => estado.protocolos);
 
   const [aba, setAba] = useState<"5711" | "5710">("5711");
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
 
   const modulo5711 = buscarModulo("cadoc5711");
   const modulo5710 = buscarModulo("cadoc5710");
@@ -50,6 +53,13 @@ export default function CadocPage() {
         .sort((a, b) => (a.competencia < b.competencia ? 1 : -1)),
     [todosPeriodos, instituicaoAtivaId]
   );
+
+  const ativos5711 = periodos5711.filter((periodo) => periodo.estado !== "arquivado");
+  const ativos5710 = periodos5710.filter((periodo) => periodo.estado !== "arquivado");
+  const visiveis5711 = mostrarArquivados ? periodos5711 : ativos5711;
+  const visiveis5710 = mostrarArquivados ? periodos5710 : ativos5710;
+  const totalArquivadosOcultos =
+    periodos5711.length - ativos5711.length + (periodos5710.length - ativos5710.length);
 
   if (perfilAtivo === "contador") {
     return (
@@ -78,22 +88,28 @@ export default function CadocPage() {
         </BannerPosicionamento>
       ) : (
         <Tabs value={aba} onValueChange={(valor) => setAba(valor as "5711" | "5710")}>
-          <TabsList>
+          <FiltroArquivados
+            id="mostrar-arquivados-cadoc"
+            marcado={mostrarArquivados}
+            aoAlterar={setMostrarArquivados}
+            totalOcultos={totalArquivadosOcultos}
+          />
+          <TabsList className="mt-4">
             <TabsTrigger value="5711">Cadoc 5711 — Posição diária por cliente</TabsTrigger>
             <TabsTrigger value="5710">Cadoc 5710 — Posição mensal por carteira</TabsTrigger>
           </TabsList>
 
           <TabsContent value="5711" className="space-y-4 pt-4">
-            <ResumoPeriodo periodos={periodos5711} modulo={modulo5711} />
+            <ResumoPeriodo periodos={ativos5711} modulo={modulo5711} />
             <TabelaCadoc5711
-              periodos={periodos5711}
+              periodos={visiveis5711}
               arquivos={arquivos}
               protocolos={protocolos}
             />
           </TabsContent>
 
           <TabsContent value="5710" className="space-y-4 pt-4">
-            <ResumoPeriodo periodos={periodos5710} modulo={modulo5710} />
+            <ResumoPeriodo periodos={ativos5710} modulo={modulo5710} />
             {periodos5710.length === 0 ? (
               <EstadoVazio
                 titulo="Nenhuma carteira com saldo nesta competência"
@@ -102,7 +118,7 @@ export default function CadocPage() {
                 aoAcionar={() => toast.info("Ausência de movimento registrada (simulado).")}
               />
             ) : (
-              <TabelaCadoc5710 periodos={periodos5710} arquivos={arquivos} protocolos={protocolos} />
+              <TabelaCadoc5710 periodos={visiveis5710} arquivos={arquivos} protocolos={protocolos} />
             )}
           </TabsContent>
         </Tabs>
@@ -194,7 +210,7 @@ function TabelaCadoc5711({
       cabecalho: "Protocolo BCB",
       renderizar: (periodo) => {
         const protocolo = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
-        return protocolo ? <span className="font-mono text-xs">{protocolo.numeroProtocolo}</span> : "—";
+        return <ProtocoloComRetorno periodo={periodo} protocolo={protocolo} />;
       },
     },
     {
@@ -265,7 +281,7 @@ function TabelaCadoc5710({
       cabecalho: "Protocolo BCB",
       renderizar: (periodo) => {
         const protocolo = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
-        return protocolo ? <span className="font-mono text-xs">{protocolo.numeroProtocolo}</span> : "—";
+        return <ProtocoloComRetorno periodo={periodo} protocolo={protocolo} />;
       },
     },
     {

@@ -402,6 +402,14 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         />
       ) : null}
 
+      {periodo.estado === "arquivado" ? (
+        <BannerPosicionamento variante="info" titulo="Período arquivado">
+          Este período está encerrado e em modo somente leitura. O dossiê de arquivamento lacrado está
+          na etapa de entrega.
+          {periodo.retencaoAte ? ` Retido até ${formatarData(periodo.retencaoAte)}.` : ""}
+        </BannerPosicionamento>
+      ) : null}
+
       <StepperEtapas
         etapas={etapas}
         aoSelecionar={(etapaId) => setEtapaSelecionada(etapaId)}

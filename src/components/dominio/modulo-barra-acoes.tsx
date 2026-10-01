@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -35,13 +36,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePeriodosStore } from "@/lib/store/periodos";
+import { usePeriodosStore, validarEntradaRetorno } from "@/lib/store/periodos";
 import { useEvidenciasStore } from "@/lib/store/evidencias";
 import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
+import { ROTULO_RETORNO_GENERICO, configuracaoFluxo, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
 import type { AcaoId, CanalEnvioBcb, ValidacaoItem } from "@/lib/tipos";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 
@@ -64,6 +66,7 @@ const CANDIDATOS_BARRA: AcaoId[] = [
   "registrar_protocolo",
   "marcar_encaminhado",
   "registrar_retorno",
+  "arquivar",
   "aprovar",
   "negar_aprovacao",
 ];
@@ -80,6 +83,7 @@ const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrut
   registrar_protocolo: "primario",
   marcar_encaminhado: "primario",
   registrar_retorno: "secundario",
+  arquivar: "secundario",
   aprovar: "primario",
   negar_aprovacao: "destrutivo-suave",
   reabrir: "destrutivo-suave",
@@ -149,7 +153,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const registrarRetorno = usePeriodosStore((estado) => estado.registrarRetorno);
   const reabrir = usePeriodosStore((estado) => estado.reabrir);
   const negarAprovacao = usePeriodosStore((estado) => estado.negarAprovacao);
+  const arquivar = usePeriodosStore((estado) => estado.arquivar);
+  const protocolos = usePeriodosStore((estado) => estado.protocolos);
   const selarNovaVersaoArquivo = useEvidenciasStore((estado) => estado.selarNovaVersaoArquivo);
+  const selarRetornoRegulador = useEvidenciasStore((estado) => estado.selarRetornoRegulador);
+  const selarArquivamento = useEvidenciasStore((estado) => estado.selarArquivamento);
 
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const usuarioId = useSessaoStore((estado) => estado.usuarioId);
@@ -161,6 +169,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const [campoTextarea, setCampoTextarea] = useState("");
   const [campoSelect, setCampoSelect] = useState("");
   const [campoCheckbox, setCampoCheckbox] = useState(false);
+  const [campoData, setCampoData] = useState("");
+  const [campoAnexo, setCampoAnexo] = useState<File | null>(null);
+  const [processando, setProcessando] = useState(false);
 
   if (!periodo || !perfilAtivo || !usuarioId) {
     return null;
@@ -175,6 +186,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const modulo = buscarModulo(periodo.moduloId);
   const usuarioContador = periodo.contadorUsuarioId ? buscarUsuario(periodo.contadorUsuarioId) : undefined;
   const usuarioAtual = buscarUsuario(usuarioId);
+  const rotuloRetorno = rotuloRetornoDoModulo(periodo.moduloId);
+  const protocoloCorrente = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
 
   function abrirDialogo(acaoId: AcaoId) {
     setCampoTexto("");
@@ -182,6 +195,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     setCampoTextarea("");
     setCampoSelect("");
     setCampoCheckbox(false);
+    setCampoData("");
+    setCampoAnexo(null);
     if (acaoId === "registrar_protocolo") {
       setCampoSelect("pstaw10");
     }
@@ -190,6 +205,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
     }
     if (acaoId === "registrar_retorno") {
       setCampoSelect("aceito");
+      setCampoData(new Date().toISOString().slice(0, 10));
     }
     setDialogoAberto(acaoId);
   }
@@ -259,6 +275,100 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
       autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
       origemNome: `Nova versão gerada após devolução do Diretor — ${arquivoAtual.nomeArquivo}`,
     });
+  }
+
+  async function confirmarRetorno() {
+    if (!usuarioAtual || !periodo.protocoloId) {
+      toast.error("Período sem protocolo registrado.");
+      return;
+    }
+    const protocolo = protocolos[periodo.protocoloId];
+    if (!protocolo) {
+      toast.error("Protocolo não encontrado.");
+      return;
+    }
+    const situacao = (campoSelect || "aceito") as "aceito" | "aceito_com_ressalvas" | "rejeitado";
+    const validacao = validarEntradaRetorno(situacao, campoTexto, campoTextarea);
+    if (!validacao.sucesso) {
+      toast.error(validacao.motivo ?? "Dados do retorno inválidos.");
+      return;
+    }
+    if (periodo.estado !== "aguardando_retorno") {
+      toast.error("Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    setProcessando(true);
+    try {
+      const selagem = await selarRetornoRegulador({
+        periodo,
+        protocolo,
+        rotuloArtefato: rotuloRetorno,
+        situacao,
+        codigoRetorno: campoTexto.trim(),
+        mensagemRetorno: campoTextarea.trim(),
+        identificador: campoTexto2.trim() || null,
+        dataInformada: campoData || null,
+        anexo: campoAnexo,
+        autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
+      });
+      if (!selagem.sucesso || !selagem.reciboLacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o retorno.");
+        return;
+      }
+      const resultado = registrarRetorno(periodoId, autor, situacao, campoTexto.trim(), campoTextarea.trim(), {
+        identificador: campoTexto2,
+        dataInformada: campoData,
+        anexoNome: campoAnexo?.name ?? null,
+        anexoTamanhoBytes: campoAnexo?.size ?? null,
+        anexoHash: selagem.anexoLacre?.hashSha256 ?? null,
+        anexoLacreId: selagem.anexoLacre?.id ?? null,
+        reciboLacreId: selagem.reciboLacre.id,
+        reciboHash: selagem.reciboLacre.hashSha256,
+      });
+      tratarResultado(resultado, `Retorno ${rotuloRetorno} registrado e lacrado na cadeia do período.`);
+    } catch {
+      toast.error("Não foi possível registrar o retorno.");
+    } finally {
+      setProcessando(false);
+    }
+  }
+
+  async function confirmarArquivamento() {
+    if (!usuarioAtual || !perfilAtivo) {
+      return;
+    }
+    const avaliacao = podeExecutarStore(perfilAtivo, "arquivar", periodoId, usuarioId ?? undefined);
+    if (!avaliacao.permitido) {
+      toast.error(avaliacao.motivo ?? "Ação indisponível no estado atual do período.");
+      return;
+    }
+
+    const arquivadoEm = new Date().toISOString();
+    setProcessando(true);
+    try {
+      const selagem = await selarArquivamento({
+        periodo,
+        arquivo: arquivoCorrente,
+        protocolo: periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined,
+        arquivadoEm,
+        autor: { usuarioId: autor.usuarioId, nome: usuarioAtual.nome, perfilId: autor.perfilId },
+      });
+      if (!selagem.sucesso || !selagem.lacre) {
+        toast.error(selagem.motivo ?? "Não foi possível lacrar o dossiê de arquivamento.");
+        return;
+      }
+      const resultado = arquivar(periodoId, autor, {
+        lacreId: selagem.lacre.id,
+        hashDossie: selagem.lacre.hashSha256,
+        arquivadoEm,
+      });
+      tratarResultado(resultado, "Período arquivado. Lacre de saída encadeado à cadeia do período.");
+    } catch {
+      toast.error("Não foi possível arquivar o período.");
+    } finally {
+      setProcessando(false);
+    }
   }
 
   function confirmarDialogo() {
@@ -345,18 +455,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         return;
       }
       case "registrar_retorno": {
-        if (!campoTextarea.trim()) {
-          toast.error("Descreva a mensagem de retorno recebida do Banco Central.");
-          return;
-        }
-        const resultado = registrarRetorno(
-          periodoId,
-          autor,
-          (campoSelect || "aceito") as "aceito" | "aceito_com_ressalvas" | "rejeitado",
-          campoTexto,
-          campoTextarea
-        );
-        tratarResultado(resultado, "Retorno do Banco Central registrado na trilha.");
+        void confirmarRetorno();
+        return;
+      }
+      case "arquivar": {
+        void confirmarArquivamento();
         return;
       }
       case "reabrir": {
@@ -392,6 +495,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   function rotuloAcao(acaoId: AcaoId): string {
     if (acaoId === "executar_validacao" && periodo.estado === "com_excecoes") {
       return "Reprocessar validação";
+    }
+    if (acaoId === "registrar_retorno") {
+      return rotuloRetorno === ROTULO_RETORNO_GENERICO
+        ? "Registrar retorno do regulador/emissor"
+        : `Registrar retorno ${rotuloRetorno}`;
     }
     return ROTULOS_ACAO[acaoId];
   }
@@ -805,21 +913,57 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
             {dialogoAberto === "registrar_retorno" ? (
               <>
                 <DialogHeader>
-                  <DialogTitle>Registrar retorno do BCB</DialogTitle>
+                  <DialogTitle>Registrar retorno {rotuloRetorno}</DialogTitle>
+                  <DialogDescription>
+                    {rotuloRetorno === "ACAM213"
+                      ? "Registre o retorno de processamento do ACAM212 recebido do Banco Central."
+                      : "Registre o retorno recebido do regulador ou do emissor para o protocolo informado."}
+                    {protocoloCorrente ? ` Protocolo ${protocoloCorrente.numeroProtocolo}.` : ""}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="situacao-retorno">Situação</Label>
-                    <Select value={campoSelect} onValueChange={(valor) => setCampoSelect(valor ?? "")}>
-                      <SelectTrigger id="situacao-retorno" className="w-full">
-                        <SelectValue placeholder="Selecione a situação" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aceito">Aceito</SelectItem>
-                        <SelectItem value="aceito_com_ressalvas">Aceito com ressalvas</SelectItem>
-                        <SelectItem value="rejeitado">Rejeitado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium text-neutral-700">Resultado do retorno</legend>
+                    <RadioGroup value={campoSelect} onValueChange={(valor) => setCampoSelect(String(valor))}>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="aceito" id="situacao-aceito" />
+                        <Label htmlFor="situacao-aceito" className="font-normal">
+                          Aceito
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="aceito_com_ressalvas" id="situacao-ressalvas" />
+                        <Label htmlFor="situacao-ressalvas" className="font-normal">
+                          Aceito com ressalvas
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="rejeitado" id="situacao-rejeitado" />
+                        <Label htmlFor="situacao-rejeitado" className="font-normal">
+                          Rejeitado
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </fieldset>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="identificador-retorno">Identificador do {rotuloRetorno} (opcional)</Label>
+                      <Input
+                        id="identificador-retorno"
+                        value={campoTexto2}
+                        placeholder="ACAM213-202511-0001"
+                        onChange={(evento) => setCampoTexto2(evento.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="data-retorno">Data do retorno</Label>
+                      <Input
+                        id="data-retorno"
+                        type="date"
+                        value={campoData}
+                        onChange={(evento) => setCampoData(evento.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="codigo-retorno">Código de retorno</Label>
@@ -831,7 +975,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="mensagem-retorno">Mensagem</Label>
+                    <Label htmlFor="mensagem-retorno">
+                      {campoSelect === "aceito_com_ressalvas" ? "Ressalva recebida (obrigatória)" : "Mensagem"}
+                    </Label>
                     <Textarea
                       id="mensagem-retorno"
                       value={campoTextarea}
@@ -839,13 +985,64 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                       rows={3}
                     />
                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="anexo-retorno">Arquivo de retorno (opcional)</Label>
+                    <Input
+                      id="anexo-retorno"
+                      type="file"
+                      className="h-auto py-1.5"
+                      onChange={(evento) => setCampoAnexo(evento.currentTarget.files?.[0] ?? null)}
+                    />
+                    <p className="text-xs text-neutral-500">
+                      O arquivo anexado é lacrado e encadeado à cadeia do período junto com o recibo do retorno.
+                    </p>
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={fecharDialogo}>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
                     Cancelar
                   </Button>
-                  <Button type="button" onClick={confirmarDialogo}>
-                    Registrar
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Registrar"}
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "arquivar" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Arquivar a competência {periodo.competenciaRotulo}?</DialogTitle>
+                  <DialogDescription>
+                    O período passa a ser somente leitura. Um dossiê com o hash do arquivo, aprovações,
+                    negações, protocolo e retorno é lacrado e encadeado ao último lacre do período.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-1.5 rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
+                  <p>
+                    Arquivo: {arquivoCorrente?.nomeArquivo ?? "—"} · hash{" "}
+                    <span className="font-mono">
+                      {arquivoCorrente ? truncarHash(arquivoCorrente.hashSha256) : "—"}
+                    </span>
+                  </p>
+                  <p>Protocolo: {protocoloCorrente?.numeroProtocolo ?? "—"}</p>
+                  <p>
+                    Retorno {rotuloRetorno}: {protocoloCorrente?.codigoRetorno ?? "—"}
+                  </p>
+                  <p>
+                    Prazo de retenção:{" "}
+                    {configuracaoFluxo.retencao
+                      ? `${configuracaoFluxo.retencao.anos} anos a partir do arquivamento`
+                      : "não configurado"}
+                    .
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo} disabled={processando}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" onClick={confirmarDialogo} disabled={processando}>
+                    {processando ? "Lacrando…" : "Arquivar período"}
                   </Button>
                 </DialogFooter>
               </>

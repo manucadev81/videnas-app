@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-29
 **Author role:** Product Owner
-**Status:** R1 (E1 all, E2 all, E4-S1..S3, E11-S1, E11-S2, E11-S5) is implemented on branch `feat/r1-approval-flow`. The target state machine below now reflects what R1 built; remaining epics (E3, E5-E10, E11-S3/S4, E12) are still proposals.
+**Status:** R1 (E1 all, E2 all, E4-S1..S3, E11-S1, E11-S2, E11-S5) is implemented on branch `feat/r1-approval-flow`; R2 (E7-S1..S3, E7-S5, E8-S1, E8-S2, E8-S3, E8-S4, E11-S3, rest of E11-S2) is implemented on branch `feat/r2-return-archive`, see section 12. The target state machine below now reflects what R1 built; remaining epics (E3, E5-E10, E11-S3/S4, E12) are still proposals.
 
 ## 1. Scope
 
@@ -83,6 +83,10 @@ Ids stay in Portuguese snake_case to match the code. English meaning in the seco
 6. Two approval denials escalate to a **Quality Committee**.
 7. Internal Controls, Custody and Accounting are **client areas**, theoretically responsible for certain controls.
 8. DeCripto is **out of scope** for this flow and this backlog (decision by Manuca, 2026-09-29).
+9. The regulator return is registered, and the period is archived, by someone from the Videnas team (Executor or Validador); the Diretor and the Cliente do neither (D14, decision by Manuca, 2026-09-30).
+10. Retention counts from the archiving date and is 5 years for now; the value may change and lives only in `configuracaoFluxo.retencao` (D2, decision by Manuca, 2026-09-30).
+11. After a regulator return "accepted with caveats" both paths are valid: archive and reopen (D12, decision by Manuca, 2026-09-30).
+12. Segregation of duties on archiving: whoever generated the current version of the file cannot archive the period, and whoever registered the regulator return cannot archive it either; both apply together and neither applies to `reabrir` (D17, decision by Manuca, 2026-09-30).
 
 ## 4. Gaps found and epic mapping
 
@@ -130,11 +134,11 @@ The current `somenteFiscal` / `excetoFiscal` flags are proposed to become an exp
 | `transmitir` | `aprovado`, `emitido_fiscal` | `aguardando_retorno` | TBD Videnas profile (D5) | All | Contract flag `transmissao = true` and prior registration by Videnas exists (D4, D5) |
 | `registrar_protocolo` | `aprovado` | `aguardando_retorno` | diretor | ACAM, C5710, C5711 | Prior registration by Diretor exists; protocol number and channel required |
 | `registrar_protocolo_manual` | `aprovado`, `emitido_fiscal` | `aguardando_retorno` | diretor | All | Fallback when automatic transmission is unavailable; mandatory justification and sealed receipt |
-| `registrar_retorno` (aceito) | `aguardando_retorno` | `retorno_aceito` | validador (D14) | All | Return artifact fields for the module (ACAM213 for ACAM; others D6) |
-| `registrar_retorno` (aceito_com_ressalvas) | `aguardando_retorno` | `retorno_com_ressalvas` | validador (D14) | All | Caveat text mandatory |
-| `registrar_retorno` (rejeitado) | `aguardando_retorno` | `retorno_rejeitado` | validador (D14) | All | Rejection code mandatory; opens exception with origin `retorno_bcb` |
-| `reabrir` | `retorno_rejeitado`, `retorno_com_ressalvas` (D12), `liberado`, `aprovado` | `dados_ingeridos` | executor | All | Reason min 10 chars (existing); `liberado`/`aprovado` origins kept as today pending refinement |
-| `arquivar` | `retorno_aceito`, `retorno_com_ressalvas` (D12) | `arquivado` | TBD (D14) | All | Exit seal created and chained; retention date computed (D2) |
+| `registrar_retorno` (aceito) | `aguardando_retorno` | `retorno_aceito` | executor, validador (D14) | All | Return artifact fields for the module (ACAM213 for ACAM; others D6) |
+| `registrar_retorno` (aceito_com_ressalvas) | `aguardando_retorno` | `retorno_com_ressalvas` | executor, validador (D14) | All | Caveat text mandatory |
+| `registrar_retorno` (rejeitado) | `aguardando_retorno` | `retorno_rejeitado` | executor, validador (D14) | All | Rejection code mandatory; opens exception with origin `retorno_bcb` |
+| `reabrir` | `retorno_rejeitado`, `retorno_com_ressalvas` (D12 resolved), `liberado`, `aprovado` | `dados_ingeridos` | executor | All | Reason min 10 chars (existing); `liberado`/`aprovado` origins kept as today pending refinement; no segregation rule (D17) |
+| `arquivar` | `retorno_aceito`, `retorno_com_ressalvas` (D12 resolved) | `arquivado` | executor, validador (D14) | All | Exit seal created and chained; retention date computed from the archiving date (D2); blocked for the generator of the current file version and for the registrar of the return (D17) |
 
 Read-only actions (`baixar_arquivo`, `baixar_comprovante`, `verificar_integridade`, `ver_evidencias`, `exportar_auditoria`) must add all new states, including `arquivado`, to their `estadosOrigem`.
 
@@ -165,8 +169,8 @@ stateDiagram-v2
     aguardando_retorno --> retorno_com_ressalvas: registrar_retorno
     aguardando_retorno --> retorno_rejeitado: registrar_retorno
     retorno_rejeitado --> dados_ingeridos: reabrir
-    retorno_com_ressalvas --> dados_ingeridos: reabrir (D12)
-    retorno_com_ressalvas --> arquivado: arquivar (D12)
+    retorno_com_ressalvas --> dados_ingeridos: reabrir (D12 resolved)
+    retorno_com_ressalvas --> arquivado: arquivar (D12 resolved)
     retorno_aceito --> arquivado: arquivar
     arquivado --> [*]
 ```
@@ -424,12 +428,14 @@ As a Diretor, I want channel choices that match the module, so that I cannot rec
 **Priority:** P0 (Must)
 
 **E7-S1 - Waiting-for-return state** (P0, S)
+**Status (R2): done — days since transmission and protocol number in the Validador operation queue, module lists (ACAM212, Cadoc 5711/5710, Fiscal) and the period delivery tab**
 As a Validador, I want transmitted periods to wait visibly for the regulator return, so that none is forgotten.
 - Given `aguardando_retorno`, When listed in operation queue and module lists, Then it shows days since transmission and the protocol number.
 - Files: `src/app/app/operacao/page.tsx`, `src/app/app/acam212/page.tsx`, `src/app/app/cadoc/page.tsx`, `src/app/app/fiscal/page.tsx`, `src/components/dominio/modulo-etapa-entrega.tsx`.
 - Dependencies: E1-S3.
 
 **E7-S2 - Record return with outcome** (P0, M)
+**Status (R2): done — required 3-option radio, code and message required, caveat text min 10 chars, `situacaoRetorno` matches; the record also seals the return (see E11-S2)**
 As a Validador, I want to record the return as accepted, accepted with caveats or rejected, so that the period follows the correct next step.
 - Given `aguardando_retorno`, When `registrar_retorno` opens, Then the outcome is a required radio (3 options), return code and message are required, caveat text is required for "with caveats".
 - Given each outcome, When saved, Then the state becomes `retorno_aceito`, `retorno_com_ressalvas` or `retorno_rejeitado` and events `RETORNO_ACEITO`, `RETORNO_ACEITO_COM_RESSALVAS` or `RETORNO_REJEITADO` are recorded (today only accepted/rejected exist).
@@ -438,6 +444,7 @@ As a Validador, I want to record the return as accepted, accepted with caveats o
 - Dependencies: E1-S2.
 
 **E7-S3 - ACAM213 return artifact for ACAM212** (P0, M)
+**Status (R2): done — dialog titled ACAM213 with identifier, date, code, message and optional attached file; attached file sealed and chained, plus a sealed return receipt**
 As a Validador, I want the ACAM212 return to be recorded as an ACAM213 artifact, so that it matches the regulator vocabulary.
 - Given an ACAM212 period in `aguardando_retorno`, When recording the return, Then the dialog is titled with ACAM213 and captures its identifier, date, code, message and an optional attached file.
 - Given an attached file, When saved, Then it is sealed and chained (E11-S2).
@@ -445,15 +452,17 @@ As a Validador, I want the ACAM212 return to be recorded as an ACAM213 artifact,
 - Dependencies: E7-S2.
 
 **E7-S4 - Per-channel return artifacts for other modules** (P0, S) **Blocked by D6**
+**Status (R2): not in R2 — Cadoc 5710/5711 and Fiscal use the generic "Retorno do regulador/emissor" label (`ROTULO_RETORNO_GENERICO`); per-channel labels/fields still come with D6**
 As a Validador, I want Cadoc 5710/5711 and Fiscal returns to use their own artifact names and fields, so that each channel is recorded correctly.
 - Given mock config per module, When recording, Then labels and fields come from config; until D6 is decided, a generic "Regulator/issuer return" label is used.
 - Files: mock config, `src/components/dominio/modulo-barra-acoes.tsx`.
 - Dependencies: E7-S2.
 
 **E7-S5 - Next steps after rejection or caveats** (P0, M)
+**Status (R2): done — rejection opens an exception with origin `retorno_bcb` and `reabrir` (Executor) closes it; from `retorno_com_ressalvas` both paths are available (`caminhosAposRessalvas: ["arquivar", "reabrir"]`, D12 resolved on 2026-09-30)**
 As an Executor, I want a rejected return to open an exception and allow reopening, so that the correction starts immediately.
 - Given `retorno_rejeitado`, When saved, Then an exception with origin `retorno_bcb` is opened and `reabrir` is available to the Executor.
-- Given `retorno_com_ressalvas`, When shown, Then the available paths (`arquivar` and/or `reabrir`) follow the mock flag. **Blocked by D12** for the default.
+- Given `retorno_com_ressalvas`, When shown, Then both `arquivar` (executor, validador) and `reabrir` (Executor, back to `dados_ingeridos`) are available, following `caminhosAposRessalvas` (D12 resolved). The caveat recorded at the return appears in the archive dossier (`retorno.situacao` and `retorno.mensagem`).
 - Files: `src/lib/store/periodos.ts`, `src/components/dominio/modulo-painel-excecoes.tsx`, `src/lib/mock/excecoes.ts`.
 - Dependencies: E7-S2.
 
@@ -464,14 +473,16 @@ As an Executor, I want a rejected return to open an exception and allow reopenin
 **Goal:** close each period with an archived state, a final chained seal and a visible retention date.
 **Priority:** P1 (Should)
 
-**E8-S1 - Archive a period** (P1, M) **Actor Blocked by D14**
+**E8-S1 - Archive a period** (P1, M) **Actor: Videnas team (D14 resolved)**
+**Status (R2): done — `arquivar` produces `arquivado` + `PERIODO_ARQUIVADO` and the period becomes read-only; visible by default to Executor and Validador (`configuracaoFluxo.arquivamentoPerfis`); from `retorno_com_ressalvas` too (D12 resolved); blocked for the generator of the current file version and for the registrar of the return (D17)**
 As the archiving actor, I want to archive a period after an accepted return, so that it is closed and read-only.
-- Given `retorno_aceito` (and `retorno_com_ressalvas` if D12 allows), When `arquivar` is confirmed, Then the state becomes `arquivado` and `PERIODO_ARQUIVADO` is recorded.
+- Given `retorno_aceito` (and `retorno_com_ressalvas`, D12 resolved), When `arquivar` is confirmed, Then the state becomes `arquivado` and `PERIODO_ARQUIVADO` is recorded.
 - Given `arquivado`, When any user opens the period, Then only read-only actions are available.
 - Files: `src/lib/permissoes.ts`, `src/lib/store/periodos.ts`, `src/components/dominio/modulo-barra-acoes.tsx`.
 - Dependencies: E7-S2.
 
 **E8-S2 - Exit seal on archive** (P1, M)
+**Status (R2): done — dossier sealed with `construirLacre`, chained with `encadearApos` to the last period seal, listed in `/app/evidencias`, "Verificar integridade" works on it**
 As a Diretor, I want archiving to produce a final seal chained to the period seal chain, so that the closed dossier is tamper-evident.
 - Given archive, When confirmed, Then a seal is built with `construirLacre` over a dossier summary (file hash, approvals, denials, protocol, return), chained via `encadearApos` to the last seal of the period.
 - Given `/app/evidencias`, When opened, Then the archive seal is listed and "Verificar integridade" works on it.
@@ -479,13 +490,15 @@ As a Diretor, I want archiving to produce a final seal chained to the period sea
 - Files: `src/lib/store/evidencias.ts`, `src/lib/evidencias/lacre.ts`, `src/components/evidencias/detalhe-lacre.tsx`, `src/components/evidencias/linha-do-tempo-cadeia.tsx`, `src/app/app/evidencias/page.tsx`.
 - Dependencies: E8-S1, E11-S2.
 
-**E8-S3 - Retention display** (P1, S) **Blocked by D2**
+**E8-S3 - Retention display** (P1, S) **D2 resolved**
+**Status (R2): done — the archived period shows "Retido até <date>" (archiving date + `configuracaoFluxo.retencao.anos`, 5 for now) in the archive card and in the archived banner; the value is also stored in `PeriodoObrigacao.retencaoAte`, in the dossier and in the `PERIODO_ARQUIVADO` payload. Display and record only: nothing is purged or blocked when the term ends. The legal basis text (`retencao.baseLegal`) is shown when configured; it is not set because no legal basis was given**
 As a Diretor, I want to see until when an archived period must be retained, so that I can answer audits.
-- Given `arquivado`, When shown, Then "Retain until" is computed from the configured rule and legal basis text; until D2, a "Rule pending" label is shown instead of a date.
+- Given `arquivado`, When shown, Then "Retain until" is computed from the configured rule (start date and years) and the legal basis text when configured.
 - Files: `src/components/dominio/modulo-detalhe-periodo.tsx`, `src/app/app/entregas/page.tsx`, mock config.
 - Dependencies: E8-S1.
 
 **E8-S4 - Archived filters** (P1, S)
+**Status (R2): done — archived hidden by default in ACAM212, Cadoc, Fiscal lists, deliveries, operation queue and calendar, with a "Mostrar arquivados" switch (ACAM212 also has Arquivado in the state select)**
 As any pipeline user, I want to filter archived periods in or out, so that active work is not buried.
 - Given module lists, deliveries, operation queue and calendar, When filtered, Then "Archived" is a state option and hidden from active queues by default.
 - Files: `src/app/app/acam212/page.tsx`, `src/app/app/cadoc/page.tsx`, `src/app/app/fiscal/page.tsx`, `src/app/app/entregas/page.tsx`, `src/app/app/operacao/page.tsx`, `src/app/app/calendario/page.tsx`.
@@ -567,6 +580,7 @@ As an auditor using `/app/auditoria`, I want every new transition to emit a labe
 
 **E11-S2 - Seal and chain every new artifact** (P0, M)
 **Status (R1): partial — applied to the regenerated file after a Diretor denial only, as scoped for R1; manual receipts/ACAM213/archive dossier are later slices**
+**Status (R2): ACAM213/return receipt and archive dossier done; manual protocol receipts (E6-S4) remain for R4**
 As a Diretor, I want manual protocol receipts, return artifacts (ACAM213 and others) and the archive dossier to be sealed in the same chain, so that the custody chain stays verifiable end to end.
 - Given a new artifact, When saved, Then `construirLacre` and `encadearApos` (`src/lib/evidencias/lacre.ts`) are used, with the period chain key.
 - Given `DialogoVerificarIntegridade`, When run on any new seal, Then it verifies.
@@ -574,6 +588,7 @@ As a Diretor, I want manual protocol receipts, return artifacts (ACAM213 and oth
 - Dependencies: E1-S1.
 
 **E11-S3 - Filters and views for new events and seals** (P0, S)
+**Status (R2): done — event type filter in `/app/auditoria`, artifact kind filter and badge in `/app/evidencias`, kind badge in seal detail and chain timeline**
 As an auditor, I want to filter by the new event types and see new seal kinds, so that I can inspect denials, escalations, returns and archives quickly.
 - Given `/app/auditoria` and `/app/evidencias`, When filtering, Then new types appear in filters; seal detail shows the artifact kind.
 - Files: `src/app/app/auditoria/page.tsx`, `src/app/app/evidencias/page.tsx`, `src/components/evidencias/badge-sentido.tsx`, `src/components/evidencias/detalhe-lacre.tsx`.
@@ -625,7 +640,7 @@ As the product team, I want e2e scenarios per module, so that demos never break.
 | Id | Question | Why it matters | Owner (if known) | Blocks |
 |---|---|---|---|---|
 | D1 | **Resolved (2026-09-29):** DeCripto is out of scope for this flow and this backlog (decision by Manuca; client answer 8). | No DeCripto artifact, module or return channel is added | Manuca | None |
-| D2 | Retention rule: period, legal basis, start date (approval, return or archive) | Needed to compute "retain until" | Normative owners per module (Nilo, Caio, Carlos); legal | E8-S3 |
+| D2 | **Resolved (2026-09-30, decision by Manuca):** retention counts from the archiving date and is 5 years for now (configurable in `configuracaoFluxo.retencao`). Legal basis still not informed. | "Retain until" is archive date + 5 years | Manuca | None |
 | D3 | Quality Committee: composition, quorum, possible outcomes, who records the decision in the app, target state per outcome | Committee step cannot be completed without it | Unknown (client governance) | E3-S3 |
 | D4 | Which contracts allow issuance and/or transmission, per module | Default contract flags | Unknown (commercial / client) | E5-S1 defaults, E5-S2, E6-S2 |
 | D5 | Who performs the prior registration, what it contains, which Videnas profile transmits or issues, and SoD rule for that actor | Guards for `transmitir`, `emitir_fiscal`; registration screen fields | Unknown; Fiscal part: Carlos | E5-S2, E6-S1, E6-S2 |
@@ -635,21 +650,22 @@ As the product team, I want e2e scenarios per module, so that demos never break.
 | D9 | Do Contador returns (`devolver_fiscal`) count toward the 2 denials? | Fiscal escalation behaviour | Carlos (Fiscal) | E3-S1 |
 | D10 | Do client areas (Internal Controls, Custody, Accounting) approve, or only receive? Which controls does each own? | Adds a sign-off step or only notifications | Client | E9-S2, E9-S4 |
 | D11 | Approver label: "Compliance" (current UI label) or "Diretor" (profile id / client wording)? | Consistent vocabulary in UI and docs | Client / Manuca | E4-S4 |
-| D12 | Does "accepted with caveats" require correction (reopen) or can it be archived with acknowledgement? | Transitions out of `retorno_com_ressalvas` | Module normative owners | E7-S5, E8-S1 |
+| D12 | **Resolved (2026-09-30, decision by Manuca):** after "accepted with caveats" both paths are valid, archive and reopen. | Transitions out of `retorno_com_ressalvas` | Manuca | None |
 | D13 | After a Diretor denial on Fiscal, must the DPS go through the Contador again? | Re-validation path for Fiscal | Carlos (Fiscal) | E2-S3 |
-| D14 | Who records the regulator return (Validador today, or Diretor) and who archives? | Profile permissions for `registrar_retorno` and `arquivar` | Unknown | E7-S2 (actor), E8-S1 |
+| D14 | **Resolved (2026-09-30, decision by Manuca):** someone from the Videnas team records the regulator return and archives (Executor and Validador). | Profile permissions for `registrar_retorno` and `arquivar` | Manuca | None |
 | D15 | Should audit events themselves be hash-chained, or is chaining seals (current model) enough? | Scope of E11 | Unknown (compliance) | E11 (possible extra story) |
 | D16 | Test tooling for the front (e.g. Vitest + Testing Library + Playwright) and whether it enters this repo | E12 cannot start | Manuca (tech) | E12 |
+| D17 | **Resolved (2026-09-30, decision by Manuca):** archiving has two segregation rules, both applied: whoever generated the current version of the file cannot archive, and whoever registered the regulator return cannot archive. Does not apply to `reabrir`. | `arquivar` guard in UI and store | Manuca | None |
 
 ## 8. Suggested delivery order
 
 | Slice | Content | Outcome |
 |---|---|---|
 | R1 - Foundation and "No" | E1 (all), E2 (all), E4-S1..S3, E11-S1, E11-S2, E11-S5 | Diretor can deny with reason; loop goes back through Validador; every step audited |
-| R2 - Return and archive | E7 (S1..S3, S5 with flags), E8-S1, E8-S2, E8-S4, E11-S3 | Explicit ACAM213 return and archived state with exit seal |
+| R2 - Return and archive | E7 (S1..S3, S5 with flags), E8-S1, E8-S2, E8-S3, E8-S4, E11-S3 | Explicit ACAM213 return and archived state with exit seal and retention date |
 | R3 - Escalation | E3 (S1, S2, S4; S3 after D3) | Loop capped at 2 denials |
 | R4 - Contract and transmission | E5, E6 | Issuance and transmission gated by contract and prior registration; manual fallback |
-| R5 - Organization | E9, E10, E4-S4, E8-S3, E7-S4, E11-S4 | Client areas, V1/V2/V3, retention and per-channel returns as decisions land |
+| R5 - Organization | E9, E10, E4-S4, E7-S4, E11-S4 | Client areas, V1/V2/V3, retention and per-channel returns as decisions land |
 | R6 - Quality | E12 | Automated coverage after D16 |
 
 Blocked stories can ship in their slice behind a mock flag set to "off" (action hidden), and be switched on when the decision is recorded.
@@ -699,3 +715,22 @@ Weights: S = 1, M = 3, L = 5.
 - **`registrar_retorno` return-code field fix**: the dialog no longer pre-fills `RET-0000` (it is now only the input placeholder) and the `campoTexto || "RET-0000"` fallback was removed, so the saved code is exactly what the user typed; an empty code is rejected by the store's existing guard ("Informe o código de retorno recebido.").
 - **`periodos` store now persists** (`src/lib/store/periodos.ts`), following the same `zustand/persist` pattern already used by `evidencias` and `tenants`: key `videnas-periodos`, `version: 1` with a `migrate` that falls back to the seed on any version mismatch, `skipHydration: true` plus a `useHidratarPeriodos` hook (mounted via `HidratacaoPeriodos` in `src/app/app/layout.tsx`, and called directly in `src/app/onboarding/page.tsx` since `abrirCompetenciasIniciais` runs before `/app` mounts), and a `merge` that unions persisted records over the seed per collection (`periodos`, `arquivos`, `validacoes`, `protocolos`, `excecoes`, `registros`) with `eventos` (the audit trail) taken from the persisted state when present. `reiniciarMock()` is unchanged and still wipes the persisted data when called explicitly. `useLogout` (`src/lib/hooks/use-logout.ts`) no longer calls `usePeriodosStore.getState().reiniciarMock()` — logout now only clears the session store, so the R1 approval-loop demo (Diretor denies → Executor regenerates/sends to validation → Validador validates/releases → Diretor re-approves with denial history visible) survives logout/login and reload. Verified live in the browser end-to-end on 2026-09-29 with `ricardo.menezes@…` (Diretor), `t.nakamura@videnas.com.br` (Executor) and `c.veloso@videnas.com.br` (Validador) against `per-meridian-acam212-r1liberado`.
 - **Global "Reiniciar demo" button** (2026-09-29): added `reiniciarDemo()` in `src/lib/store/demo.ts` as the single entry point that resets the whole mock — it calls `useTenantsStore.getState().reiniciarTenants()`, `usePeriodosStore.getState().reiniciarMock()` and `useEvidenciasStore.getState().reiniciarEvidencias()` in sequence, so tenants, periods/files/validations/protocols/exceptions/audit trail, and supply evidence (seals/verifications) all go back to their seed together — no orphaned evidence pointing at reset periods, no stale tenant/period mismatch. All three underlying resets were already full seed resets (`set(estadoInicial())`); the gap was only that nothing called them together. Session (`videnas-sessao`) is left untouched unless the logged-in `usuarioId` no longer resolves via `buscarUsuario` after the reset (i.e. it only existed among demo-provisioned users) — in that case `reiniciarDemo()` calls `sessao.sair()` and `GuardiaSessao` (`src/components/layout/guardia-sessao.tsx`) picks up the `autenticado` change and redirects to `/login` on its own, so no manual `router.replace` was needed. New shared component `src/components/dominio/botao-reiniciar-demo.tsx` (Button + the existing `Dialog` primitives, no `AlertDialog` exists in `src/components/ui/` yet) is mounted globally in `src/components/layout/header-app.tsx`, next to the profile selector and the "Sair" button. `/app/clientes` (`src/app/app/clientes/page.tsx`) was switched from calling `reiniciarTenants()` alone to `reiniciarDemo()`, since resetting only tenants could leave periods/evidences pointing at tenants that no longer match the seed; its confirmation dialog copy was updated accordingly. README's "Persistência e reinício" and "Reiniciar o mock" sections were updated to match.
+
+## 12. R2 implementation notes (branch `feat/r2-return-archive`)
+
+- **Base:** `feat/r1-approval-flow` (6355ab9). Nothing committed or pushed.
+- **Return record (E7-S2, E7-S3):** `registrar_retorno` opens a dialog titled by the module artifact label (`rotuloRetornoDoModulo`, in `src/lib/mock/configuracao-fluxo.ts`: `ACAM213` for ACAM212, `ROTULO_RETORNO_GENERICO` for the other modules). Fields: outcome (required radio), identifier (optional), date, code, message and optional attached file. The store action `registrarRetorno` stores a `RetornoRegulador` inside `ProtocoloBCB.retornoRegulador` and emits `RETORNO_ACEITO`, `RETORNO_ACEITO_COM_RESSALVAS` or `RETORNO_REJEITADO` with artifact, identifier, seal ids and hashes in the payload.
+- **Sealing order:** the UI validates (`validarEntradaRetorno`), seals, then calls the store: `selarRetornoRegulador` seals the attached file (kind `anexo_retorno`, optional) and then a JSON receipt (kind `recibo_retorno`, containing the attachment hash). Both use `sentido` `entrada`, `insumoId` null and join the period chain (the same chain as the delivered-file seal and the archive dossier), so the receipt chains after the last period seal. If Web Crypto is missing nothing is recorded.
+- **Rejection (E7-S5):** `retorno_rejeitado` opens a blocking exception (`origem` `retorno_bcb`, responsible profile `executor`) and emits `EXCECAO_ABERTA`. `reabrir` (Executor) closes open `retorno_bcb` exceptions as `tratada` with the reopening reason, clears `transmitidoEm` and `retornoSituacao`, and goes back to `dados_ingeridos`.
+- **D12 (resolved):** `configuracaoFluxo.caminhosAposRessalvas` (`("arquivar" | "reabrir")[]`) is `["arquivar", "reabrir"]`. The flag mechanism stays: removing an entry hides the matching action and `reabrir` also enforces it in the store. The "D12 pending" banner and the `caminhosAposRessalvasDefinidos` helper were removed.
+- **D14 (resolved):** `configuracaoFluxo.arquivamentoPerfis` and `registroRetornoPerfis` (`PerfilId[]`) are both `["executor", "validador"]`. `acaoOcultaPorConfiguracao` hides `arquivar` and `registrar_retorno` for any other profile; Executor and Validador list both actions in `acoesPermitidas`, Diretor keeps `arquivar` listed but hidden by the config, Cliente never had it. Admin is not included (it does not operate the regulatory pipeline). From `retorno_com_ressalvas`, `arquivar` requires `"arquivar"` in `caminhosAposRessalvas` (present, D12 resolved).
+- **Archive (E8-S1, E8-S2):** the dialog seals a dossier (`montarDossieArquivamento` in `src/lib/evidencias/dossie.ts`: file hash, approvals, denials, protocol, return, previous seal hash) with `selarArquivamento` (kind `dossie_arquivamento`, `sentido` `saida`, `arquivoId` null so it never replaces the delivery proof), then `arquivar` sets `arquivado`, `arquivadoEm`, `arquivadoPorUsuarioId`, `arquivamentoLacreId` and emits `PERIODO_ARQUIVADO` (payload: seal id, dossier hash, file hash, protocol, return outcome, `retencaoAte`). Archived periods accept only read-only actions; `ingerirDados` and `tratarExcecao` also refuse them.
+- **Retention (D2, E8-S3):** `configuracaoFluxo.retencao` is `{ anos: 5, marcoInicial: "arquivamento" }` (`baseLegal` optional, unset). `calcularRetencaoAte(arquivadoEm)` in `src/lib/mock/configuracao-fluxo.ts` adds the years with `setUTCFullYear` (Feb 29 falls on Feb 28 of a non-leap target year) and returns an ISO string. The archive date is generated once in the UI and shared by the dossier, the period (`arquivadoEm`, `retencaoAte`) and the `PERIODO_ARQUIVADO` payload. The dossier JSON now has `arquivamento.retencao` (`marcoInicial`, `anos`, `retencaoAte`); it is hashed at seal time, so it stays verifiable. The seed `r1arquivado` periods carry `retencaoAte` = archive date + 5 years and are archived by Igor Salgado (Executor). No purge or blocking happens when the term ends. `marcoInicial` other than `arquivamento` is not implemented.
+- **Archive segregation (D17):** `PeriodoObrigacao.retornoRegistradoPorUsuarioId` (optional) is filled by `registrarRetorno` with the author and, in the seed, is Clarice Veloso. `podeExecutar` (`src/lib/permissoes.ts`) blocks `arquivar` when `usuarioAtualId` equals `geradoPorUsuarioId` (the same field the `liberar` guard uses; it is updated on every regeneration, so it is the generator of the current version) with "Quem gerou o arquivo não pode arquivá-lo. Segregação de funções obrigatória.", and when it equals `retornoRegistradoPorUsuarioId` with "Quem registrou o retorno não pode arquivar o período. Segregação de funções obrigatória.". The store `arquivar` calls the same evaluation with the author, so the action is blocked with an error toast, and the UI shows the button disabled with the reason as tooltip. `reabrir` is unaffected. With the seed (generator Tomoe Nakamura, return registered by Clarice Veloso) the only eligible archiver is Igor Salgado (Executor, `i.salgado@videnas.com.br`, login shortcut "Executor (arquivamento)"). The seed periods `r1arquivado` are archived by Igor Salgado.
+- **Seal kinds:** `RegistroLacre.tipoArtefato` (optional): `insumo`, `arquivo_entregue`, `anexo_retorno`, `recibo_retorno`, `dossie_arquivamento`. Seals without the field are read as `insumo` (entrada) or `arquivo_entregue` (saida) through `tipoArtefatoDoLacre`, so existing seals stay valid. `lacreDeSaidaDoArquivo` now only matches `arquivo_entregue`. Receipt and dossier contents can be downloaded from the seal detail and from the period (the envelope is opened in the browser) and verified with "Verificar integridade".
+- **Persist versions:** `videnas-periodos` went from `version: 1` to `version: 4` (version 4: new optional `PeriodoObrigacao.retornoRegistradoPorUsuarioId`, seed archiver Igor Salgado and the extra seed period `r2ressalvasb`; version 2: new `ProtocoloBCB.retornoRegulador`, `PeriodoObrigacao.arquivamentoLacreId`, new seed periods; version 3: `retencaoAte` filled on archive, `arquivamentoPerfis`/`registroRetornoPerfis` config, seed archiver); any older stored data is discarded by `migrate` and returns to the seed. `videnas-evidencias` stays unversioned (0): the only format change is an optional field, so stored seals remain valid and are merged with the new seed seals. To start a browser clean after pulling this branch, use "Reiniciar demo".
+- **Seed:** per module (ACAM212, Cadoc 5711, Cadoc 5710, Fiscal) the R1 periods `r1retorno` and `r1arquivado` now have sealed chains (delivered file, return attachment and receipt, exit dossier), and three periods were added: `per-meridian-<modulo>-r2aceito` (`retorno_aceito`, 2025-08), `r2ressalvas` (`retorno_com_ressalvas`, 2025-07), `r2ressalvasb` (`retorno_com_ressalvas`, 2025-05, a second case so reopen and archive can both be demoed) and `r2rejeitado` (`retorno_rejeitado` with its `retorno_bcb` exception, 2025-06). Seed seals use deterministic mock hashes: their chain is consistent, but the contents are not recoverable, so only seals created live can be verified against a file.
+- **Side fixes:** `gerarHashDeterministico` (`src/lib/mock/hash.ts`) lost precision in the multiplication and returned all zeros for most seeds; it now uses `Math.imul`. Runtime event and exception ids (`evt-rt-`, `exc-rt-`) now carry a per-session prefix so they do not collide with persisted ones after a reload.
+- **Lists and queues:** the Validador operation queue gained "Aguardando retorno do regulador" and the Executor queue "Retorno rejeitado"; both show days since transmission and protocol number. Days are counted from the mock "today" (`HOJE_ISO`), so periods transmitted at runtime show 0 days.
+- **Audit and evidence views:** `/app/auditoria` has an event type filter (types present in scope, labels from `ROTULOS_TIPO`); `/app/evidencias` has an artifact kind filter and a kind badge; the seal detail and the chain timeline show the kind.
+- **Out of R2:** E7-S4 (D6), E6-S4 manual protocol receipt, committee (R3).

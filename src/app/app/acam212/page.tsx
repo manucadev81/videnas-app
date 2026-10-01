@@ -16,6 +16,9 @@ import { BadgeStatus, BadgeAtrasado } from "@/components/dominio/badge-status";
 import { StepperEtapas } from "@/components/dominio/stepper-etapas";
 import { TabelaDados, type ColunaTabela } from "@/components/dominio/tabela-dados";
 import { EstadoVazio } from "@/components/dominio/estado-vazio";
+import { FiltroArquivados } from "@/components/dominio/filtro-arquivados";
+import { ProtocoloComRetorno } from "@/components/dominio/protocolo-retorno";
+import { visivelNaListagem } from "@/lib/periodos-filtro";
 import { construirEtapasStepper } from "@/components/dominio/modulo-etapas";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { useSessaoStore } from "@/lib/store/sessao";
@@ -65,6 +68,7 @@ export default function Acam212Page() {
 
   const [filtroEstado, setFiltroEstado] = useState<EstadoPeriodo | "todos">("todos");
   const [apenasAtrasados, setApenasAtrasados] = useState(false);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
 
   const modulo = buscarModulo("acam212");
@@ -78,11 +82,16 @@ export default function Acam212Page() {
       .sort((a, b) => (a.competencia < b.competencia ? 1 : -1));
   }, [todosPeriodos, instituicaoAtivaId]);
 
+  const periodosAtivos = periodosModulo.filter((periodo) => periodo.estado !== "arquivado");
+  const totalArquivadosOcultos =
+    filtroEstado === "arquivado" ? 0 : periodosModulo.length - periodosAtivos.length;
+
   const periodosFiltrados = periodosModulo
+    .filter((periodo) => visivelNaListagem(periodo.estado, filtroEstado, mostrarArquivados))
     .filter((periodo) => (filtroEstado === "todos" ? true : periodo.estado === filtroEstado))
     .filter((periodo) => (apenasAtrasados ? calcularPeriodoDerivado(periodo).atrasado : true));
 
-  const periodoCorrente = periodosModulo[0];
+  const periodoCorrente = periodosAtivos[0];
   const periodoSelecionado = periodosModulo.find((periodo) => periodo.id === selecionadoId) ?? periodoCorrente;
 
   if (perfilAtivo === "contador") {
@@ -168,6 +177,12 @@ export default function Acam212Page() {
             Apenas atrasados
           </Label>
         </div>
+        <FiltroArquivados
+          id="mostrar-arquivados"
+          marcado={mostrarArquivados}
+          aoAlterar={setMostrarArquivados}
+          totalOcultos={totalArquivadosOcultos}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -264,7 +279,7 @@ function TabelaDadosCompetencias({
       cabecalho: "Protocolo BCB",
       renderizar: (periodo) => {
         const protocolo = periodo.protocoloId ? protocolos[periodo.protocoloId] : undefined;
-        return protocolo ? <span className="font-mono text-xs">{protocolo.numeroProtocolo}</span> : "—";
+        return <ProtocoloComRetorno periodo={periodo} protocolo={protocolo} />;
       },
     },
     {

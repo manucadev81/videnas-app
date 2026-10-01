@@ -157,7 +157,7 @@ export const TEXTOS_AJUDA = {
     titulo: "Retorno aceito com ressalvas",
     pergunta: "O que significa o status Retorno aceito com ressalvas?",
     descricao:
-      "O órgão destinatário aceitou o arquivo, mas registrou ressalvas na mensagem de retorno. O próximo passo depende de definição normativa pendente.",
+      "O órgão destinatário aceitou o arquivo, mas registrou ressalvas na mensagem de retorno. Há dois caminhos: arquivar o período, mantendo a ressalva no dossiê, ou reabri-lo para correção.",
   },
   "estado.retorno_rejeitado": {
     titulo: "Retorno rejeitado",

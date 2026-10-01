@@ -3,14 +3,18 @@ import type {
   CanalEnvioBcb,
   ContadorStatus,
   EtapaId,
+  Excecao,
   ModuloId,
   PeriodoDerivado,
   PeriodoObrigacao,
   ProtocoloBCB,
+  SituacaoRetornoBcb,
   ValidacaoItem,
   ValidacaoResultado,
 } from "@/lib/tipos";
 import { formatarTamanhoArquivo } from "@/lib/formatadores";
+import { montarIdentificadorLacre } from "@/lib/evidencias/lacre";
+import { calcularRetencaoAte, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
 import { gerarHashDeterministico } from "@/lib/mock/hash";
 import { buscarModulo } from "@/lib/mock/modulos";
 
@@ -2725,7 +2729,15 @@ interface EntradaDemoR1 {
   moduloId: ModuloId;
   competencia: string;
   competenciaRotulo: string;
-  estado: "liberado" | "devolvido_diretor" | "em_comite_qualidade" | "aguardando_retorno" | "arquivado";
+  estado:
+    | "liberado"
+    | "devolvido_diretor"
+    | "em_comite_qualidade"
+    | "aguardando_retorno"
+    | "retorno_aceito"
+    | "retorno_com_ressalvas"
+    | "retorno_rejeitado"
+    | "arquivado";
   quantidadeRegistros: number;
   tamanhoBytes: number;
   geradoEm: string;
@@ -2733,9 +2745,32 @@ interface EntradaDemoR1 {
   aprovadoEm?: string;
   entregueEm?: string;
   arquivadoEm?: string;
+  dataRetorno?: string;
   negacoes?: { motivo: string; ocorridoEm: string }[];
   protocolo?: { numeroProtocolo: string; canalEnvio: CanalEnvioBcb; dataHoraEnvio: string };
 }
+
+export const excecoesDemoRetorno: Excecao[] = [];
+
+const SITUACAO_RETORNO_POR_ESTADO: Partial<Record<EntradaDemoR1["estado"], SituacaoRetornoBcb>> = {
+  aguardando_retorno: "aguardando",
+  retorno_aceito: "aceito",
+  retorno_com_ressalvas: "aceito_com_ressalvas",
+  retorno_rejeitado: "rejeitado",
+  arquivado: "aceito",
+};
+
+const CODIGO_RETORNO_DEMO: Record<Exclude<SituacaoRetornoBcb, "aguardando">, string> = {
+  aceito: "RET-0000",
+  aceito_com_ressalvas: "RET-0101",
+  rejeitado: "RET-0412",
+};
+
+const MENSAGEM_RETORNO_DEMO: Record<Exclude<SituacaoRetornoBcb, "aguardando">, string> = {
+  aceito: "Documento processado com sucesso.",
+  aceito_com_ressalvas: "Documento aceito com ressalva: campo complementar preenchido fora do padrão recomendado.",
+  rejeitado: "Divergência entre o total consolidado informado e a soma dos registros da competência.",
+};
 
 const USUARIO_EXECUTOR_DEMO = "usr-tomoe";
 const USUARIO_VALIDADOR_DEMO = "usr-clarice";
@@ -2767,9 +2802,19 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
   });
 
   let protocoloId: string | null = null;
+  let arquivamentoLacreId: string | null = null;
+  const excecaoIds: string[] = [];
+  const situacaoRetorno: SituacaoRetornoBcb | null = entrada.protocolo
+    ? SITUACAO_RETORNO_POR_ESTADO[entrada.estado] ?? "aguardando"
+    : null;
   if (entrada.protocolo) {
     protocoloId = `prot-${entrada.id.slice(4)}`;
-    const situacaoRetorno = entrada.estado === "arquivado" ? "aceito" : "aguardando";
+    const situacaoFinal = situacaoRetorno === "aguardando" ? null : situacaoRetorno;
+    const retornado = situacaoFinal !== null;
+    const rotuloArtefato = rotuloRetornoDoModulo(entrada.moduloId);
+    const comAnexo = retornado && entrada.moduloId === "acam212";
+    const dataRetorno = entrada.dataRetorno ?? entrada.protocolo.dataHoraEnvio;
+    const sufixo = entrada.competencia.replace("-", "");
     protocolos.push({
       id: protocoloId,
       periodoId: entrada.id,
@@ -2778,12 +2823,57 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
       canalEnvio: entrada.protocolo.canalEnvio,
       registradoPorUsuarioId: USUARIO_DIRETOR_DEMO,
       reciboHash: gerarHashDeterministico(`recibo-${protocoloId}`),
-      situacaoRetorno,
-      codigoRetorno: situacaoRetorno === "aceito" ? "RET-0000" : null,
-      mensagemRetorno: situacaoRetorno === "aceito" ? "Documento processado com sucesso." : null,
-      dataRetorno: situacaoRetorno === "aceito" ? entrada.protocolo.dataHoraEnvio : null,
+      situacaoRetorno: situacaoRetorno ?? "aguardando",
+      codigoRetorno: situacaoFinal ? CODIGO_RETORNO_DEMO[situacaoFinal] : null,
+      mensagemRetorno: situacaoFinal ? MENSAGEM_RETORNO_DEMO[situacaoFinal] : null,
+      dataRetorno: retornado ? dataRetorno : null,
       observacao: null,
+      retornoRegulador: retornado
+        ? {
+            rotuloArtefato,
+            identificador: `${rotuloArtefato.replace(/\W/g, "")}-${sufixo}-0001`,
+            dataInformada: dataRetorno.slice(0, 10),
+            anexoNome: comAnexo ? `ACAM213_${sufixo}_retorno.xml` : null,
+            anexoTamanhoBytes: comAnexo ? 3_412 : null,
+            anexoHash: comAnexo ? gerarHashDeterministico(`anexo-${protocoloId}`) : null,
+            anexoLacreId: comAnexo
+              ? montarIdentificadorLacre("entrada", entrada.moduloId, entrada.competencia, 1)
+              : null,
+            reciboLacreId: montarIdentificadorLacre(
+              "entrada",
+              entrada.moduloId,
+              entrada.competencia,
+              comAnexo ? 2 : 1
+            ),
+          }
+        : null,
     });
+    if (entrada.estado === "retorno_rejeitado") {
+      const excecaoId = `exc-${entrada.id.slice(4)}-ret`;
+      excecaoIds.push(excecaoId);
+      excecoesDemoRetorno.push({
+        id: excecaoId,
+        periodoId: entrada.id,
+        instituicaoId: entrada.instituicaoId,
+        moduloId: entrada.moduloId,
+        origem: "retorno_bcb",
+        codigo: CODIGO_RETORNO_DEMO.rejeitado,
+        severidade: "bloqueante",
+        titulo: `Retorno rejeitado (${rotuloArtefato})`,
+        descricao: MENSAGEM_RETORNO_DEMO.rejeitado,
+        abertaEm: dataRetorno,
+        abertaPorUsuarioId: USUARIO_VALIDADOR_DEMO,
+        responsavelAtualPerfil: "executor",
+        status: "aberta",
+        justificativa: null,
+        tratadaPorUsuarioId: null,
+        tratadaEm: null,
+        registroRefId: protocoloId,
+      });
+    }
+  }
+  if (entrada.estado === "arquivado") {
+    arquivamentoLacreId = montarIdentificadorLacre("saida", entrada.moduloId, entrada.competencia, 2);
   }
 
   return {
@@ -2813,7 +2903,7 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
     arquivoIds: [arquivoId],
     validacaoId: null,
     protocoloId,
-    excecaoIds: [],
+    excecaoIds,
     totaisResumo: { ...TOTAIS_INICIAIS_DEMO[entrada.moduloId] },
     geradoPorUsuarioId: USUARIO_EXECUTOR_DEMO,
     geradoEm: entrada.geradoEm,
@@ -2834,10 +2924,13 @@ function construirPeriodoDemoR1(entrada: EntradaDemoR1): PeriodoObrigacao {
     emComiteDesde: entrada.estado === "em_comite_qualidade" ? entrada.liberadoEm : null,
     emitidoFiscalEm: null,
     transmitidoEm: entrada.protocolo ? entrada.protocolo.dataHoraEnvio : null,
-    retornoSituacao: entrada.estado === "arquivado" ? "aceito" : null,
+    retornoSituacao: situacaoRetorno === "aguardando" ? null : situacaoRetorno,
+    retornoRegistradoPorUsuarioId:
+      situacaoRetorno && situacaoRetorno !== "aguardando" ? USUARIO_VALIDADOR_DEMO : null,
     arquivadoEm: entrada.arquivadoEm ?? null,
-    arquivadoPorUsuarioId: entrada.arquivadoEm ? USUARIO_DIRETOR_DEMO : null,
-    retencaoAte: null,
+    arquivadoPorUsuarioId: entrada.arquivadoEm ? "usr-igor" : null,
+    retencaoAte: entrada.arquivadoEm ? calcularRetencaoAte(entrada.arquivadoEm) : null,
+    arquivamentoLacreId,
   };
 }
 
@@ -2919,6 +3012,7 @@ for (const moduloId of MODULOS_DEMO_R1) {
       aprovadoEm: "2025-11-04T09:00:00-03:00",
       entregueEm: "2025-11-04T15:00:00-03:00",
       arquivadoEm: "2025-11-20T10:00:00-03:00",
+      dataRetorno: "2025-11-06T10:00:00-03:00",
       protocolo: {
         numeroProtocolo: `DEMO-${slug.toUpperCase()}-202510`,
         canalEnvio: moduloId === "fiscal" ? "outro" : "sisbacen",
@@ -2926,6 +3020,93 @@ for (const moduloId of MODULOS_DEMO_R1) {
       },
     })
   );
+
+  const variantesR2: {
+    sufixo: string;
+    estado: "retorno_aceito" | "retorno_com_ressalvas" | "retorno_rejeitado";
+    competencia: string;
+    rotulo: string;
+    geradoEm: string;
+    liberadoEm: string;
+    aprovadoEm: string;
+    entregueEm: string;
+    dataRetorno: string;
+    registros: number;
+  }[] = [
+    {
+      sufixo: "r2aceito",
+      estado: "retorno_aceito",
+      competencia: "2025-08",
+      rotulo: "Agosto/2025 (demo R2)",
+      geradoEm: "2025-09-03T09:00:00-03:00",
+      liberadoEm: "2025-09-03T14:00:00-03:00",
+      aprovadoEm: "2025-09-04T09:00:00-03:00",
+      entregueEm: "2025-09-04T15:00:00-03:00",
+      dataRetorno: "2025-09-06T10:00:00-03:00",
+      registros: 126,
+    },
+    {
+      sufixo: "r2ressalvas",
+      estado: "retorno_com_ressalvas",
+      competencia: "2025-07",
+      rotulo: "Julho/2025 (demo R2)",
+      geradoEm: "2025-08-04T09:00:00-03:00",
+      liberadoEm: "2025-08-04T14:00:00-03:00",
+      aprovadoEm: "2025-08-05T09:00:00-03:00",
+      entregueEm: "2025-08-05T15:00:00-03:00",
+      dataRetorno: "2025-08-07T10:00:00-03:00",
+      registros: 122,
+    },
+    {
+      sufixo: "r2ressalvasb",
+      estado: "retorno_com_ressalvas",
+      competencia: "2025-05",
+      rotulo: "Maio/2025 (demo R2, segundo caso)",
+      geradoEm: "2025-06-03T09:00:00-03:00",
+      liberadoEm: "2025-06-03T14:00:00-03:00",
+      aprovadoEm: "2025-06-04T09:00:00-03:00",
+      entregueEm: "2025-06-04T15:00:00-03:00",
+      dataRetorno: "2025-06-06T10:00:00-03:00",
+      registros: 117,
+    },
+    {
+      sufixo: "r2rejeitado",
+      estado: "retorno_rejeitado",
+      competencia: "2025-06",
+      rotulo: "Junho/2025 (demo R2)",
+      geradoEm: "2025-07-03T09:00:00-03:00",
+      liberadoEm: "2025-07-03T14:00:00-03:00",
+      aprovadoEm: "2025-07-04T09:00:00-03:00",
+      entregueEm: "2025-07-04T15:00:00-03:00",
+      dataRetorno: "2025-07-07T10:00:00-03:00",
+      registros: 119,
+    },
+  ];
+
+  for (const variante of variantesR2) {
+    periodos.push(
+      construirPeriodoDemoR1({
+        id: `per-meridian-${slug}-${variante.sufixo}`,
+        instituicaoId: "inst-meridian",
+        moduloId,
+        competencia: variante.competencia,
+        competenciaRotulo: variante.rotulo,
+        estado: variante.estado,
+        quantidadeRegistros: variante.registros,
+        tamanhoBytes: variante.registros * 1_950,
+        geradoEm: variante.geradoEm,
+        liberadoEm: variante.liberadoEm,
+        aprovadoEm: variante.aprovadoEm,
+        entregueEm: variante.entregueEm,
+        dataRetorno: variante.dataRetorno,
+        protocolo: {
+          numeroProtocolo: `DEMO-${slug.toUpperCase()}-${variante.competencia.replace("-", "")}`,
+          canalEnvio: moduloId === "fiscal" ? "outro" : "pstaw10",
+          dataHoraEnvio: variante.entregueEm,
+        },
+      })
+    );
+  }
 }
 
 periodos.push(
@@ -2997,6 +3178,16 @@ function diferencaEmDias(dataIsoA: string, dataIsoB: string): number {
     Number(dataIsoB.slice(8, 10))
   );
   return Math.round((dataA - dataB) / umDiaEmMs);
+}
+
+export function diasDesdeTransmissao(
+  periodo: Pick<PeriodoObrigacao, "transmitidoEm">,
+  hojeIso: string = HOJE_ISO
+): number | null {
+  if (!periodo.transmitidoEm) {
+    return null;
+  }
+  return Math.max(0, diferencaEmDias(hojeIso, periodo.transmitidoEm.slice(0, 10)));
 }
 
 const ORDEM_ETAPAS: EtapaId[] = ["ingestao", "geracao", "contador", "validacao", "auditoria", "entrega"];

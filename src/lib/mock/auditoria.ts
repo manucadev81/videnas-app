@@ -3,7 +3,7 @@ import { arquivos, periodos, protocolos, validacoes } from "@/lib/mock/periodos"
 import { excecoes } from "@/lib/mock/excecoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 
-const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
+export const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   PERIODO_CRIADO: "Período criado",
   INGESTAO_CONCLUIDA: "Ingestão concluída",
   INGESTAO_COMPLEMENTAR: "Ingestão complementar",
@@ -300,6 +300,10 @@ for (const protocolo of protocolos) {
             codigoRetorno: protocolo.codigoRetorno,
             mensagemRetorno: protocolo.mensagemRetorno,
             resultado: protocolo.situacaoRetorno,
+            artefatoRetorno: protocolo.retornoRegulador?.rotuloArtefato ?? null,
+            identificadorRetorno: protocolo.retornoRegulador?.identificador ?? null,
+            anexoLacreId: protocolo.retornoRegulador?.anexoLacreId ?? null,
+            reciboLacreId: protocolo.retornoRegulador?.reciboLacreId ?? null,
           },
         })
       );
@@ -339,8 +343,9 @@ for (const periodo of periodos) {
         competencia: periodo.competencia,
         tipo: "PERIODO_ARQUIVADO",
         usuarioId: periodo.arquivadoPorUsuarioId,
-        referencia: null,
+        referencia: periodo.arquivamentoLacreId ?? null,
         payload: {
+          lacreArquivamentoId: periodo.arquivamentoLacreId ?? null,
           estadoAnterior: periodo.retornoSituacao === "aceito_com_ressalvas" ? "retorno_com_ressalvas" : "retorno_aceito",
           estadoNovo: "arquivado",
           retencaoAte: periodo.retencaoAte,

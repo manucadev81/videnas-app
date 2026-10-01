@@ -15,6 +15,7 @@ import type {
   PerfilId,
   PeriodoObrigacao,
   ProtocoloBCB,
+  RetornoRegulador,
   TipoEventoAuditoria,
   ValidacaoItem,
   ValidacaoResultado,
@@ -38,6 +39,7 @@ import {
   podeExecutar as avaliarAcao,
   type AvaliacaoAcao,
 } from "@/lib/permissoes";
+import { calcularRetencaoAte, configuracaoFluxo, rotuloRetornoDoModulo } from "@/lib/mock/configuracao-fluxo";
 
 export interface AutorAcao {
   usuarioId: string;
@@ -47,6 +49,40 @@ export interface AutorAcao {
 export interface ResultadoAcao {
   sucesso: boolean;
   motivo?: string;
+}
+
+export interface DadosRetornoRegulador {
+  identificador?: string | null;
+  dataInformada?: string | null;
+  anexoNome?: string | null;
+  anexoTamanhoBytes?: number | null;
+  anexoHash?: string | null;
+  anexoLacreId?: string | null;
+  reciboLacreId?: string | null;
+  reciboHash?: string | null;
+}
+
+export interface DadosArquivamento {
+  lacreId: string;
+  hashDossie: string;
+  arquivadoEm: string;
+}
+
+export function validarEntradaRetorno(
+  situacao: "aceito" | "aceito_com_ressalvas" | "rejeitado",
+  codigoRetorno: string,
+  mensagemRetorno: string
+): ResultadoAcao {
+  if (!codigoRetorno.trim()) {
+    return { sucesso: false, motivo: "Informe o código de retorno recebido." };
+  }
+  if (!mensagemRetorno.trim()) {
+    return { sucesso: false, motivo: "Descreva a mensagem de retorno recebida." };
+  }
+  if (situacao === "aceito_com_ressalvas" && mensagemRetorno.trim().length < 10) {
+    return { sucesso: false, motivo: "Descreva a ressalva recebida com pelo menos 10 caracteres." };
+  }
+  return { sucesso: true };
 }
 
 function paraRecord<T>(lista: T[], chave: (item: T) => string): Record<string, T> {
@@ -72,14 +108,16 @@ function estadoInicial() {
 let contadorEventoRuntime = 0;
 let contadorExcecaoRuntime = 0;
 
+const PREFIXO_SESSAO_RUNTIME = Date.now().toString(36);
+
 function novoEventoId(): string {
   contadorEventoRuntime += 1;
-  return `evt-rt-${contadorEventoRuntime.toString(16).padStart(6, "0")}`;
+  return `evt-rt-${PREFIXO_SESSAO_RUNTIME}-${contadorEventoRuntime.toString(16).padStart(6, "0")}`;
 }
 
 function novoIdExcecao(): string {
   contadorExcecaoRuntime += 1;
-  return `exc-rt-${contadorExcecaoRuntime.toString(16).padStart(4, "0")}`;
+  return `exc-rt-${PREFIXO_SESSAO_RUNTIME}-${contadorExcecaoRuntime.toString(16).padStart(4, "0")}`;
 }
 
 interface EscopoEvento {
@@ -258,8 +296,11 @@ export interface EstadoPeriodosStore {
     autor: AutorAcao,
     situacao: "aceito" | "aceito_com_ressalvas" | "rejeitado",
     codigoRetorno: string,
-    mensagemRetorno: string
+    mensagemRetorno: string,
+    dados?: DadosRetornoRegulador
   ) => ResultadoAcao;
+
+  arquivar: (periodoId: string, autor: AutorAcao, dados: DadosArquivamento) => ResultadoAcao;
 
   reabrir: (periodoId: string, autor: AutorAcao, motivo: string) => ResultadoAcao;
 
@@ -303,7 +344,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 1;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 4;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
@@ -314,6 +355,9 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
   ingerirDados: (periodoId, autor, lote) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    if (periodo.estado === "arquivado") {
+      return { sucesso: false, motivo: "Período arquivado: somente leitura." };
+    }
 
     const complementar = periodo.lotes.length > 0;
     const novoLote = {
@@ -803,7 +847,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     return { sucesso: true };
   },
 
-  registrarRetorno: (periodoId, autor, situacao, codigoRetorno, mensagemRetorno) => {
+  registrarRetorno: (periodoId, autor, situacao, codigoRetorno, mensagemRetorno, dados) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
     if (periodo.estado !== "aguardando_retorno") {
@@ -812,23 +856,28 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     if (!periodo.protocoloId) return { sucesso: false, motivo: "Período sem protocolo registrado." };
     const protocolo = get().protocolos[periodo.protocoloId];
     if (!protocolo) return { sucesso: false, motivo: "Protocolo não encontrado." };
-    if (!codigoRetorno.trim()) {
-      return { sucesso: false, motivo: "Informe o código de retorno recebido." };
-    }
-    if (!mensagemRetorno.trim()) {
-      return { sucesso: false, motivo: "Descreva a mensagem de retorno recebida." };
-    }
-    if (situacao === "aceito_com_ressalvas" && mensagemRetorno.trim().length < 10) {
-      return { sucesso: false, motivo: "Descreva a ressalva recebida com pelo menos 10 caracteres." };
-    }
+    const validacaoEntrada = validarEntradaRetorno(situacao, codigoRetorno, mensagemRetorno);
+    if (!validacaoEntrada.sucesso) return validacaoEntrada;
 
     const agora = new Date().toISOString();
+    const rotuloArtefato = rotuloRetornoDoModulo(periodo.moduloId);
+    const retornoRegulador: RetornoRegulador = {
+      rotuloArtefato,
+      identificador: dados?.identificador?.trim() || null,
+      dataInformada: dados?.dataInformada || null,
+      anexoNome: dados?.anexoNome ?? null,
+      anexoTamanhoBytes: dados?.anexoTamanhoBytes ?? null,
+      anexoHash: dados?.anexoHash ?? null,
+      anexoLacreId: dados?.anexoLacreId ?? null,
+      reciboLacreId: dados?.reciboLacreId ?? null,
+    };
     const protocoloAtualizado: ProtocoloBCB = {
       ...protocolo,
       situacaoRetorno: situacao,
       codigoRetorno,
       mensagemRetorno,
       dataRetorno: agora,
+      retornoRegulador,
     };
 
     const novoEstado: EstadoPeriodo =
@@ -838,10 +887,35 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
           ? "retorno_com_ressalvas"
           : "retorno_rejeitado";
 
+    const excecaoRetorno: Excecao | null =
+      situacao === "rejeitado"
+        ? {
+            id: novoIdExcecao(),
+            periodoId,
+            instituicaoId: periodo.instituicaoId,
+            moduloId: periodo.moduloId,
+            origem: "retorno_bcb",
+            codigo: codigoRetorno.trim(),
+            severidade: "bloqueante",
+            titulo: `Retorno rejeitado (${rotuloArtefato})`,
+            descricao: mensagemRetorno.trim(),
+            abertaEm: agora,
+            abertaPorUsuarioId: autor.usuarioId,
+            responsavelAtualPerfil: "executor",
+            status: "aberta",
+            justificativa: null,
+            tratadaPorUsuarioId: null,
+            tratadaEm: null,
+            registroRefId: protocolo.id,
+          }
+        : null;
+
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
       estado: novoEstado,
       retornoSituacao: situacao,
+      retornoRegistradoPorUsuarioId: autor.usuarioId,
+      excecaoIds: excecaoRetorno ? [...periodo.excecaoIds, excecaoRetorno.id] : periodo.excecaoIds,
     };
 
     const tipoEvento: TipoEventoAuditoria =
@@ -857,18 +931,88 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
           ? "Retorno aceito com ressalvas"
           : "Retorno rejeitado";
 
+    const arquivoCorrente = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+
     const evento = construirEvento(autor, periodoAtualizado, tipoEvento, rotuloTipo, protocolo.numeroProtocolo, {
       protocoloBcb: protocolo.numeroProtocolo,
+      artefatoRetorno: rotuloArtefato,
+      identificadorRetorno: retornoRegulador.identificador,
+      dataRetornoInformada: retornoRegulador.dataInformada,
       codigoRetorno,
       mensagemRetorno,
       resultado: situacao,
+      hashSha256: arquivoCorrente?.hashSha256 ?? null,
+      anexoNome: retornoRegulador.anexoNome,
+      anexoHash: retornoRegulador.anexoHash,
+      anexoLacreId: retornoRegulador.anexoLacreId,
+      reciboLacreId: retornoRegulador.reciboLacreId,
+      reciboHash: dados?.reciboHash ?? null,
+      excecaoId: excecaoRetorno?.id ?? null,
       estadoAnterior: periodo.estado,
       estadoNovo: novoEstado,
     });
 
+    const eventoExcecao = excecaoRetorno
+      ? construirEvento(autor, periodoAtualizado, "EXCECAO_ABERTA", "Exceção aberta", excecaoRetorno.codigo, {
+          codigo: excecaoRetorno.codigo,
+          origem: "retorno_bcb",
+          severidade: excecaoRetorno.severidade,
+          protocoloBcb: protocolo.numeroProtocolo,
+        })
+      : null;
+
     set((estado) => ({
       periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
       protocolos: { ...estado.protocolos, [protocolo.id]: protocoloAtualizado },
+      excecoes: excecaoRetorno ? { ...estado.excecoes, [excecaoRetorno.id]: excecaoRetorno } : estado.excecoes,
+      eventos: eventoExcecao ? [...estado.eventos, evento, eventoExcecao] : [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
+  arquivar: (periodoId, autor, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "arquivar", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+
+    const protocolo = periodo.protocoloId ? get().protocolos[periodo.protocoloId] : undefined;
+    const arquivoCorrente = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const retencaoAte = calcularRetencaoAte(dados.arquivadoEm);
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "arquivado",
+      arquivadoEm: dados.arquivadoEm,
+      arquivadoPorUsuarioId: autor.usuarioId,
+      arquivamentoLacreId: dados.lacreId,
+      retencaoAte,
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "PERIODO_ARQUIVADO",
+      "Período arquivado",
+      dados.hashDossie,
+      {
+        lacreArquivamentoId: dados.lacreId,
+        hashDossie: dados.hashDossie,
+        hashSha256: arquivoCorrente?.hashSha256 ?? null,
+        protocoloBcb: protocolo?.numeroProtocolo ?? null,
+        resultadoRetorno: protocolo?.situacaoRetorno ?? null,
+        retencaoAte,
+        estadoAnterior: periodo.estado,
+        estadoNovo: "arquivado",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
       eventos: [...estado.eventos, evento],
     }));
 
@@ -926,14 +1070,28 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
   reabrir: (periodoId, autor, motivo) => {
     const periodo = get().periodos[periodoId];
     if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
-    if (!["retorno_rejeitado", "liberado", "aprovado"].includes(periodo.estado)) {
+    if (
+      !["retorno_rejeitado", "retorno_com_ressalvas", "liberado", "aprovado"].includes(periodo.estado)
+    ) {
       return { sucesso: false, motivo: "Ação indisponível no estado atual do período." };
+    }
+    if (
+      periodo.estado === "retorno_com_ressalvas" &&
+      !configuracaoFluxo.caminhosAposRessalvas?.includes("reabrir")
+    ) {
+      return {
+        sucesso: false,
+        motivo: "A reabertura após retorno com ressalvas não está habilitada na configuração do fluxo.",
+      };
     }
     if (!motivo || motivo.trim().length < 10) {
       return { sucesso: false, motivo: "Descreva o motivo da reabertura." };
     }
 
     const estadoAnterior = periodo.estado;
+    const agora = new Date().toISOString();
+    const reabreDoRetorno =
+      estadoAnterior === "retorno_rejeitado" || estadoAnterior === "retorno_com_ressalvas";
     const periodoAtualizado: PeriodoObrigacao = {
       ...periodo,
       estado: "dados_ingeridos",
@@ -942,18 +1100,43 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       aprovadoPorUsuarioId: null,
       aprovadoEm: null,
       entregueEm: null,
+      transmitidoEm: reabreDoRetorno ? null : periodo.transmitidoEm,
+      retornoSituacao: reabreDoRetorno ? null : periodo.retornoSituacao,
     };
+
+    const excecoesDoRetorno = reabreDoRetorno
+      ? Object.values(get().excecoes).filter(
+          (excecao) =>
+            excecao.periodoId === periodoId &&
+            excecao.origem === "retorno_bcb" &&
+            (excecao.status === "aberta" || excecao.status === "em_tratamento")
+        )
+      : [];
 
     const evento = construirEvento(autor, periodoAtualizado, "PERIODO_REABERTO", "Período reaberto", null, {
       estadoAnterior,
       motivo,
       usuarioSolicitante: autor.usuarioId,
+      excecoesDoRetornoEncerradas: excecoesDoRetorno.map((excecao) => excecao.id),
     });
 
-    set((estado) => ({
-      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
-      eventos: [...estado.eventos, evento],
-    }));
+    set((estado) => {
+      const excecoesAtualizadas = { ...estado.excecoes };
+      for (const excecao of excecoesDoRetorno) {
+        excecoesAtualizadas[excecao.id] = {
+          ...excecao,
+          status: "tratada",
+          justificativa: `Período reaberto para correção: ${motivo.trim()}`,
+          tratadaPorUsuarioId: autor.usuarioId,
+          tratadaEm: agora,
+        };
+      }
+      return {
+        periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+        excecoes: excecoesAtualizadas,
+        eventos: [...estado.eventos, evento],
+      };
+    });
 
     return { sucesso: true };
   },
@@ -962,6 +1145,9 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const excecao = get().excecoes[excecaoId];
     const periodo = get().periodos[periodoId];
     if (!excecao || !periodo) return { sucesso: false, motivo: "Exceção ou período não encontrado." };
+    if (periodo.estado === "arquivado") {
+      return { sucesso: false, motivo: "Período arquivado: somente leitura." };
+    }
 
     const agora = new Date().toISOString();
     const excecaoAtualizada: Excecao = {

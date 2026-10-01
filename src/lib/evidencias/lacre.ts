@@ -1,4 +1,10 @@
-import type { ModuloId, PerfilId, RegistroLacre, SentidoLacre } from "@/lib/tipos";
+import type {
+  ModuloId,
+  PerfilId,
+  RegistroLacre,
+  SentidoLacre,
+  TipoArtefatoLacre,
+} from "@/lib/tipos";
 import {
   ALGORITMO_HASH,
   AVISO_SIMULACAO_ENVELOPE,
@@ -10,6 +16,31 @@ export const ROTULOS_SENTIDO_LACRE: Record<SentidoLacre, string> = {
   entrada: "Entrada — dado recebido do cliente",
   saida: "Saída — arquivo devolvido pela Videnas",
 };
+
+export const ROTULOS_TIPO_ARTEFATO: Record<TipoArtefatoLacre, string> = {
+  insumo: "Insumo do cliente",
+  arquivo_entregue: "Arquivo entregue",
+  anexo_retorno: "Anexo do retorno",
+  recibo_retorno: "Recibo do retorno",
+  dossie_arquivamento: "Dossiê de arquivamento",
+};
+
+export const TIPOS_ARTEFATO: TipoArtefatoLacre[] = [
+  "insumo",
+  "arquivo_entregue",
+  "anexo_retorno",
+  "recibo_retorno",
+  "dossie_arquivamento",
+];
+
+export function tipoArtefatoDoLacre(
+  lacre: Pick<RegistroLacre, "sentido" | "tipoArtefato">
+): TipoArtefatoLacre {
+  if (lacre.tipoArtefato) {
+    return lacre.tipoArtefato;
+  }
+  return lacre.sentido === "entrada" ? "insumo" : "arquivo_entregue";
+}
 
 const PREFIXO_SENTIDO: Record<SentidoLacre, string> = {
   entrada: "ENT",
@@ -41,6 +72,7 @@ export interface EntradaConstrucaoLacre {
   hashAnterior: string | null;
   sequencia?: number;
   seladoEm?: string;
+  tipoArtefato?: TipoArtefatoLacre;
 }
 
 export interface ChaveCadeia {
@@ -160,6 +192,7 @@ export async function construirLacre(entrada: EntradaConstrucaoLacre): Promise<R
     vetorInicializacao: envelope.vetorInicializacao,
     identificadorChave: envelope.identificadorChave,
     resumoConteudo: sanitizarResumo(texto),
+    ...(entrada.tipoArtefato ? { tipoArtefato: entrada.tipoArtefato } : {}),
   };
 }
 
@@ -188,6 +221,8 @@ export function montarComprovante(
       identificador: lacre.id,
       sentido: lacre.sentido,
       sentidoDescricao: ROTULOS_SENTIDO_LACRE[lacre.sentido],
+      tipoArtefato: tipoArtefatoDoLacre(lacre),
+      tipoArtefatoDescricao: ROTULOS_TIPO_ARTEFATO[tipoArtefatoDoLacre(lacre)],
       seladoEm: lacre.seladoEm,
       origemNome: lacre.origemNome,
       tamanhoBytes: lacre.tamanhoBytes,

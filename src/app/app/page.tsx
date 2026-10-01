@@ -89,6 +89,12 @@ function rotuloAcaoContextual(perfil: string | null, periodo: PeriodoObrigacao):
   if (perfil === "contador" && periodo.estado === "aguardando_contador") {
     return "Confirmar enquadramento";
   }
+  if (perfil === "validador" && periodo.estado === "aguardando_retorno") {
+    return "Registrar retorno";
+  }
+  if (perfil === "executor" && periodo.estado === "retorno_rejeitado") {
+    return "Reabrir para correção";
+  }
   return "Abrir período";
 }
 
@@ -176,9 +182,13 @@ export default function DashboardPage() {
             return false;
           }
           if (perfilAtivo === "executor") {
-            return ["dados_ingeridos", "gerado", "com_excecoes"].includes(periodo.estado);
+            return ["dados_ingeridos", "gerado", "com_excecoes", "retorno_rejeitado"].includes(
+              periodo.estado
+            );
           }
-          return ["em_validacao", "com_excecoes", "validado"].includes(periodo.estado);
+          return ["em_validacao", "com_excecoes", "validado", "aguardando_retorno"].includes(
+            periodo.estado
+          );
         }).length,
       }))
     : [];
