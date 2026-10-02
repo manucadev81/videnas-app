@@ -7,6 +7,7 @@ import type {
   TipoAreaCliente,
 } from "@/lib/tipos";
 import { configuracaoFluxo, type GatilhoNotificacaoArea } from "@/lib/mock/configuracao-fluxo";
+import { listarInstituicoes } from "@/lib/mock/instituicoes";
 
 export const TIPOS_AREA_CLIENTE: TipoAreaCliente[] = ["controles_internos", "custodia", "contabil"];
 
@@ -60,6 +61,16 @@ export function areaVazia(tipo: TipoAreaCliente, instituicaoId: string): AreaCli
     email: "",
     telefone: "",
   };
+}
+
+export function descricaoAreaPorId(areaId: string): string {
+  for (const instituicao of listarInstituicoes()) {
+    const area = (instituicao.areasCliente ?? []).find((item) => item.id === areaId);
+    if (area) {
+      return area.responsavelNome.trim() ? `${area.nome} (${area.responsavelNome})` : area.nome;
+    }
+  }
+  return "";
 }
 
 export function areasParaEdicao(instituicao: Instituicao): AreaCliente[] {

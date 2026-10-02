@@ -35,6 +35,8 @@ export interface ContextoExportacaoTrilha {
   nomeInstituicao: (instituicaoId: string) => string;
   rotuloEstado: (estado: EstadoPeriodo) => string;
   rotuloAcao: (acaoId: AcaoId) => string;
+  nomeUsuario: (usuarioId: string) => string;
+  descricaoArea: (areaId: string) => string;
 }
 
 const ROTULOS_SITUACAO_RETORNO: Record<SituacaoRetornoBcb, string> = {
@@ -56,6 +58,12 @@ export function escaparCelulaCsv(valor: string): string {
 
 function rotularValorBruto(chave: string, valor: string, contexto: ContextoExportacaoTrilha): string {
   const nome = chave.toLowerCase();
+  if (valor.startsWith("usr-")) {
+    return contexto.nomeUsuario(valor);
+  }
+  if (valor.startsWith("area-")) {
+    return contexto.descricaoArea(valor);
+  }
   if (nome.includes("estado")) {
     return contexto.rotuloEstado(valor as EstadoPeriodo) ?? valor;
   }

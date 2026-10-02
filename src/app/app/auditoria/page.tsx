@@ -18,6 +18,7 @@ import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
+import { descricaoAreaPorId } from "@/lib/areas-cliente";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
 import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
@@ -121,6 +122,8 @@ export default function AuditoriaPage() {
         nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
         rotuloEstado: rotuloEstadoPeriodo,
         rotuloAcao: (acaoId) => ROTULOS_ACAO[acaoId],
+        nomeUsuario: (usuarioId) => buscarUsuario(usuarioId)?.nome ?? "",
+        descricaoArea: descricaoAreaPorId,
       });
       baixarCsv(nomeArquivo, conteudo);
       registrarEventoAdministrativo({

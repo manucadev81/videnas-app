@@ -478,7 +478,7 @@ export default function DashboardPage() {
                 <li key={evento.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="font-mono text-xs text-neutral-500">{formatarDataHora(evento.ocorridoEm)}</span>
                   <span className="text-neutral-700">{evento.usuarioNome}</span>
-                  <span className="text-xs text-neutral-500">({evento.perfilId})</span>
+                  <span className="text-xs text-neutral-500">({buscarPerfil(evento.perfilId).rotulo})</span>
                   <span className="text-neutral-600">{evento.rotuloTipo}</span>
                 </li>
               ))}
@@ -826,7 +826,7 @@ function PainelAdmin({
                   {formatarDataHora(evento.ocorridoEm)}
                 </span>
                 <span className="text-neutral-700">{evento.usuarioNome}</span>
-                <span className="text-xs text-neutral-500">({evento.perfilId})</span>
+                <span className="text-xs text-neutral-500">({buscarPerfil(evento.perfilId).rotulo})</span>
                 <span className="text-neutral-600">{evento.rotuloTipo}</span>
               </li>
             ))}

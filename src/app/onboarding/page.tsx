@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -36,6 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BannerPosicionamento } from "@/components/dominio/banner-posicionamento";
 import { useHidratarSessao, useSessaoStore } from "@/lib/store/sessao";
+import { buscarPerfil, podeVerRota } from "@/lib/permissoes";
 import { useHidratarTenants, useTenantsStore } from "@/lib/store/tenants";
 import { useHidratarPeriodos, usePeriodosStore } from "@/lib/store/periodos";
 import { ItemModuloContratado } from "@/components/dominio/item-modulo-contratado";
@@ -196,8 +197,29 @@ export default function OnboardingPage() {
   const hidratado = useHidratarSessao();
   const tenantsHidratados = useHidratarTenants();
   const periodosHidratados = useHidratarPeriodos();
+  const router = useRouter();
+  const autenticado = useSessaoStore((estado) => estado.autenticado);
+  const perfilGuarda = useSessaoStore((estado) => estado.perfilAtivo);
 
-  if (!hidratado || !tenantsHidratados || !periodosHidratados) {
+  const rotaPermitida = Boolean(perfilGuarda && podeVerRota(perfilGuarda, "/onboarding"));
+
+  useEffect(() => {
+    if (!hidratado) {
+      return;
+    }
+
+    if (!autenticado) {
+      router.replace("/login");
+      return;
+    }
+
+    if (perfilGuarda && !podeVerRota(perfilGuarda, "/onboarding")) {
+      toast.error(`Esta área não faz parte do perfil ${buscarPerfil(perfilGuarda).rotuloCompleto}.`);
+      router.replace("/app");
+    }
+  }, [hidratado, autenticado, perfilGuarda, router]);
+
+  if (!hidratado || !tenantsHidratados || !periodosHidratados || !autenticado || !rotaPermitida) {
     return <EsqueletoOnboarding />;
   }
 

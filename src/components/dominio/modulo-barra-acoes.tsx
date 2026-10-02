@@ -74,6 +74,7 @@ import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
 import { MENSAGEM_SEM_VALIDADOR_ELEGIVEL, rotuloUsuarioComNivel, validadorDesignado } from "@/lib/validadores";
 import { buscarUsuario } from "@/lib/mock/usuarios";
+import { descricaoAreaPorId } from "@/lib/areas-cliente";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import {
@@ -369,6 +370,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
         rotuloEstado: rotuloEstadoPeriodo,
         rotuloAcao: (acaoId) => ROTULOS_ACAO[acaoId],
+        nomeUsuario: (id) => buscarUsuario(id)?.nome ?? "",
+        descricaoArea: descricaoAreaPorId,
       });
       baixarCsv(nomeArquivo, conteudo);
       registrarEventoAdministrativo({
