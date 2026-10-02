@@ -18,7 +18,7 @@ import { useSessaoStore } from "@/lib/store/sessao";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { buscarUsuario } from "@/lib/mock/usuarios";
-import { descricaoAreaPorId } from "@/lib/areas-cliente";
+import { resolvedoresReferenciaPadrao, rotularReferencia } from "@/lib/auditoria/referencia";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
 import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
@@ -42,6 +42,11 @@ const ROTULOS_PERFIL: Record<PerfilId, string> = {
   validador: buscarPerfil("validador").rotulo,
   admin: buscarPerfil("admin").rotulo,
 };
+
+function truncarReferencia(referencia: string): string {
+  const rotulada = rotularReferencia(referencia);
+  return rotulada === referencia ? truncarHash(referencia, 6, 6) : rotulada;
+}
 
 export default function AuditoriaPage() {
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
@@ -93,6 +98,7 @@ export default function AuditoriaPage() {
         evento.usuarioNome.toLowerCase().includes(alvo) ||
         evento.rotuloTipo.toLowerCase().includes(alvo) ||
         (evento.referencia ?? "").toLowerCase().includes(alvo) ||
+        (evento.referencia ? rotularReferencia(evento.referencia) : "").toLowerCase().includes(alvo) ||
         (evento.competencia ?? "").toLowerCase().includes(alvo)
       );
     })
@@ -119,11 +125,9 @@ export default function AuditoriaPage() {
         rotulosTipo: ROTULOS_TIPO,
         rotuloPerfil: (perfilId) => ROTULOS_PERFIL[perfilId],
         rotuloModulo: (moduloId) => ROTULOS_MODULO[moduloId],
-        nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
+        ...resolvedoresReferenciaPadrao,
         rotuloEstado: rotuloEstadoPeriodo,
         rotuloAcao: (acaoId) => ROTULOS_ACAO[acaoId],
-        nomeUsuario: (usuarioId) => buscarUsuario(usuarioId)?.nome ?? "",
-        descricaoArea: descricaoAreaPorId,
       });
       baixarCsv(nomeArquivo, conteudo);
       registrarEventoAdministrativo({
@@ -299,7 +303,7 @@ export default function AuditoriaPage() {
                         {evento.lado === "videnas" ? "Videnas" : "Cliente"}
                       </td>
                       <td className="px-4 py-2 font-mono text-xs text-neutral-500">
-                        {evento.referencia ? truncarHash(evento.referencia, 6, 6) : "—"}
+                        {evento.referencia ? truncarReferencia(evento.referencia) : "—"}
                       </td>
                     </tr>
                     {expandida ? (

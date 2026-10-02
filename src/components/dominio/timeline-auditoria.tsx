@@ -4,6 +4,7 @@ import type { EventoAuditoria } from "@/lib/tipos";
 import { formatarDataHora } from "@/lib/formatadores";
 import { buscarPerfil } from "@/lib/permissoes";
 import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
+import { rotularReferencia } from "@/lib/auditoria/referencia";
 
 export interface TimelineAuditoriaProps {
   eventos: EventoAuditoria[];
@@ -43,7 +44,7 @@ export function TimelineAuditoria({ eventos, className }: TimelineAuditoriaProps
               {detalheLegivelDoEvento(evento) ? ` · ${detalheLegivelDoEvento(evento)?.resumo}` : ""}
             </p>
             {evento.referencia ? (
-              <p className="mt-0.5 font-mono text-xs text-neutral-400">Ref.: {evento.referencia}</p>
+              <p className="mt-0.5 font-mono text-xs text-neutral-400">Ref.: {rotularReferencia(evento.referencia)}</p>
             ) : null}
           </div>
         </li>

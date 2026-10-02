@@ -1,5 +1,6 @@
 import type { EstadoPeriodo, EventoAuditoria } from "@/lib/tipos";
 import { formatarData, formatarDataHora, truncarHash } from "@/lib/formatadores";
+import { rotularReferencia } from "@/lib/auditoria/referencia";
 import { rotuloEstadoPeriodo } from "@/components/dominio/badge-status";
 
 export interface DetalheEventoLegivel {
@@ -13,6 +14,10 @@ function numero(valor: unknown): number | null {
 
 function texto(valor: unknown): string | null {
   return typeof valor === "string" && valor.length > 0 ? valor : null;
+}
+
+function rotularUsuarioId(usuarioId: string | null): string {
+  return usuarioId ? rotularReferencia(usuarioId) : "—";
 }
 
 export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLegivel | null {
@@ -115,7 +120,7 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     for (const item of participantes) {
       const registro = item as Record<string, unknown>;
       linhas.push(
-        `${texto(registro.papel) ?? "Participante"}: ${texto(registro.nome) ?? texto(registro.usuarioId) ?? "—"}${
+        `${texto(registro.papel) ?? "Participante"}: ${texto(registro.nome) ?? rotularUsuarioId(texto(registro.usuarioId))}${
           texto(registro.perfilId) ? ` (${texto(registro.perfilId)})` : ""
         }`
       );

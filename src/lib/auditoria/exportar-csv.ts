@@ -7,6 +7,7 @@ import type {
   SituacaoRetornoBcb,
   TipoEventoAuditoria,
 } from "@/lib/tipos";
+import { resolverReferenciaPorPrefixo } from "@/lib/auditoria/referencia";
 
 export const BOM_UTF8 = "﻿";
 
@@ -58,11 +59,9 @@ export function escaparCelulaCsv(valor: string): string {
 
 function rotularValorBruto(chave: string, valor: string, contexto: ContextoExportacaoTrilha): string {
   const nome = chave.toLowerCase();
-  if (valor.startsWith("usr-")) {
-    return contexto.nomeUsuario(valor);
-  }
-  if (valor.startsWith("area-")) {
-    return contexto.descricaoArea(valor);
+  const porPrefixo = resolverReferenciaPorPrefixo(valor, contexto);
+  if (porPrefixo !== null) {
+    return porPrefixo;
   }
   if (nome.includes("estado")) {
     return contexto.rotuloEstado(valor as EstadoPeriodo) ?? valor;
