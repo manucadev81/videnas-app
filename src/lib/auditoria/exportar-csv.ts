@@ -1,4 +1,12 @@
-import type { EventoAuditoria, ModuloId, PerfilId, TipoEventoAuditoria } from "@/lib/tipos";
+import type {
+  AcaoId,
+  EstadoPeriodo,
+  EventoAuditoria,
+  ModuloId,
+  PerfilId,
+  SituacaoRetornoBcb,
+  TipoEventoAuditoria,
+} from "@/lib/tipos";
 
 export const BOM_UTF8 = "﻿";
 
@@ -25,7 +33,16 @@ export interface ContextoExportacaoTrilha {
   rotuloPerfil: (perfilId: PerfilId) => string;
   rotuloModulo: (moduloId: ModuloId) => string;
   nomeInstituicao: (instituicaoId: string) => string;
+  rotuloEstado: (estado: EstadoPeriodo) => string;
+  rotuloAcao: (acaoId: AcaoId) => string;
 }
+
+const ROTULOS_SITUACAO_RETORNO: Record<SituacaoRetornoBcb, string> = {
+  aguardando: "Aguardando retorno",
+  aceito: "Aceito",
+  aceito_com_ressalvas: "Aceito com ressalvas",
+  rejeitado: "Rejeitado",
+};
 
 const INICIO_PERIGOSO = /^[=+\-@\t\r]/;
 
@@ -35,6 +52,55 @@ export function escaparCelulaCsv(valor: string): string {
     return `"${seguro.replace(/"/g, '""')}"`;
   }
   return seguro;
+}
+
+function rotularValorBruto(chave: string, valor: string, contexto: ContextoExportacaoTrilha): string {
+  const nome = chave.toLowerCase();
+  if (nome.includes("estado")) {
+    return contexto.rotuloEstado(valor as EstadoPeriodo) ?? valor;
+  }
+  if (nome.includes("perfil") || nome === "origem") {
+    return contexto.rotuloPerfil(valor as PerfilId) ?? valor;
+  }
+  if (nome.startsWith("acao")) {
+    return contexto.rotuloAcao(valor as AcaoId) ?? valor;
+  }
+  if (nome.startsWith("resultado") || nome.includes("situacao")) {
+    return ROTULOS_SITUACAO_RETORNO[valor as SituacaoRetornoBcb] ?? valor;
+  }
+  if (nome === "moduloid") {
+    return contexto.rotuloModulo(valor as ModuloId) ?? valor;
+  }
+  if (nome === "instituicaoid") {
+    return contexto.nomeInstituicao(valor) || valor;
+  }
+  return valor;
+}
+
+function rotularValor(chave: string, valor: string, contexto: ContextoExportacaoTrilha): string {
+  try {
+    return rotularValorBruto(chave, valor, contexto) || valor;
+  } catch {
+    return valor;
+  }
+}
+
+function rotularEstrutura(chave: string, valor: unknown, contexto: ContextoExportacaoTrilha): unknown {
+  if (typeof valor === "string") {
+    return rotularValor(chave, valor, contexto);
+  }
+  if (Array.isArray(valor)) {
+    return valor.map((item) => rotularEstrutura(chave, item, contexto));
+  }
+  if (valor && typeof valor === "object") {
+    const origem = valor as Record<string, unknown>;
+    const rotulado: Record<string, unknown> = {};
+    for (const subchave of Object.keys(origem)) {
+      rotulado[subchave] = rotularEstrutura(subchave, origem[subchave], contexto);
+    }
+    return rotulado;
+  }
+  return valor;
 }
 
 function valorParaResumo(valor: unknown): string {
@@ -65,10 +131,13 @@ function ordenarChaves(valor: unknown): unknown {
   return valor;
 }
 
-export function resumirPayload(payload: Record<string, unknown>): string {
+export function resumirPayload(
+  payload: Record<string, unknown>,
+  contexto: ContextoExportacaoTrilha
+): string {
   return Object.keys(payload)
     .sort()
-    .map((chave) => `${chave}=${valorParaResumo(payload[chave])}`)
+    .map((chave) => `${chave.replace(/Diretor/g, "Compliance")}=${valorParaResumo(rotularEstrutura(chave, payload[chave], contexto))}`)
     .join("; ");
 }
 
@@ -94,7 +163,7 @@ export function montarLinhaTrilha(evento: EventoAuditoria, contexto: ContextoExp
     evento.competencia ?? "",
     evento.referencia ?? "",
     hashDoEvento(evento),
-    resumirPayload(evento.payload),
+    resumirPayload(evento.payload, contexto),
   ];
 }
 

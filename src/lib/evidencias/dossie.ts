@@ -18,7 +18,13 @@ import { descricaoQuorumComite } from "@/lib/comite";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { buscarUsuario } from "@/lib/mock/usuarios";
-import { limiarNegativas, montarHistoricoNegativas } from "@/lib/negacoes";
+import {
+  cicloDoPeriodo,
+  limiarNegativas,
+  montarHistoricoNegativas,
+  negativasDoCiclo,
+  tipoRemessaDoPeriodo,
+} from "@/lib/negacoes";
 import {
   ROTULO_CANAL_BCB,
   ROTULO_RESPONSAVEL_TRANSMISSAO,
@@ -39,6 +45,16 @@ function nomeDoUsuario(usuarioId: string | null): string | null {
     return null;
   }
   return buscarUsuario(usuarioId)?.nome ?? usuarioId;
+}
+
+function descreverRemessa(periodo: PeriodoObrigacao) {
+  const tipoRemessa = tipoRemessaDoPeriodo(periodo);
+  return {
+    cicloEnvio: cicloDoPeriodo(periodo),
+    tipoRemessa,
+    protocoloSubstituido:
+      tipoRemessa === "S" ? (periodo.substituicoes?.at(-1)?.protocoloSubstituido ?? null) : null,
+  };
 }
 
 function descreverContratoCongelado(periodo: PeriodoObrigacao) {
@@ -71,6 +87,7 @@ export function montarDossieArquivamento(entrada: EntradaDossieArquivamento): st
       competencia: periodo.competencia,
       competenciaRotulo: periodo.competenciaRotulo,
       estadoAoArquivar: periodo.estado,
+      remessa: descreverRemessa(periodo),
     },
     instituicao: {
       identificador: periodo.instituicaoId,
@@ -97,6 +114,7 @@ export function montarDossieArquivamento(entrada: EntradaDossieArquivamento): st
         ]
       : [],
     negacoes: periodo.negacoesAprovacao.map((negacao) => ({
+      cicloEnvio: negacao.cicloEnvio ?? 1,
       origem: negacao.origem ?? "diretor",
       negadoPor: nomeDoUsuario(negacao.usuarioId),
       negadoEm: negacao.ocorridoEm,
@@ -175,6 +193,7 @@ export function montarReciboRetorno(entrada: EntradaReciboRetorno): string {
       dataHoraEnvio: protocolo.dataHoraEnvio,
       canal: protocolo.canalEnvio,
     },
+    remessa: descreverRemessa(periodo),
     retorno: {
       artefato: entrada.rotuloArtefato,
       identificador: entrada.identificador,
@@ -217,6 +236,7 @@ export function montarDossieComite(entrada: EntradaDossieComite): string {
   const instituicao = buscarInstituicao(periodo.instituicaoId);
   const modulo = buscarModulo(periodo.moduloId);
   const historico = montarHistoricoNegativas(periodo.negacoesAprovacao, entrada.buscarArquivo);
+  const cicloAtual = cicloDoPeriodo(periodo);
 
   const documento = {
     documento: "Dossiê de escalonamento ao Comitê de Qualidade — Videnas",
@@ -234,12 +254,17 @@ export function montarDossieComite(entrada: EntradaDossieComite): string {
     },
     escalonamento: {
       limiarNegativas: limiarNegativas(),
-      totalNegativas: historico.length,
+      cicloEnvio: cicloAtual,
+      tipoRemessa: tipoRemessaDoPeriodo(periodo),
+      totalNegativas: negativasDoCiclo(periodo).length,
+      totalNegativasTodosCiclos: historico.length,
       escaladoEm: entrada.escaladoEm,
       escaladoPor: nomeDoUsuario(entrada.escaladoPorUsuarioId),
       hashLacreAnterior: entrada.hashLacreAnterior,
     },
     historicoNegativas: historico.map((registro) => ({
+      cicloEnvio: registro.ciclo,
+      tipoRemessa: registro.tipoRemessa,
       numero: registro.numero,
       origem: registro.origem,
       negadoPor: registro.usuarioNome,
@@ -306,6 +331,8 @@ export function montarAtaComite(entrada: EntradaAtaComite): string {
     }),
     quorum: descricaoQuorumComite(),
     historicoNegativas: historico.map((registro) => ({
+      cicloEnvio: registro.ciclo,
+      tipoRemessa: registro.tipoRemessa,
       numero: registro.numero,
       origem: registro.origem,
       negadoPor: registro.usuarioNome,
@@ -424,6 +451,7 @@ export function montarComprovanteTransmissao(entrada: EntradaComprovanteTransmis
       responsavel: ROTULO_RESPONSAVEL_TRANSMISSAO[entrada.responsavel],
       responsavelCodigo: entrada.responsavel,
       executadoPor: nomeDoUsuario(entrada.transmitidoPorUsuarioId),
+      ...descreverRemessa(periodo),
     },
     cadastroPrevioUtilizado: {
       identificador: cadastro.id,
@@ -487,6 +515,7 @@ export function montarReciboProtocoloManual(entrada: EntradaReciboProtocoloManua
       canal: entrada.canalBcb ? ROTULO_CANAL_BCB[entrada.canalBcb] : null,
       emissor: entrada.emissor,
     },
+    remessa: descreverRemessa(periodo),
     objetoRegistrado: entrada.objeto,
     justificativa: entrada.justificativa,
     motivoDaTransmissaoManual: entrada.motivoIndisponibilidade,

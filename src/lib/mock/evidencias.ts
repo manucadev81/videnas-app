@@ -59,7 +59,7 @@ function sementesDePeriodosDemo(): SementeLacre[] {
   ];
 
   for (const periodo of periodos) {
-    if (!/-(r1|r2|r4)[a-z]+$/.test(periodo.id) || !estadosComCadeia.includes(periodo.estado)) {
+    if (!/-(r1|r2|r4|d8)[a-z]+$/.test(periodo.id) || !estadosComCadeia.includes(periodo.estado)) {
       continue;
     }
     const arquivo = arquivos.find((item) => item.id === periodo.arquivoCorrenteId);

@@ -19,6 +19,10 @@ import { BotaoReiniciarDemo } from "@/components/dominio/botao-reiniciar-demo";
 import { useLogout } from "@/lib/hooks/use-logout";
 import { perfilTemContextoFixo, useSessaoStore } from "@/lib/store/sessao";
 import { buscarTenant, useTenantsStore } from "@/lib/store/tenants";
+import { usePeriodosStore } from "@/lib/store/periodos";
+import { buscarModulo } from "@/lib/mock/modulos";
+
+const SEGMENTOS_COM_PERIODO = new Set(["acam212", "cadoc", "fiscal"]);
 
 const ROTULOS_SEGMENTO: Record<string, string> = {
   app: "Painel",
@@ -42,10 +46,22 @@ export function HeaderApp() {
   const aoSair = useLogout();
   const perfilAtivo = useSessaoStore((estado) => estado.perfilAtivo);
   const tenants = useTenantsStore((estado) => estado.tenants);
+  const periodos = usePeriodosStore((estado) => estado.periodos);
   const contextoFixo = perfilTemContextoFixo(perfilAtivo);
   const segmentos = pathname.split("/").filter(Boolean);
 
-  function rotularSegmento(segmento: string): string {
+  function rotularSegmento(segmento: string, indice: number): string {
+    const pai = segmentos[indice - 1];
+    if (indice === 2 && SEGMENTOS_COM_PERIODO.has(pai)) {
+      const periodo = periodos[segmento];
+      return periodo
+        ? `${buscarModulo(periodo.moduloId).nome} · ${periodo.competenciaRotulo}`
+        : "Período";
+    }
+    if (indice === 2 && pai === "clientes" && !ROTULOS_SEGMENTO[segmento]) {
+      const cliente = buscarTenant(tenants, segmento);
+      return cliente ? cliente.nomeFantasia : "Cliente";
+    }
     const tenant = buscarTenant(tenants, segmento);
     return tenant ? tenant.nomeFantasia : rotuloSegmento(segmento);
   }
@@ -63,9 +79,9 @@ export function HeaderApp() {
                 {indice > 0 && <BreadcrumbSeparator />}
                 <BreadcrumbItem>
                   {ultimo ? (
-                    <BreadcrumbPage>{rotularSegmento(segmento)}</BreadcrumbPage>
+                    <BreadcrumbPage>{rotularSegmento(segmento, indice)}</BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink href={caminho}>{rotularSegmento(segmento)}</BreadcrumbLink>
+                    <BreadcrumbLink href={caminho}>{rotularSegmento(segmento, indice)}</BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
               </span>

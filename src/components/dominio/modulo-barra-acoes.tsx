@@ -36,7 +36,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { TAMANHO_MINIMO_TEXTO_COMITE, usePeriodosStore, validarEntradaRetorno } from "@/lib/store/periodos";
+import {
+  TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO,
+  TAMANHO_MINIMO_TEXTO_COMITE,
+  usePeriodosStore,
+  validarEntradaRetorno,
+} from "@/lib/store/periodos";
 import { BlocoDecisaoComite } from "@/components/dominio/bloco-decisao-comite";
 import {
   descricaoQuorumComite,
@@ -64,6 +69,7 @@ import {
   nomeArquivoDocumentoFiscal,
 } from "@/lib/transmissao";
 import { buscarPerfil, ROTULOS_ACAO } from "@/lib/permissoes";
+import { rotuloEstadoPeriodo } from "@/components/dominio/badge-status";
 import { ROTULOS_TIPO } from "@/lib/mock/auditoria";
 import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
 import { MENSAGEM_SEM_VALIDADOR_ELEGIVEL, rotuloUsuarioComNivel, validadorDesignado } from "@/lib/validadores";
@@ -80,13 +86,18 @@ import {
 import type { AcaoId, CanalEnvioBcb, DesfechoComite, ValidacaoItem } from "@/lib/tipos";
 import { formatarData, formatarDataHora, truncarHash } from "@/lib/formatadores";
 import {
+  cicloDoPeriodo,
   contarNegativas,
   limiarNegativas,
+  negativasDoCiclo,
   proximaNegativaEscalaParaComite,
+  rotuloCiclo,
   rotuloContagemNegativas,
   rotuloOrigemNegativa,
   rotuloTotalNegativas,
+  tipoRemessaDoPeriodo,
 } from "@/lib/negacoes";
+import { encadearApos, filtrarCadeia } from "@/lib/evidencias/lacre";
 
 const VARIANTE_BOTAO: Record<string, "default" | "outline" | "destructive" | "ghost"> = {
   primario: "default",
@@ -110,6 +121,7 @@ const CANDIDATOS_BARRA: AcaoId[] = [
   "registrar_protocolo_manual",
   "registrar_retorno",
   "arquivar",
+  "iniciar_substituicao",
   "aprovar",
   "negar_aprovacao",
   "decidir_comite",
@@ -130,6 +142,7 @@ const VARIANTE_ACAO: Partial<Record<AcaoId, "primario" | "secundario" | "destrut
   registrar_protocolo_manual: "secundario",
   registrar_retorno: "secundario",
   arquivar: "secundario",
+  iniciar_substituicao: "destrutivo-suave",
   aprovar: "primario",
   negar_aprovacao: "destrutivo-suave",
   decidir_comite: "primario",
@@ -204,6 +217,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   const tenants = useTenantsStore((estado) => estado.tenants);
   const registrarRetorno = usePeriodosStore((estado) => estado.registrarRetorno);
   const reabrir = usePeriodosStore((estado) => estado.reabrir);
+  const iniciarSubstituicao = usePeriodosStore((estado) => estado.iniciarSubstituicao);
   const negarAprovacao = usePeriodosStore((estado) => estado.negarAprovacao);
   const arquivar = usePeriodosStore((estado) => estado.arquivar);
   const protocolos = usePeriodosStore((estado) => estado.protocolos);
@@ -353,6 +367,8 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         rotuloPerfil: (perfilId) => buscarPerfil(perfilId).rotulo,
         rotuloModulo: (moduloId) => buscarModulo(moduloId).nome,
         nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
+        rotuloEstado: rotuloEstadoPeriodo,
+        rotuloAcao: (acaoId) => ROTULOS_ACAO[acaoId],
       });
       baixarCsv(nomeArquivo, conteudo);
       registrarEventoAdministrativo({
@@ -515,6 +531,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         negacoesAprovacao: [
           ...periodo.negacoesAprovacao,
           {
+            cicloEnvio: cicloDoPeriodo(periodo),
             motivo: campoTextarea,
             usuarioId: autor.usuarioId,
             ocorridoEm,
@@ -926,6 +943,29 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
         void confirmarArquivamento();
         return;
       }
+      case "iniciar_substituicao": {
+        if (campoTextarea.trim().length < TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO) {
+          toast.error(
+            `Descreva a justificativa da substituição com pelo menos ${TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO} caracteres.`
+          );
+          return;
+        }
+        const cadeia = filtrarCadeia(Object.values(useEvidenciasStore.getState().lacres), {
+          instituicaoId: periodo.instituicaoId,
+          moduloId: periodo.moduloId,
+          competencia: periodo.competencia,
+          insumoId: null,
+        });
+        const resultado = iniciarSubstituicao(periodoId, autor, campoTextarea, {
+          lacreAnteriorId: cadeia.at(-1)?.id ?? null,
+          hashLacreAnterior: encadearApos(cadeia),
+        });
+        tratarResultado(
+          resultado,
+          `Substituição iniciada: ${rotuloCiclo(cicloDoPeriodo(periodo) + 1, "S")}. O contador de negativas recomeça em 0.`
+        );
+        return;
+      }
       case "reabrir": {
         if (campoTextarea.trim().length < 10) {
           toast.error("Descreva o motivo da reabertura com pelo menos 10 caracteres.");
@@ -980,6 +1020,11 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
   )
     ? MENSAGEM_SEM_VALIDADOR_ELEGIVEL
     : null;
+
+  const avisoSubstituicaoBloqueada =
+    acoesBarra.find(
+      ({ acaoId, avaliacao }) => acaoId === "iniciar_substituicao" && !avaliacao.permitido && avaliacao.motivo
+    )?.avaliacao.motivo ?? null;
 
   function rotuloAcao(acaoId: AcaoId): string {
     if (acaoId === "executar_validacao" && periodo.estado === "com_excecoes") {
@@ -1061,6 +1106,12 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
             </DropdownMenu>
           ) : null}
         </div>
+
+        {avisoSubstituicaoBloqueada ? (
+          <p role="status" className="mt-2 text-xs text-neutral-500">
+            {avisoSubstituicaoBloqueada}
+          </p>
+        ) : null}
 
         {avisoEnvioBloqueado ? (
           <p role="status" className="mt-2 text-xs text-status-error-text">
@@ -1222,13 +1273,16 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                     />
                   </div>
                 ) : null}
-                {periodo.negacoesAprovacao.length > 0 ? (
+                {negativasDoCiclo(periodo).length > 0 ? (
                   <div className="space-y-1.5 rounded-md border border-status-warning-border bg-status-warning-bg p-3">
                     <p className="text-xs font-semibold text-status-warning-text">
-                      Negações anteriores ({rotuloTotalNegativas(periodo.negacoesAprovacao.length)})
+                      Negações anteriores ({rotuloTotalNegativas(contarNegativas(periodo))})
+                      {cicloDoPeriodo(periodo) > 1
+                        ? ` · ${rotuloCiclo(cicloDoPeriodo(periodo), tipoRemessaDoPeriodo(periodo))}`
+                        : ""}
                     </p>
                     <ul className="space-y-1.5 text-xs text-status-warning-text">
-                      {periodo.negacoesAprovacao.map((negacao, indice) => {
+                      {negativasDoCiclo(periodo).map((negacao, indice) => {
                         const arquivoNegado = negacao.arquivoId ? arquivos[negacao.arquivoId] : undefined;
                         return (
                           <li key={`${negacao.ocorridoEm}-${indice}`}>
@@ -1296,6 +1350,9 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   aria-live="polite"
                 >
                   {rotuloContagemNegativas(contarNegativas(periodo) + 1)}
+                  {cicloDoPeriodo(periodo) > 1
+                    ? ` · ${rotuloCiclo(cicloDoPeriodo(periodo), tipoRemessaDoPeriodo(periodo))}`
+                    : ""}
                 </p>
                 {proximaNegativaEscalaParaComite(periodo) ? (
                   <div
@@ -1308,7 +1365,7 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                       {contarNegativas(periodo) + 1 > limiarNegativas()
                         ? `(limite ${limiarNegativas()})`
                         : `de ${limiarNegativas()}`}{" "}
-                      nesta competência. Ao confirmar, o histórico de negativas será lacrado em um dossiê e
+                      {cicloDoPeriodo(periodo) > 1 ? "neste ciclo de envio" : "nesta competência"}. Ao confirmar, o histórico de negativas será lacrado em um dossiê e
                       o período ficará somente leitura até a decisão do Comitê de Qualidade, presidido
                       pelo Administrador da Videnas.
                     </p>
@@ -1526,6 +1583,13 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                     lacra o comprovante na cadeia do período e leva a competência para Aguardando retorno.
                   </DialogDescription>
                 </DialogHeader>
+                {tipoRemessaDoPeriodo(periodo) === "S" ? (
+                  <p className="rounded-md border border-status-info-border bg-status-info-bg p-3 text-xs text-status-info-text">
+                    Remessa de substituição (S) do ciclo {cicloDoPeriodo(periodo)}: substitui o
+                    protocolo {periodo.substituicoes?.at(-1)?.protocoloSubstituido ?? "não identificado"}.
+                    O comprovante lacrado registra o tipo de remessa S e esse protocolo.
+                  </p>
+                ) : null}
                 <dl className="grid gap-3 rounded-md bg-neutral-50 p-3 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="text-xs text-neutral-500">Objeto transmitido</dt>
@@ -1908,6 +1972,56 @@ export function BarraAcoesFluxo({ periodoId, className }: BarraAcoesFluxoProps) 
                   </Button>
                   <Button type="button" onClick={confirmarDialogo} disabled={processando}>
                     {processando ? "Lacrando…" : "Arquivar período"}
+                  </Button>
+                </DialogFooter>
+              </>
+            ) : null}
+
+            {dialogoAberto === "iniciar_substituicao" ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Iniciar remessa de substituição (S)?</DialogTitle>
+                  <DialogDescription>
+                    O documento aceito pelo regulador será substituído por uma nova remessa do tipo S. O
+                    período volta para &quot;Dados recebidos&quot; e abre o{" "}
+                    {rotuloCiclo(cicloDoPeriodo(periodo) + 1, "S")}: geração, validação, liberação e
+                    aprovação são refeitas. O contador de negativas recomeça em 0 de {limiarNegativas()};
+                    as negativas do {rotuloCiclo(cicloDoPeriodo(periodo), tipoRemessaDoPeriodo(periodo))}{" "}
+                    continuam no histórico e a cadeia de lacres segue a mesma.
+                  </DialogDescription>
+                </DialogHeader>
+                <p className="rounded-md bg-neutral-50 p-3 text-xs text-neutral-600">
+                  Protocolo substituído:{" "}
+                  <span className="font-mono">{protocoloCorrente?.numeroProtocolo ?? "—"}</span>
+                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="substituicao-justificativa">Justificativa</Label>
+                  <Textarea
+                    id="substituicao-justificativa"
+                    value={campoTextarea}
+                    onChange={(evento) => setCampoTextarea(evento.target.value)}
+                    placeholder="Ex.: erro apontado pelo BCB após o aceite (mínimo 10 caracteres)."
+                    rows={4}
+                  />
+                  {campoTextarea.trim().length > 0 &&
+                  campoTextarea.trim().length < TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO ? (
+                    <p className="text-xs text-status-error-text">
+                      Descreva a justificativa com pelo menos {TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO}{" "}
+                      caracteres.
+                    </p>
+                  ) : null}
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={fecharDialogo}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={campoTextarea.trim().length < TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO}
+                    onClick={confirmarDialogo}
+                  >
+                    Iniciar substituição
                   </Button>
                 </DialogFooter>
               </>

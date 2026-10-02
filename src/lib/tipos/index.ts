@@ -105,6 +105,7 @@ export type TipoEventoAuditoria =
   | "AREA_CLIENTE_NOTIFICADA"
   | "VALIDADOR_SORTEADO"
   | "PERIODO_REABERTO"
+  | "SUBSTITUICAO_INICIADA"
   | "HASH_REVERIFICADO"
   | "USUARIO_CONVIDADO"
   | "PERFIL_ALTERADO"
@@ -135,6 +136,7 @@ export type AcaoId =
   | "liberar"
   | "registrar_retorno"
   | "reabrir"
+  | "iniciar_substituicao"
   | "aprovar"
   | "negar_aprovacao"
   | "escalar_comite"
@@ -304,8 +306,22 @@ export interface LoteIngestao {
 
 export type OrigemNegacao = "diretor" | "contador";
 
+export type TipoRemessa = "I" | "S";
+
+export interface SubstituicaoCiclo {
+  cicloAnterior: number;
+  cicloNovo: number;
+  protocoloSubstituidoId: string | null;
+  protocoloSubstituido: string | null;
+  arquivoSubstituidoId: string | null;
+  justificativa: string;
+  iniciadaEm: string;
+  iniciadaPorUsuarioId: string;
+}
+
 export interface NegacaoAprovacao {
   origem?: OrigemNegacao;
+  cicloEnvio?: number;
   motivo: string;
   usuarioId: string;
   ocorridoEm: string;
@@ -365,6 +381,9 @@ export interface PeriodoObrigacao {
   contadorUsuarioId: string | null;
   contadorConfirmadoEm: string | null;
   negacoesAprovacao: NegacaoAprovacao[];
+  cicloEnvio?: number;
+  tipoRemessa?: TipoRemessa;
+  substituicoes?: SubstituicaoCiclo[];
   emComiteDesde: string | null;
   decisoesComite?: DecisaoComiteQualidade[];
   emitidoFiscalEm: string | null;
@@ -578,6 +597,9 @@ export interface ProtocoloBCB {
   emissor?: string | null;
   comprovanteLacreId?: string | null;
   comprovanteHash?: string | null;
+  cicloEnvio?: number;
+  tipoRemessa?: TipoRemessa;
+  protocoloSubstituido?: string | null;
 }
 
 export interface Excecao {

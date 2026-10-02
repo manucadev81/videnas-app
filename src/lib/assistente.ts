@@ -390,6 +390,7 @@ export const TOPICOS_ASSISTENTE: TopicoAssistente[] = [
       "Uma competência passa por estes estados:",
       "• Aguardando dados — nenhum lote recebido.\n• Dados recebidos — ao menos um lote aceito na ingestão.\n• Gerado — arquivo produzido, com hash.\n• Aguardando contador — só no Fiscal.\n• Em validação — schema em conferência.\n• Validada — zero erro bloqueante.\n• Com exceções — há itens bloqueantes ou avisos a tratar.\n• Liberado — visível e baixável pelo cliente.\n• Aprovado — o Responsável de Compliance assumiu a responsabilidade.\n• Entregue — protocolo registrado (ou encaminhado ao emissor, no Fiscal).\n• Retorno com erro — o órgão devolveu o arquivo.",
       "\"Reabrir período para correção\" volta a competência de Retorno com erro, Liberado ou Aprovado para Dados recebidos, sem apagar nada da trilha.",
+      "No Cadoc 5710/5711, a partir de Retorno aceito, o Executor pode \"Iniciar substituição (remessa S)\" com justificativa: a competência volta a Dados recebidos em um novo ciclo de envio, com o contador de negativas zerado e o histórico do ciclo anterior preservado. Reabrir e a rejeição do retorno não zeram o contador. Período arquivado não admite substituição.",
     ].join("\n\n"),
     relacionados: ["etapas", "pendencias-excecoes", "trilha-auditoria"],
   },

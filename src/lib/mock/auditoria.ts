@@ -48,6 +48,7 @@ export const ROTULOS_TIPO: Record<TipoEventoAuditoria, string> = {
   AREA_CLIENTE_NOTIFICADA: "Área do cliente notificada",
   VALIDADOR_SORTEADO: "Validador sorteado",
   PERIODO_REABERTO: "Período reaberto",
+  SUBSTITUICAO_INICIADA: "Substituição iniciada (remessa S)",
   HASH_REVERIFICADO: "Hash reverificado",
   USUARIO_CONVIDADO: "Usuário convidado",
   PERFIL_ALTERADO: "Perfil alterado",
@@ -85,6 +86,7 @@ function criarEvento(
   const acesso = redeAcesso(lado);
   return {
     ...parcial,
+    payload: parcial.periodoId ? { cicloEnvio: 1, tipoRemessa: "I", ...parcial.payload } : parcial.payload,
     id: `evt-${contador.toString(16).padStart(8, "0")}`,
     rotuloTipo: ROTULOS_TIPO[parcial.tipo],
     usuarioNome: usuario?.nome ?? "Sistema Videnas",
@@ -401,7 +403,11 @@ for (const periodo of periodos) {
         referencia: arquivoNegado?.hashSha256 ?? negacao.arquivoId,
         payload: {
           motivo: negacao.motivo,
-          numeroNegativa: indice + 1,
+          cicloEnvio: negacao.cicloEnvio ?? 1,
+          numeroNegativa:
+            periodo.negacoesAprovacao
+              .slice(0, indice + 1)
+              .filter((item) => (item.cicloEnvio ?? 1) === (negacao.cicloEnvio ?? 1)).length,
           limiarComite: configuracaoFluxo.limiarNegacoesComite,
           escalouParaComite: escalou,
           arquivoId: negacao.arquivoId,

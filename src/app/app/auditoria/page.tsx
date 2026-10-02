@@ -21,7 +21,8 @@ import { buscarUsuario } from "@/lib/mock/usuarios";
 import { formatarDataHora, truncarHash } from "@/lib/formatadores";
 import { detalheLegivelDoEvento } from "@/lib/auditoria-detalhe";
 import { baixarCsv, montarCsvTrilha, nomeArquivoTrilha } from "@/lib/auditoria/exportar-csv";
-import { buscarPerfil } from "@/lib/permissoes";
+import { ROTULOS_ACAO, buscarPerfil } from "@/lib/permissoes";
+import { rotuloEstadoPeriodo } from "@/components/dominio/badge-status";
 import type { ModuloId, PerfilId, TipoEventoAuditoria } from "@/lib/tipos";
 
 const ROTULOS_MODULO: Record<ModuloId, string> = {
@@ -118,6 +119,8 @@ export default function AuditoriaPage() {
         rotuloPerfil: (perfilId) => ROTULOS_PERFIL[perfilId],
         rotuloModulo: (moduloId) => ROTULOS_MODULO[moduloId],
         nomeInstituicao: (instituicaoId) => buscarInstituicao(instituicaoId)?.nomeFantasia ?? "",
+        rotuloEstado: rotuloEstadoPeriodo,
+        rotuloAcao: (acaoId) => ROTULOS_ACAO[acaoId],
       });
       baixarCsv(nomeArquivo, conteudo);
       registrarEventoAdministrativo({

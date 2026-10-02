@@ -22,8 +22,14 @@ export type CaminhoAposRessalvas = "arquivar" | "reabrir";
 
 export const ROTULO_RETORNO_GENERICO = "Retorno do regulador/emissor";
 
+export interface ConfiguracaoSubstituicaoModulo {
+  habilitada: boolean;
+  estadosOrigem: EstadoPeriodo[];
+}
+
 export interface ConfiguracaoFluxoModulo {
   retorno?: ConfiguracaoRetornoModulo;
+  substituicao?: ConfiguracaoSubstituicaoModulo;
 }
 
 export interface ConfiguracaoComiteQualidade {
@@ -67,7 +73,7 @@ export interface ConfiguracaoRetencao {
   marcoInicial: "aprovacao" | "retorno" | "arquivamento";
 }
 
-export type ContagemNegacoes = "por_periodo";
+export type ContagemNegacoes = "por_periodo" | "por_ciclo_envio";
 
 export interface ConfiguracaoFluxo {
   limiarNegacoesComite: number;
@@ -91,7 +97,7 @@ export interface ConfiguracaoFluxo {
 
 export const configuracaoFluxo: ConfiguracaoFluxo = {
   limiarNegacoesComite: 2,
-  contagemNegacoes: "por_periodo",
+  contagemNegacoes: "por_ciclo_envio",
   escaladaComiteAutomaticaHabilitada: true,
   devolucaoContadorContaComoNegacao: false,
   comiteQualidade: {
@@ -120,8 +126,14 @@ export const configuracaoFluxo: ConfiguracaoFluxo = {
   },
   modulos: {
     acam212: { retorno: { rotuloArtefato: "ACAM213" } },
-    cadoc5711: { retorno: { somentePosicionamento: true } },
-    cadoc5710: { retorno: { somentePosicionamento: true } },
+    cadoc5711: {
+      retorno: { somentePosicionamento: true },
+      substituicao: { habilitada: true, estadosOrigem: ["retorno_aceito"] },
+    },
+    cadoc5710: {
+      retorno: { somentePosicionamento: true },
+      substituicao: { habilitada: true, estadosOrigem: ["retorno_aceito"] },
+    },
     fiscal: { retorno: { somentePosicionamento: true } },
   },
 };
@@ -132,6 +144,14 @@ export const ROTULOS_COMPLETOS_APROVADOR: Record<RotuloAprovador, string> = {
 
 export function retornoSomentePosicionamento(moduloId: ModuloId): boolean {
   return configuracaoFluxo.modulos[moduloId]?.retorno?.somentePosicionamento === true;
+}
+
+export function substituicaoHabilitada(moduloId: ModuloId): boolean {
+  return configuracaoFluxo.modulos[moduloId]?.substituicao?.habilitada === true;
+}
+
+export function estadosOrigemDaSubstituicao(moduloId: ModuloId): EstadoPeriodo[] {
+  return configuracaoFluxo.modulos[moduloId]?.substituicao?.estadosOrigem ?? [];
 }
 
 export function rotuloRetornoDoModulo(moduloId: ModuloId): string {

@@ -32,7 +32,7 @@ import { listarUsuarios } from "@/lib/mock/usuarios";
 import { buscarModulo } from "@/lib/mock/modulos";
 import { usePeriodosStore } from "@/lib/store/periodos";
 import { ESTADOS_COM_VALIDADOR_DESIGNADO } from "@/lib/validadores";
-import { PERFIS, buscarPerfil } from "@/lib/permissoes";
+import { PERFIS, ROTULOS_ACAO, buscarPerfil } from "@/lib/permissoes";
 import { CLASSE_SITUACAO, ROTULO_SITUACAO } from "@/lib/usuarios/rotulos";
 import { formatarDataHora } from "@/lib/formatadores";
 import { cn } from "@/lib/utils";
@@ -56,40 +56,6 @@ const ROTULOS_ROTA_MATRIZ: Record<string, string> = {
   "/app/configuracoes/instituicao": "Configurações · Instituição",
   "/app/configuracoes/usuarios": "Configurações · Usuários",
   "/app/configuracoes/dicionarios": "Configurações · Dicionários",
-};
-
-const ROTULOS_ACAO_MATRIZ: Record<string, string> = {
-  gerar: "Gerar arquivo",
-  regerar: "Gerar novamente",
-  enviar_validacao: "Enviar para validação",
-  enviar_contador: "Enviar ao contador",
-  validar_fiscal: "Confirmar enquadramento fiscal",
-  devolver_fiscal: "Devolver para correção",
-  executar_validacao: "Executar validação de schema",
-  liberar: "Liberar para o cliente",
-  registrar_retorno: "Registrar retorno do BCB",
-  reabrir: "Reabrir período",
-  aprovar: "Aprovar e assumir responsabilidade",
-  baixar_arquivo: "Baixar arquivo",
-  registrar_protocolo: "Registrar protocolo do BCB",
-  marcar_encaminhado: "Marcar como encaminhado ao emissor",
-  tratar_excecao: "Tratar exceção",
-  editar_config_instituicao: "Editar dados da instituição",
-  gerenciar_usuarios: "Convidar / editar usuário",
-  editar_dicionarios: "Editar dicionários",
-  trocar_tenant: "Trocar de instituição",
-  exportar_auditoria: "Exportar trilha (CSV)",
-  fornecer_dados: "Fornecer dados do período",
-  baixar_comprovante: "Baixar comprovante lacrado",
-  verificar_integridade: "Verificar integridade do arquivo",
-  ver_evidencias: "Ver cadeia de custódia",
-  notificar_cliente: "Notificar cliente do que falta",
-  provisionar_tenant: "Cadastrar novo cliente",
-  gerenciar_clientes: "Administrar carteira de clientes",
-  convidar_usuario_inicial: "Convidar usuários iniciais do cliente",
-  suspender_tenant: "Suspender / reativar cliente",
-  alterar_modulos_contratados: "Alterar módulos contratados",
-  editar_areas_cliente: "Editar áreas do cliente",
 };
 
 export default function ConfiguracoesUsuariosPage() {
@@ -482,7 +448,7 @@ export default function ConfiguracoesUsuariosPage() {
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {perfil.acoesPermitidas.map((acaoId) => (
                   <span key={acaoId} className="rounded-md bg-neutral-100 px-2 py-1 text-[11px] text-neutral-600">
-                    {ROTULOS_ACAO_MATRIZ[acaoId] ?? acaoId}
+                    {ROTULOS_ACAO[acaoId]}
                   </span>
                 ))}
               </div>

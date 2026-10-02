@@ -19,6 +19,7 @@ import type {
   ProtocoloBCB,
   ResponsavelTransmissao,
   RetornoRegulador,
+  SubstituicaoCiclo,
   TipoEventoAuditoria,
   ValidacaoItem,
   ValidacaoResultado,
@@ -66,12 +67,17 @@ import {
   validarEntradaProtocoloManual,
 } from "@/lib/contrato";
 import {
+  cicloDoPeriodo,
   contarNegativas,
+  contarNegativasTotal,
   devolucaoContadorContaComoNegacao,
   devolucaoContadorEscalaParaComite,
   limiarNegativas,
   montarHistoricoNegativas,
+  negativasDoCiclo,
   proximaNegativaEscalaParaComite,
+  rotuloCiclo,
+  tipoRemessaDoPeriodo,
 } from "@/lib/negacoes";
 
 export interface AutorAcao {
@@ -156,7 +162,13 @@ export interface DadosEncaminhamento {
   reciboHash: string;
 }
 
+export interface DadosSubstituicao {
+  lacreAnteriorId: string | null;
+  hashLacreAnterior: string | null;
+}
+
 export const TAMANHO_MINIMO_TEXTO_COMITE = 10;
+export const TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO = 10;
 
 export const CODIGO_RETORNO_NAO_APROVADO = "RETORNO_NAO_APROVADO";
 export const DESCRICAO_RETORNO_NAO_APROVADO =
@@ -183,6 +195,19 @@ export function validarEntradaRetorno(
     return { sucesso: false, motivo: "Descreva a ressalva recebida com pelo menos 10 caracteres." };
   }
   return { sucesso: true };
+}
+
+function camposRemessaDoProtocolo(periodo: PeriodoObrigacao): Pick<
+  ProtocoloBCB,
+  "cicloEnvio" | "tipoRemessa" | "protocoloSubstituido"
+> {
+  const tipoRemessa = tipoRemessaDoPeriodo(periodo);
+  return {
+    cicloEnvio: cicloDoPeriodo(periodo),
+    tipoRemessa,
+    protocoloSubstituido:
+      tipoRemessa === "S" ? (periodo.substituicoes?.at(-1)?.protocoloSubstituido ?? null) : null,
+  };
 }
 
 function paraRecord<T>(lista: T[], chave: (item: T) => string): Record<string, T> {
@@ -265,6 +290,8 @@ function construirEvento(
   referencia: string | null,
   payload: Record<string, unknown>
 ): EventoAuditoria {
+  const tipoRemessa = tipoRemessaDoPeriodo(periodo);
+  const protocoloSubstituido = periodo.substituicoes?.at(-1)?.protocoloSubstituido ?? null;
   return construirEventoBase(
     autor,
     {
@@ -276,7 +303,12 @@ function construirEvento(
     tipo,
     rotuloTipo,
     referencia,
-    payload
+    {
+      cicloEnvio: cicloDoPeriodo(periodo),
+      tipoRemessa,
+      ...(tipoRemessa === "S" ? { protocoloSubstituido } : {}),
+      ...payload,
+    }
   );
 }
 
@@ -488,6 +520,13 @@ export interface EstadoPeriodosStore {
 
   reabrir: (periodoId: string, autor: AutorAcao, motivo: string) => ResultadoAcao;
 
+  iniciarSubstituicao: (
+    periodoId: string,
+    autor: AutorAcao,
+    justificativa: string,
+    dados?: DadosSubstituicao
+  ) => ResultadoAcao;
+
   tratarExcecao: (
     periodoId: string,
     autor: AutorAcao,
@@ -528,7 +567,7 @@ type PeriodosPersistidos = Pick<
 >;
 
 export const NOME_ARMAZENAMENTO_PERIODOS = "videnas-periodos";
-const VERSAO_ARMAZENAMENTO_PERIODOS = 13;
+const VERSAO_ARMAZENAMENTO_PERIODOS = 14;
 
 export const usePeriodosStore = create<EstadoPeriodosStore>()(
   persist<EstadoPeriodosStore, [], [], PeriodosPersistidos>(
@@ -787,6 +826,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
             ...periodo.negacoesAprovacao,
             {
               origem: "contador",
+              cicloEnvio: cicloDoPeriodo(periodo),
               motivo: observacao ?? "",
               usuarioId: autor.usuarioId,
               ocorridoEm: agora,
@@ -828,7 +868,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
             numeroNegativa,
             limiarComite: limiarNegativas(),
             historicoNegativas: montarHistoricoNegativas(
-              periodoAtualizado.negacoesAprovacao,
+              negativasDoCiclo(periodoAtualizado),
               (arquivoId) => get().arquivos[arquivoId]
             ),
             lacreDossieId: null,
@@ -1156,6 +1196,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       emissor: disponibilidade.cadastro.emissor,
       comprovanteLacreId: dados.lacreId,
       comprovanteHash: dados.hashComprovante,
+      ...camposRemessaDoProtocolo(periodo),
     };
 
     const periodoAtualizado: PeriodoObrigacao = {
@@ -1242,6 +1283,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       emissor: dados.emissor?.trim() || null,
       comprovanteLacreId: dados.reciboLacreId,
       comprovanteHash: dados.reciboHash,
+      ...camposRemessaDoProtocolo(periodo),
     };
 
     const periodoAtualizado: PeriodoObrigacao = {
@@ -1317,6 +1359,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
       emissor: dados.emissor.trim(),
       comprovanteLacreId: dados.reciboLacreId,
       comprovanteHash: dados.reciboHash,
+      ...camposRemessaDoProtocolo(periodo),
     };
 
     const periodoAtualizado: PeriodoObrigacao = {
@@ -1549,6 +1592,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     const limiar = limiarNegativas();
     const escalaParaComite = proximaNegativaEscalaParaComite(periodo);
     const negacao: NegacaoAprovacao = {
+      cicloEnvio: cicloDoPeriodo(periodo),
       motivo,
       usuarioId: autor.usuarioId,
       ocorridoEm: agora,
@@ -1593,7 +1637,7 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
             numeroNegativa,
             limiarComite: limiar,
             historicoNegativas: montarHistoricoNegativas(
-              periodoAtualizado.negacoesAprovacao,
+              negativasDoCiclo(periodoAtualizado),
               (arquivoId) => get().arquivos[arquivoId]
             ),
             lacreDossieId: dados?.lacreId ?? null,
@@ -1807,6 +1851,92 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
     return { sucesso: true };
   },
 
+  iniciarSubstituicao: (periodoId, autor, justificativa, dados) => {
+    const periodo = get().periodos[periodoId];
+    if (!periodo) return { sucesso: false, motivo: "Período não encontrado." };
+    const avaliacao = avaliarAcao(autor.perfilId, "iniciar_substituicao", periodo, {
+      usuarioAtualId: autor.usuarioId,
+    });
+    if (!avaliacao.permitido) {
+      return { sucesso: false, motivo: avaliacao.motivo ?? "Ação indisponível no estado atual do período." };
+    }
+    const motivo = justificativa.trim();
+    if (motivo.length < TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO) {
+      return {
+        sucesso: false,
+        motivo: `Descreva a justificativa da substituição com pelo menos ${TAMANHO_MINIMO_JUSTIFICATIVA_SUBSTITUICAO} caracteres.`,
+      };
+    }
+
+    const agora = new Date().toISOString();
+    const cicloAnterior = cicloDoPeriodo(periodo);
+    const cicloNovo = cicloAnterior + 1;
+    const protocoloSubstituido = periodo.protocoloId ? get().protocolos[periodo.protocoloId] : undefined;
+    const arquivoSubstituido = get().arquivos[periodo.arquivoCorrenteId ?? ""];
+    const registro: SubstituicaoCiclo = {
+      cicloAnterior,
+      cicloNovo,
+      protocoloSubstituidoId: protocoloSubstituido?.id ?? null,
+      protocoloSubstituido: protocoloSubstituido?.numeroProtocolo ?? null,
+      arquivoSubstituidoId: arquivoSubstituido?.id ?? null,
+      justificativa: motivo,
+      iniciadaEm: agora,
+      iniciadaPorUsuarioId: autor.usuarioId,
+    };
+    const periodoAtualizado: PeriodoObrigacao = {
+      ...periodo,
+      estado: "dados_ingeridos",
+      cicloEnvio: cicloNovo,
+      tipoRemessa: "S",
+      substituicoes: [...(periodo.substituicoes ?? []), registro],
+      liberadoPorUsuarioId: null,
+      liberadoEm: null,
+      aprovadoPorUsuarioId: null,
+      aprovadoEm: null,
+      contratoCongelado: null,
+      protocoloId: null,
+      entregueEm: null,
+      transmitidoEm: null,
+      retornoSituacao: null,
+      retornoRegistradoPorUsuarioId: null,
+    };
+
+    const evento = construirEvento(
+      autor,
+      periodoAtualizado,
+      "SUBSTITUICAO_INICIADA",
+      "Substituição iniciada (remessa S)",
+      registro.protocoloSubstituido,
+      {
+        cicloAnterior,
+        cicloNovo,
+        rotuloCicloAnterior: rotuloCiclo(cicloAnterior),
+        rotuloCicloNovo: rotuloCiclo(cicloNovo, "S"),
+        tipoRemessaAnterior: tipoRemessaDoPeriodo(periodo),
+        tipoRemessaNovo: "S",
+        justificativa: motivo,
+        protocoloSubstituido: registro.protocoloSubstituido,
+        protocoloSubstituidoId: registro.protocoloSubstituidoId,
+        arquivoSubstituidoId: registro.arquivoSubstituidoId,
+        hashArquivoSubstituido: arquivoSubstituido?.hashSha256 ?? null,
+        negativasCicloAnterior: negativasDoCiclo(periodo, cicloAnterior).length,
+        negativasTotal: contarNegativasTotal(periodo),
+        contadorZerado: true,
+        lacreAnteriorId: dados?.lacreAnteriorId ?? null,
+        hashLacreAnterior: dados?.hashLacreAnterior ?? null,
+        estadoAnterior: periodo.estado,
+        estadoNovo: "dados_ingeridos",
+      }
+    );
+
+    set((estado) => ({
+      periodos: { ...estado.periodos, [periodoId]: periodoAtualizado },
+      eventos: [...estado.eventos, evento],
+    }));
+
+    return { sucesso: true };
+  },
+
   tratarExcecao: (periodoId, autor, excecaoId, acao, justificativa) => {
     const excecao = get().excecoes[excecaoId];
     const periodo = get().periodos[periodoId];
@@ -1931,6 +2061,8 @@ export const usePeriodosStore = create<EstadoPeriodosStore>()(
         contadorUsuarioId: null,
         contadorConfirmadoEm: null,
         negacoesAprovacao: [],
+        cicloEnvio: 1,
+        tipoRemessa: "I",
         emComiteDesde: null,
         emitidoFiscalEm: null,
         transmitidoEm: null,

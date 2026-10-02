@@ -50,6 +50,10 @@ const CONFIGURACAO_ESTADO: Record<EstadoPeriodo, ConfiguracaoEstado> = {
   arquivado: { rotulo: "Arquivado", variante: "neutral", icone: Archive },
 };
 
+export function rotuloEstadoPeriodo(estado: EstadoPeriodo): string {
+  return CONFIGURACAO_ESTADO[estado]?.rotulo ?? estado;
+}
+
 const CLASSE_VARIANTE: Record<VarianteStatus, string> = {
   neutral: "status-badge-neutral",
   info: "status-badge-info",

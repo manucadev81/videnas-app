@@ -273,6 +273,12 @@ function PainelProtocolo({ protocolo, ehFiscal }: { protocolo: ProtocoloBCB; ehF
       ) : protocolo.observacao ? (
         <p className="mt-1 text-sm text-status-success-text">{protocolo.observacao}</p>
       ) : null}
+      {protocolo.tipoRemessa === "S" ? (
+        <p className="mt-1 text-xs font-medium text-status-success-text">
+          Remessa de substituição (S) do ciclo {protocolo.cicloEnvio ?? 2}: substitui o protocolo{" "}
+          <span className="font-mono">{protocolo.protocoloSubstituido ?? "não identificado"}</span>.
+        </p>
+      ) : null}
       <p className="text-xs text-status-success-text">
         {formatarDataHora(protocolo.dataHoraEnvio)}
         {!encaminhamento ? ` · ${ehFiscal ? "emissor" : "canal"} ${rotuloCanalDoProtocolo(protocolo)}` : ""} ·

@@ -1,5 +1,6 @@
-import type { EventoAuditoria } from "@/lib/tipos";
+import type { EstadoPeriodo, EventoAuditoria } from "@/lib/tipos";
 import { formatarData, formatarDataHora, truncarHash } from "@/lib/formatadores";
+import { rotuloEstadoPeriodo } from "@/components/dominio/badge-status";
 
 export interface DetalheEventoLegivel {
   resumo: string;
@@ -35,10 +36,41 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     if (payload.escalouParaComite === true) {
       linhas.push("Esta negativa atingiu o limite e escalou o período ao Comitê de Qualidade.");
     }
+    const cicloNegativa = numero(payload.cicloEnvio);
+    if (cicloNegativa && cicloNegativa > 1) {
+      linhas.push(`Ciclo de envio ${cicloNegativa} (${texto(payload.tipoRemessa) ?? "S"})`);
+    }
     return {
       resumo: numeroNegativa
         ? `Negativa ${numeroNegativa}${limiar ? (numeroNegativa > limiar ? ` (limite ${limiar})` : ` de ${limiar}`) : ""}`
         : "Negativa sem numeração registrada",
+      linhas,
+    };
+  }
+
+  if (evento.tipo === "SUBSTITUICAO_INICIADA") {
+    const cicloAnterior = numero(payload.cicloAnterior);
+    const cicloNovo = numero(payload.cicloNovo);
+    const linhas: string[] = [];
+    const justificativa = texto(payload.justificativa);
+    if (justificativa) {
+      linhas.push(`Justificativa: ${justificativa}`);
+    }
+    const protocolo = texto(payload.protocoloSubstituido);
+    linhas.push(`Protocolo substituído: ${protocolo ?? "não identificado"}`);
+    const negativas = numero(payload.negativasCicloAnterior);
+    if (negativas !== null) {
+      linhas.push(
+        `Contador de negativas zerado; ${negativas} negativa${negativas === 1 ? "" : "s"} do ciclo anterior ficam no histórico.`
+      );
+    }
+    const lacre = texto(payload.lacreAnteriorId);
+    const hashLacre = texto(payload.hashLacreAnterior);
+    if (lacre) {
+      linhas.push(`Cadeia de lacres continua após ${lacre}${hashLacre ? ` · hash ${truncarHash(hashLacre)}` : ""}`);
+    }
+    return {
+      resumo: `Ciclo ${cicloAnterior ?? "?"} (${texto(payload.tipoRemessaAnterior) ?? "I"}) -> Ciclo ${cicloNovo ?? "?"} (${texto(payload.tipoRemessaNovo) ?? "S"})`,
       linhas,
     };
   }
@@ -103,7 +135,9 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     const estadoAnterior = texto(payload.estadoAnterior);
     const estadoNovo = texto(payload.estadoNovo);
     if (estadoAnterior && estadoNovo) {
-      linhas.push(`Estado: ${estadoAnterior} -> ${estadoNovo}`);
+      linhas.push(
+        `Estado: ${rotuloEstadoPeriodo(estadoAnterior as EstadoPeriodo)} -> ${rotuloEstadoPeriodo(estadoNovo as EstadoPeriodo)}`
+      );
     }
     const lacre = texto(payload.lacreAtaId);
     const hashAta = texto(payload.hashAta);
@@ -166,6 +200,11 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     if (cadastro) {
       linhas.push(`Cadastro prévio: ${cadastro}`);
     }
+    if (texto(payload.tipoRemessa) === "S") {
+      linhas.push(
+        `Remessa de substituição (S), ciclo ${numero(payload.cicloEnvio) ?? "?"}: substitui o protocolo ${texto(payload.protocoloSubstituido) ?? "não identificado"}`
+      );
+    }
     const lacre = texto(payload.lacreComprovanteId);
     const hash = texto(payload.hashComprovante);
     if (lacre) {
@@ -188,6 +227,11 @@ export function detalheLegivelDoEvento(evento: EventoAuditoria): DetalheEventoLe
     const justificativa = texto(payload.justificativa);
     if (justificativa) {
       linhas.push(`Justificativa: ${justificativa}`);
+    }
+    if (texto(payload.tipoRemessa) === "S") {
+      linhas.push(
+        `Remessa de substituição (S), ciclo ${numero(payload.cicloEnvio) ?? "?"}: substitui o protocolo ${texto(payload.protocoloSubstituido) ?? "não identificado"}`
+      );
     }
     const anexo = texto(payload.anexoNome);
     linhas.push(anexo ? `Comprovante anexado: ${anexo}` : "Sem comprovante anexado");

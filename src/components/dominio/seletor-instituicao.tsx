@@ -49,7 +49,14 @@ export function SeletorInstituicao({ className }: SeletorInstituicaoProps) {
         onValueChange={(valor) => definirInstituicao(valor as string)}
       >
         <SelectTrigger aria-label="Selecionar instituição" className="w-full">
-          <SelectValue placeholder="Selecionar instituição" />
+          <SelectValue placeholder="Selecionar instituição">
+            {(valor: string | null) =>
+              valor === "todas"
+                ? "Todas as instituições"
+                : (tenants.find((instituicao) => instituicao.id === valor)?.nomeFantasia ??
+                  "Selecionar instituição")
+            }
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="todas">Todas as instituições</SelectItem>

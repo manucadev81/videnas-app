@@ -32,13 +32,17 @@ import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { buscarUsuario } from "@/lib/mock/usuarios";
 import { calcularPeriodoDerivado } from "@/lib/mock/periodos";
 import {
+  cicloDoPeriodo,
   contarNegativas,
   limiarNegativas,
   montarHistoricoNegativas,
+  negativasDoCiclo,
   proximaNegativaEscalaParaComite,
+  rotuloCiclo,
   rotuloContagemNegativas,
   rotuloOrigemNegativa,
   rotuloTotalNegativas,
+  tipoRemessaDoPeriodo,
   type RegistroHistoricoNegativa,
 } from "@/lib/negacoes";
 import { descricaoQuorumComite, situacaoPrazoComite, type SituacaoPrazoComite } from "@/lib/comite";
@@ -59,6 +63,7 @@ import type {
   DecisaoComiteQualidade,
   NegacaoAprovacao,
   OperacaoCambio,
+  PeriodoObrigacao,
   PosicaoCustodiaDiaria,
   PosicaoCustodiaMensal,
   ServicoPrestadoDPS,
@@ -405,6 +410,11 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
           <div data-tour="periodo-cabecalho" className="mt-2 flex flex-wrap items-center gap-2">
             <BadgeStatus estado={periodo.estado} comAjuda />
             <BadgeAtrasado dias={derivado.diasDeAtraso} />
+            {cicloDoPeriodo(periodo) > 1 ? (
+              <span className="status-badge status-badge-info">
+                {rotuloCiclo(cicloDoPeriodo(periodo), tipoRemessaDoPeriodo(periodo))}
+              </span>
+            ) : null}
             {contarNegativas(periodo) > 0 ? (
               <span
                 className={cn(
@@ -460,9 +470,16 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
         </BannerPosicionamento>
       ) : null}
 
+      {cicloDoPeriodo(periodo) > 1 ? (
+        <PainelCicloEnvio
+          periodo={periodo}
+          historico={montarHistoricoNegativas(periodo.negacoesAprovacao, (arquivoId) => arquivos[arquivoId])}
+        />
+      ) : null}
+
       {periodo.estado === "em_comite_qualidade" ? (
         <BannerComiteQualidade
-          historico={montarHistoricoNegativas(periodo.negacoesAprovacao, (arquivoId) => arquivos[arquivoId])}
+          historico={montarHistoricoNegativas(negativasDoCiclo(periodo), (arquivoId) => arquivos[arquivoId])}
           desde={periodo.emComiteDesde}
           diasParaPrazo={derivado.diasParaPrazo}
           prazoComite={situacaoPrazoComite(periodo)}
@@ -841,6 +858,71 @@ export function DetalhePeriodo({ periodoId, vozModulo }: DetalhePeriodoProps) {
   );
 }
 
+function PainelCicloEnvio({
+  periodo,
+  historico,
+}: {
+  periodo: PeriodoObrigacao;
+  historico: RegistroHistoricoNegativa[];
+}) {
+  const cicloAtual = cicloDoPeriodo(periodo);
+  const substituicao = periodo.substituicoes?.at(-1);
+  const quem = substituicao ? buscarUsuario(substituicao.iniciadaPorUsuarioId) : undefined;
+  const ciclos = Array.from({ length: cicloAtual }, (_, indice) => indice + 1);
+
+  return (
+    <section
+      data-tour="ciclo-envio"
+      className="space-y-3 rounded-lg border border-status-info-border bg-status-info-bg p-4 text-sm text-status-info-text"
+    >
+      <div>
+        <p className="font-display text-base font-bold">
+          {rotuloCiclo(cicloAtual, tipoRemessaDoPeriodo(periodo))} · remessa de substituição
+        </p>
+        {substituicao ? (
+          <p className="mt-1">
+            Substitui o protocolo{" "}
+            <span className="font-mono">{substituicao.protocoloSubstituido ?? "não identificado"}</span>.
+            Justificativa: {substituicao.justificativa}{" "}
+            <span className="text-xs">
+              ({quem?.nome ?? substituicao.iniciadaPorUsuarioId} · {formatarDataHora(substituicao.iniciadaEm)})
+            </span>
+          </p>
+        ) : null}
+        <p className="mt-1 text-xs font-medium">
+          Contador deste ciclo: {rotuloTotalNegativas(contarNegativas(periodo))} negativas. O limiar do Comitê vale por ciclo.
+        </p>
+      </div>
+      <div>
+        <p className="text-xs font-semibold">Histórico de negativas por ciclo</p>
+        <ol className="mt-1.5 space-y-2 text-xs">
+          {ciclos.map((ciclo) => {
+            const registros = historico.filter((registro) => registro.ciclo === ciclo);
+            return (
+              <li key={ciclo} className="rounded-md bg-white/60 p-2.5">
+                <p className="font-semibold">
+                  {rotuloCiclo(ciclo)}
+                  {ciclo === cicloAtual ? " · atual" : ""} ·{" "}
+                  {registros.length === 0
+                    ? "nenhuma negativa"
+                    : `${registros.length} ${registros.length === 1 ? "negativa" : "negativas"}`}
+                </p>
+                {registros.map((registro) => (
+                  <p key={`${registro.numero}-${registro.ocorridoEm}`} className="mt-0.5">
+                    {rotuloContagemNegativas(registro.numero)} · {rotuloOrigemNegativa(registro.origem)} ·{" "}
+                    {registro.usuarioNome} · {formatarDataHora(registro.ocorridoEm)}
+                    {registro.versaoArquivo ? ` · v${registro.versaoArquivo}` : ""} · {registro.motivo}
+                  </p>
+                ))}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </section>
+  );
+}
+
 function BannerComiteQualidade({
   historico,
   desde,
@@ -883,7 +965,7 @@ function BannerComiteQualidade({
         <p className="mt-1">
           {historico.some((registro) => registro.origem === "contador")
             ? `Esta competência acumulou ${historico.length} ${historico.length === 1 ? "negativa" : "negativas"}, entre negações do Responsável de Compliance e devoluções do Contador`
-            : `O Responsável de Compliance negou a aprovação ${historico.length} ${historico.length === 1 ? "vez" : "vezes"} nesta competência`}{" "}
+            : `O Responsável de Compliance negou a aprovação ${historico.length} ${historico.length === 1 ? "vez" : "vezes"} ${(historico.at(-1)?.ciclo ?? 1) > 1 ? "neste ciclo de envio" : "nesta competência"}`}{" "}
           (limite de {limiarNegativas()}). O período foi escalado ao Comitê de Qualidade e está
           somente leitura para todos os perfis
           {desde ? `, desde ${formatarDataHora(desde)}` : ""}. {prazoTexto}

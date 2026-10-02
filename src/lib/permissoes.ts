@@ -1,5 +1,10 @@
 import type { Acao, AcaoId, EstadoPeriodo, ModuloId, PerfilId, PeriodoObrigacao } from "@/lib/tipos";
-import { ROTULOS_COMPLETOS_APROVADOR, configuracaoFluxo } from "@/lib/mock/configuracao-fluxo";
+import {
+  ROTULOS_COMPLETOS_APROVADOR,
+  configuracaoFluxo,
+  estadosOrigemDaSubstituicao,
+  substituicaoHabilitada,
+} from "@/lib/mock/configuracao-fluxo";
 import { buscarInstituicao } from "@/lib/mock/instituicoes";
 import { avaliarParticipantesDoComite, type ImpedimentosComite } from "@/lib/comite";
 import { avaliarAcaoDeEntrega, type AcaoDeEntrega } from "@/lib/contrato";
@@ -175,6 +180,7 @@ export const PERFIS: PerfilMetadados[] = [
       "registrar_retorno",
       "arquivar",
       "reabrir",
+      "iniciar_substituicao",
       "tratar_excecao",
       "editar_dicionarios",
       "trocar_tenant",
@@ -293,6 +299,7 @@ export const ROTULOS_ACAO: Record<AcaoId, string> = {
   liberar: "Liberar para o cliente",
   registrar_retorno: "Registrar retorno do BCB",
   reabrir: "Reabrir período para correção",
+  iniciar_substituicao: "Iniciar substituição (remessa S)",
   aprovar: "Aprovar e assumir responsabilidade",
   negar_aprovacao: "Devolver / negar aprovação",
   escalar_comite: "Escalar ao Comitê de Qualidade",
@@ -330,6 +337,9 @@ interface RegraAcao {
   variante: Acao["variante"];
   modulos?: ModuloId[];
 }
+
+export const MOTIVO_SUBSTITUICAO_ARQUIVADO =
+  "Período arquivado: o arquivamento é imutável e não admite remessa de substituição.";
 
 const MODULOS_NAO_FISCAIS: ModuloId[] = ["acam212", "cadoc5711", "cadoc5710"];
 
@@ -387,6 +397,7 @@ const REGRAS_ACAO: RegraAcao[] = [
   { id: "registrar_protocolo_manual", estadosOrigem: ["aprovado", "emitido_fiscal"], estadoDestino: "aguardando_retorno", variante: "secundario" },
   { id: "registrar_retorno", estadosOrigem: ["aguardando_retorno"], estadoDestino: null, variante: "secundario" },
   { id: "reabrir", estadosOrigem: ["retorno_rejeitado", "retorno_com_ressalvas", "liberado", "aprovado"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
+  { id: "iniciar_substituicao", estadosOrigem: ["retorno_aceito"], estadoDestino: "dados_ingeridos", variante: "destrutivo-suave" },
   { id: "arquivar", estadosOrigem: ["retorno_aceito", "retorno_com_ressalvas"], estadoDestino: "arquivado", variante: "secundario" },
   { id: "baixar_arquivo", estadosOrigem: TODOS_ESTADOS_LEITURA.filter((estado) => estado !== "aguardando_dados" && estado !== "dados_ingeridos"), estadoDestino: null, variante: "ghost" },
   { id: "tratar_excecao", estadosOrigem: ["com_excecoes", "em_validacao"], estadoDestino: null, variante: "secundario" },
@@ -430,6 +441,8 @@ function acaoOcultaPorConfiguracao(
         (periodo.estado === "retorno_com_ressalvas" &&
           !configuracaoFluxo.caminhosAposRessalvas?.includes("arquivar"))
       );
+    case "iniciar_substituicao":
+      return !substituicaoHabilitada(periodo.moduloId);
     case "reabrir":
       return (
         periodo.estado === "retorno_com_ressalvas" &&
@@ -502,6 +515,19 @@ export function podeExecutar(
     !ACOES_LEITURA.includes(acaoId)
   ) {
     return { permitido: false, visivel: false };
+  }
+
+  if (acaoId === "iniciar_substituicao") {
+    if (periodo.estado === "arquivado") {
+      return {
+        permitido: false,
+        visivel: true,
+        motivo: MOTIVO_SUBSTITUICAO_ARQUIVADO,
+      };
+    }
+    if (!estadosOrigemDaSubstituicao(periodo.moduloId).includes(periodo.estado)) {
+      return { permitido: false, visivel: false };
+    }
   }
 
   if (!regra.estadosOrigem.includes(periodo.estado)) {

@@ -3251,6 +3251,47 @@ for (const moduloId of MODULOS_DEMO_R1) {
   }
 }
 
+periodos.push(
+  construirPeriodoDemoR1({
+    id: "per-meridian-cadoc5711-d8substituicao",
+    instituicaoId: "inst-meridian",
+    moduloId: "cadoc5711",
+    competencia: "2026-02",
+    competenciaRotulo: "Fevereiro/2026 (demo D8, pronto para substituição)",
+    estado: "retorno_aceito",
+    quantidadeRegistros: 124,
+    tamanhoBytes: 242_000,
+    geradoEm: "2026-03-04T09:00:00-03:00",
+    liberadoEm: "2026-03-04T14:30:00-03:00",
+    aprovadoEm: "2026-03-05T09:00:00-03:00",
+    entregueEm: "2026-03-05T15:00:00-03:00",
+    dataRetorno: "2026-03-09T10:00:00-03:00",
+    versoes: [
+      {
+        geradoEm: "2026-03-02T09:00:00-03:00",
+        validadoEm: "2026-03-02T11:00:00-03:00",
+        liberadoEm: "2026-03-02T14:00:00-03:00",
+      },
+      {
+        geradoEm: "2026-03-04T09:00:00-03:00",
+        validadoEm: "2026-03-04T11:00:00-03:00",
+        liberadoEm: "2026-03-04T14:30:00-03:00",
+      },
+    ],
+    negacoes: [
+      {
+        motivo: "Totais por cliente divergem da conciliação de custódia. Revisar a consolidação e reenviar.",
+        ocorridoEm: "2026-03-03T10:30:00-03:00",
+      },
+    ],
+    protocolo: {
+      numeroProtocolo: "DEMO-CADOC5711-202602",
+      canalEnvio: "pstaw10",
+      dataHoraEnvio: "2026-03-05T15:00:00-03:00",
+    },
+  })
+);
+
 interface VarianteR4 {
   id: string;
   instituicaoId: string;
@@ -3386,6 +3427,21 @@ for (const periodo of periodos) {
       periodo.aprovadoEm
     );
   }
+}
+
+for (const periodo of periodos) {
+  periodo.cicloEnvio = periodo.cicloEnvio ?? 1;
+  periodo.tipoRemessa = periodo.tipoRemessa ?? "I";
+  periodo.negacoesAprovacao = periodo.negacoesAprovacao.map((negacao) => ({
+    ...negacao,
+    cicloEnvio: negacao.cicloEnvio ?? 1,
+  }));
+}
+
+for (const protocolo of protocolos) {
+  protocolo.cicloEnvio = protocolo.cicloEnvio ?? 1;
+  protocolo.tipoRemessa = protocolo.tipoRemessa ?? "I";
+  protocolo.protocoloSubstituido = protocolo.protocoloSubstituido ?? null;
 }
 
 function validarUnicidadeDePeriodos(lista: PeriodoObrigacao[]): void {
