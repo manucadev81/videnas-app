@@ -8,8 +8,8 @@ import { useSessaoStore } from "@/lib/store/sessao";
 
 const DESTINOS = [
   "/app/configuracoes/instituicao",
-  "/app/configuracoes/usuarios",
   "/app/configuracoes/dicionarios",
+  "/app/configuracoes/usuarios",
 ];
 
 export default function ConfiguracoesPage() {

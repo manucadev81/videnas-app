@@ -169,7 +169,7 @@ export function montarLinhaTrilha(evento: EventoAuditoria, contexto: ContextoExp
     evento.periodoId ?? "",
     evento.moduloId ? contexto.rotuloModulo(evento.moduloId) : "",
     evento.competencia ?? "",
-    evento.referencia ?? "",
+    evento.referencia ? rotularValor("referencia", evento.referencia, contexto) : "",
     hashDoEvento(evento),
     resumirPayload(evento.payload, contexto),
   ];

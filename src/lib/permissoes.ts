@@ -168,6 +168,7 @@ export const PERFIS: PerfilMetadados[] = [
       "/app/auditoria",
       "/app/evidencias",
       "/app/configuracoes",
+      "/app/configuracoes/usuarios",
       "/app/configuracoes/dicionarios",
     ],
     acoesPermitidas: [
